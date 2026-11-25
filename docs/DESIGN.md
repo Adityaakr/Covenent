@@ -1,0 +1,889 @@
+
+# Covenant: investor protections that enforce themselves
+ · 
+## Summary
+Covenant is a launcher and vault for token raises on BNB Chain that binds the team after the money comes in. Five rules, enforced by contract and a verified price feed, replace the trust a buyer normally has to extend.
+The pitch in one line: tokens are sold to the public with none of the protections investors get elsewhere, and Covenant writes the core ones into the launch itself. |  | 
+What it is | A Flap Pool Launch launcher (the raise) plus a vault (the treasury and the team's tokens) governed by fixed rules | 
+Who it is for | Teams that want to raise credibly, buyers who want a floor under what they buy, launchpads that want fewer rugs | 
+The five rules | Tap, performance unlock, book-value exit, abandonment switch, disclosure (stretch) | 
+What enforces them | Smart contracts, a time-weighted pool price, and signed Atlas reports behind a trust gate | 
+Built on | Flap Pool Launch (primary), OpenFour tax vault template (port), Atlas and CoinMarketCap data, Cournot for disclosure checks | 
+Hackathon targets | Developer Track, Flap $10,000, CoinMarketCap x Atlas $10,000, Four.meme $10,000, Cournot $2,000 | 
+Closest precedent | MetaDAO's ownership coins on Solana. Same promise, different engine: rules and a feed instead of decision markets | 
+### What the rules do
+Tap. The team can withdraw a fixed dollar budget per month, capped as a share of the treasury, and nothing more.
+Performance unlock. Team tokens unlock only when the token has held a multiple of the sale price over a sustained window, measured on a price the feed marks as trusted.
+Book-value exit. If the token trades below treasury value per token for three trusted days, an exit round opens and any holder can burn tokens for a pro rata share of the treasury.
+Abandonment switch. If the team stops showing up, the treasury opens to holders permanently.
+Disclosure (stretch). A missed or failed monthly report pauses the tap until it is cured.
+### What ships at BNB Hack Bangkok
+CovenantLauncher and CovenantVault launching through Flap's Portal: on BNB testnet if Flap enables our factory, on a fork if not.
+An oracle contract that combines the pool's time-weighted price with signed Atlas reports.
+A tax vault template that brings the tap and the abandonment switch to Four.meme tokens.
+A web app with a raise page, a live covenant sheet per token, a redeem flow and a launch simulator on CoinMarketCap data.
+A scripted three-minute demo: an oversubscribed raise, a tap claim, a slide under book value that pays a holder, and an abandoned project that opens its treasury.
+## Problem and evidence
+Token buyers hand over money at launch and get no enforceable claim on it afterwards. The data shows what that produces.
+Finding | Number | Source | 
+Pump.fun tokens (Jan 2024 to Mar 2025, 7M+ tokens with at least 5 trades) that fell below $1,000 of liquidity | 98.6% | Solidus Labs, May 2025 | 
+Raydium pools showing soft rug pull traits | 93% of 388,000 pools | Solidus Labs, May 2025 | 
+Tokens on BNB Smart Chain and Ethereum that were active for less than one day (data to March 2022) | about 60% | Cernera et al., USENIX Security 2023 | 
+Share of tokens created by the top 1% of creator addresses | 20% to 25% | Cernera et al., USENIX Security 2023 | 
+Profit taken by one-day rug pulls, most common on BNB Smart Chain | about $240M | Cernera et al., USENIX Security 2023 | 
+BSC meme coins that had gone inactive about two months into the study window | 80.96% | MemeChain, arXiv 2601.22185 | 
+Capital committed to MetaDAO's protected raises across 14 launches, and the share refunded because raises were capped | $580M committed, 92.2% refunded | Basis Point, Aug 2026 | 
+The last row is the demand signal. Buyers offered roughly thirteen times more money than protected raises could accept.
+### Four ways a launch fails its buyers
+The money leaves in one piece. The team controls the whole raise on day one. Nothing ties spending to progress.
+Insiders are paid by the calendar. Vesting unlocks on dates, whether or not the token is worth anything by then.
+Buyers cannot get out at fair value. When confidence drops, the only exit is selling into a thin pool, even if the treasury still holds most of the raise.
+Projects fade instead of closing. A team that stops working keeps the keys. Holders wait for updates that never come.
+### Why the usual fixes fall short
+Liquidity locks protect the pool. They say nothing about the raise or the treasury.
+Vesting contracts fix timing, not results. A team can vest fully into a dead token.
+Token votes need turnout and a majority, and treasuries usually sit with the team. ROOK holders got about $25M back, roughly 60% of the treasury, only after an activist campaign (CoinDesk, Apr 2023). Aragon dissolved and put 86,343 ETH into a redemption contract after a long gap between treasury value and market cap (Blockworks, Nov 2023).
+Decision markets work on Solana through MetaDAO, but they need liquid pass and fail markets for every proposal, plus a legal entity per project (RockawayX).
+### Why now, on BNB Chain
+Flap announced Pool Launch on Nov 4, 2026: tokens start in a DEX pool, and developers can write their own launchers and vaults (Odaily, Flap example repo). It makes both the raise and the treasury programmable by third parties.
+Four.meme's OpenFour lets anyone publish a tax vault template and earn a royalty when tokens adopt it (OpenFour docs).
+Atlas, the oracle backed by CoinMarketCap, ships Chainlink-compatible feeds and signed pull reports that a small contract can verify (Atlas docs).
+The pieces needed to enforce investor protections in code are now all on BNB Chain. We have not found a project that assembles them.
+## Research foundations
+Each rule in Covenant is an old idea from finance, moved from a legal contract into a smart contract. The table maps rule to source.
+Rule | The idea it rests on | Where it comes from | 
+The whole design | When buyers cannot tell good projects from bad, good ones must send a signal that bad ones cannot afford to copy. | Akerlof (1970) on lemons markets. Leland and Pyle (1977) on insiders keeping skin in the game. Grossman (1981) on warranties as a quality signal. | 
+Tap | Releasing money in stages limits how much a manager can waste before investors can react. | Jensen and Meckling (1976) on agency costs. Gompers (1995) on staged venture financing. Buterin's DAICO (2018), which adds a per-second tap the team can lower but not raise. | 
+Performance unlock | Pay tied to observable results beats pay tied to time. | Holmstrom (1979) on moral hazard. Jensen and Murphy (1990) on performance pay. MetaDAO's price-multiple tranches at 2x to 32x with a three-month average (Basis Point). | 
+Book-value exit | A fund trading below the value of its assets is a known problem with a known cure: let holders redeem at asset value. | Lee, Shleifer and Thaler (1991) on closed-end fund discounts. Bradley, Brav, Goldstein and Jiang (2010) on activists forcing funds to open. Moloch DAO's rage quit. | 
+Abandonment switch | Control should pass to investors in bad states of the world. | Aghion and Bolton (1992) on state-contingent control. Smith and Warner (1979) on bond covenants that trigger on default. | 
+Disclosure | Issuers that disclose and commit do better. | Howell, Niessner and Yermack studied 1,500+ ICOs that raised $12.9B. Success tracked disclosure, credible commitment to the project and quality signals (NBER w24774, Review of Financial Studies 2020). | 
+### What the precedents teach
+DAICO (2018). Buterin's design has two holder powers: raise the tap by vote, or vote to shut down and withdraw the remaining funds pro rata. He also lists a tap priced in dollars through a price feed as a variation (ethresear.ch). Covenant keeps the tap and the pro rata refund. It replaces the vote with a rule.
+MetaDAO (2025 to 2026). The closest live system. Raises last four days with a cap and pro rata refunds. About 80% of the raise goes to a treasury and the rest seeds liquidity. Teams get a fixed monthly allowance and price-based token tranches (Basis Point). Holders can propose liquidation through decision markets. Ranger was about 14x oversubscribed, with $86.4M committed against a $6M minimum, and was later liquidated by proposal with USDC returned to holders (RockawayX).
+What went wrong there. Treasury value is not a guarantee: several coins traded below it for long stretches. On Nov 1, 2026, LOYAL sat about 7% below treasury value per token, P2P about 15% and NECTAR about 36% (01Resolved). Closing that gap needs a full liquidation proposal to pass. A holder who wants out alone has no path except selling at the discount.
+Treasury raids (2023). Rook and Aragon show the demand for exit at asset value, and how slow and hostile it is when the only tool is a governance fight (CoinDesk, Blockworks).
+### The gap Covenant fills
+None of these systems gives a single holder an exit at treasury value without a vote, a market or a lawyer. Covenant's book-value exit does that with one rule and one price check. The other four rules stop the treasury from being emptied before that exit matters.
+## Who it is for
+Covenant has three users, and the product only works if all three get something.
+User | Their problem today | What Covenant gives them | 
+A team raising money (an app, a game, an AI agent with revenue, a company testing tokenized shares) | No way to prove it will not run with the raise, so it is priced like every other launch | A commitment it can opt into at launch and buyers can verify on-chain, while keeping a monthly budget it controls | 
+A buyer (raise contributor or later holder) | Cannot tell an honest team from a dishonest one, and has no recourse after buying | A floor at treasury value, team tokens that cannot be sold early, and an exit that needs no vote and no permission | 
+A launchpad and its chain (Flap, Four.meme, BNB Chain) | Rugs are a reputational cost and keep serious teams away | A launch type that attracts real projects, plus template fees | 
+### Jobs to be done
+As a team, I want to raise in public and show buyers exactly what I can and cannot do with their money.
+As a contributor, I want to know the worst case before I commit: what I get back if the project fails.
+As a holder, I want to leave at a fair value when the market has given up, without waiting for anyone's approval.
+As a launchpad, I want launches I can feature without vouching for the team myself.
+### What Covenant is not
+Not a DAO framework. There are no proposals and no votes in v1. The rules are fixed at launch.
+Not legal ownership. It protects the money and the token supply on-chain. It does not give holders a claim on a company, its IP or its off-chain revenue.
+Not a tool for five-minute meme launches. It works for them, but the design assumes a team that plans to be around for months.
+## How Covenant works
+A covenant is one launcher and one vault with terms that are fixed at creation. It moves through six states, and every transition is a rule anyone can trigger.
+Green marks the three states where holders take BNB out: a failed raise, an exit round and a wind-down. Wind-down can be entered from any live state, not only from active.
+### Lifecycle
+Create. The team calls Flap's Portal.newLauncher with our launcher factory and the terms: supply split, minimum and cap, sale window, tap, unlock tranches, exit and heartbeat settings. Nothing can be edited later except lowering the tap.
+Raise. Anyone commits BNB during the sale window. Commitments are not capped, so the raise can be oversubscribed.
+Settle. After the deadline anyone calls finalize(). Below the minimum, every contributor refunds in full. Above the cap, each commitment is scaled down pro rata and the excess is refundable.
+Launch. In the same transaction the launcher calls Flap's launchTaxTokenV2. Flap deploys the token, seeds the PancakeSwap V2 pool at the sale price, and asks our vault factory to create the vault. Sale and team tokens go to the vault. The launcher forwards the treasury share of the raise to the vault.
+Operate. Contributors claim tokens. Trading tax flows into the treasury. The team draws its tap. A keeper, or anyone, calls poke() about once an hour to record prices.
+Exit round. If the token trades below book value for 3 trusted days, a 7 day round opens. Any holder can burn tokens for their share of the treasury. The tap is paused. A 14 day cooldown follows.
+Unlock. A team tranche unlocks when the dollar price holds above its multiple for 30 trusted days, after the cliff.
+Wind-down. If the team is silent for 45 days, or chooses to close, the tap ends, locked team tokens are burned and redemption stays open with no fee.
+### States
+State | What is true | How it ends | 
+RAISING | Commitments open. Refunds not yet possible. | Sale deadline, then finalize() | 
+FAILED | Minimum missed or the launch call reverted. Full refunds only. | Terminal | 
+ACTIVE | Tap accrues. Tax accrues. Prices are recorded. Exit trigger armed. | Exit trigger or wind-down trigger | 
+EXIT_ROUND | Redemption open at book value. Tap paused. | Round length passes | 
+COOLDOWN | Same as active, exit trigger disarmed. | Cooldown passes | 
+WIND_DOWN | Tap ended. Locked team tokens burned. Redemption open forever. | Terminal | 
+### Where the money goes: a worked example
+Supply is 1,000,000,000 tokens: 60% sale, 15% pool, 25% team (locked). Minimum raise 200 BNB, cap 500 BNB.
+Step | Amount | 
+Committed by buyers | 1,400 BNB (2.8x oversubscribed) | 
+Accepted | 500 BNB | 
+Refunded pro rata | 900 BNB (each buyer keeps 35.7% of their commitment in the sale) | 
+Sale price | 500 / 600M = 0.000000833 BNB per token | 
+Pool seed | 125 BNB + 150M tokens, so the pool opens at the sale price | 
+Treasury | 375 BNB, held by the vault | 
+Book value per token | 375 / 750M = 0.0000005 BNB, which is 60% of the sale price | 
+A buyer who committed 14 BNB ends with 6,000,000 tokens for 5 BNB and a 9 BNB refund. From day one, 3 BNB of that 5 BNB is backed by the treasury and can only leave through the five rules.
+## The rules in detail
+Every rule is a formula over numbers the vault can read on-chain. This section gives the formula, the default and the edge cases for each.
+Symbols: S total supply, A sale tokens, P pool tokens, E team tokens, C total committed, Q accepted raise, T treasury in BNB, R redeemable supply, b book value per token, p pool price in BNB.
+### The raise
+Q = \\min(C, \\text{cap}), \\qquad q_i = \\left\\lfloor c_i \\cdot \\frac{Q}{C} \\right\\rfloor, \\qquad a_i = A \\cdot \\frac{q_i}{Q}
+Buyer i committed c_i, keeps q_i in the sale, is refunded c_i - q_i, and receives a_i tokens.
+If C is below the minimum, state becomes FAILED and everyone refunds c_i.
+Sale price is p0 = Q / A. The pool is seeded with Q_pool = Q * P / A and P tokens, so it opens at exactly p0. This needs P <= A.
+Treasury starts at T0 = Q - Q_pool. Rounding dust stays in the treasury.
+If Flap's launch call reverts for any reason, the launcher catches it and moves to FAILED. A failed launch never traps funds.
+### Book value
+R = S - \\text{dead} - \\text{lockedTeam}, \\qquad b = \\frac{T - \\text{owedTeam}}{R}, \\qquad \\frac{b_0}{p_0} = \\frac{A - P}{A + P}
+dead is the token balance of the burn address. lockedTeam is team tokens still locked in the vault. owedTeam is tap already accrued but not yet claimed.
+Tokens sitting in the pool count in R. That makes b invariant to trading: buying or selling on the pool never changes anyone's book value. If pool tokens were excluded, every purchase from the pool would dilute holders.
+Locked team tokens do not count. If every outside holder exits, the team cannot claim what is left through its locked allocation.
+What happens | Effect on b | 
+Trade on the pool | None | 
+Redemption at book | None, or a small rise when an exit fee applies | 
+Trading tax arrives | Rises | 
+Team draws the tap | Falls | 
+Team tranche unlocks | Falls: the unlocked tokens join R | 
+The split sets the starting floor. More pool tokens means deeper liquidity and a lower floor.
+Sale A | Pool P | Share of raise seeding the pool | Starting floor b0 / p0 | 
+70% | 10% | 14.3% | 0.75 | 
+60% | 15% (default) | 25.0% | 0.60 | 
+60% | 20% | 33.3% | 0.50 | 
+50% | 20% | 40.0% | 0.43 | 
+### Rule 1: tap
+The team's budget is set in dollars per 30 days and paid in BNB at the Atlas BNB/USD rate. It is capped as a share of the treasury.
+\\text{accrued}(\\Delta t) = \\Delta t \\cdot \\min\\left( \\frac{\\text{tapUsd}}{30\\text{d} \\cdot \\text{bnbUsd}},\\; \\frac{\\text{capBps}}{10^4} \\cdot \\frac{T}{30\\text{d}} \\right)
+Default cap is 4% of the treasury per 30 days. With 375 BNB the cap is 15 BNB in the first month.
+The team can lower tapUsd at any time. Nobody can raise it in v1.
+Accrual pauses during an exit round and ends at wind-down.
+claimTap() pays the accrued amount to the team wallet fixed at creation. It also counts as a heartbeat.
+The floor falls as the team spends. With the cap binding, no tax income and no redemptions:
+Months after launch | Treasury left | Floor as a share of sale price | 
+0 | 100% | 60.0% | 
+6 | 78.3% | 47.0% | 
+12 | 61.3% | 36.8% | 
+24 | 37.5% | 22.5% | 
+### Rule 2: performance unlock
+Team tokens unlock on price, not on dates. Default tranches: 5% of supply at 2x, 10% at 4x, 10% at 8x, measured in dollars against the sale price.
+Each poke() yields the time-weighted pool price since the last one, converted to dollars with Atlas.
+For tranche k, a counter adds the interval when the observation is trusted and the price is at or above m_k times the sale price. A trusted observation below resets it. An untrusted one leaves it unchanged.
+The tranche unlocks when its counter reaches 30 days and the cliff (6 months) has passed.
+Unlocked tokens are ordinary tokens. They join R, so each unlock dilutes book value: after all three tranches, b is 0.75 of what it would otherwise be. This is disclosed on the covenant sheet.
+At wind-down, tranches still locked go to the burn address.
+### Rule 3: book-value exit
+A streak counter adds trusted time while the interval price is below b. A trusted observation at or above b resets it.
+When the streak reaches 3 days, an exit round opens for 7 days.
+During the round, redeem(x) takes x tokens, sends them to the burn address and pays x * b * (1 - fee). Default fee is 1% and stays in the treasury.
+After the round, a 14 day cooldown runs before the trigger can arm again. In a permanent discount the tap is paused at most 29% of the time (7 of every 24 days).
+Worked example: treasury 320 BNB, R = 750M, so b = 0.000000427 BNB. The pool trades at 0.00000035, about 18% under book, for three days. A holder redeems 6M tokens and receives 2.534 BNB. Selling on the pool would pay about 2.1 BNB before tax and slippage. Book value for everyone else moves from 0.00000042667 to 0.00000042670.
+Why a round and not an always-open window: with redemption always open, arbitrage pins the price at book and a paused tap could starve an honest team for months. A round gives doubters a clean exit, then lets the people who stayed fund the team again.
+Why the trigger is hard to abuse: to open a round, the price must sit below book for three days. Anyone pushing it there is selling tokens for less than the treasury will pay for them. The seller loses and the buyers gain.
+### Rule 4: abandonment switch
+Any team action is a heartbeat: heartbeat(), claimTap(), lowerTap(), postReport().
+If now > lastHeartbeat + 45 days, anyone can call declareAbandoned(). Unclaimed tap is forfeited back to the treasury.
+The team can also call windDown() to close honestly. Tap accrued up to that moment stays claimable.
+Both paths end in WIND_DOWN: no more tap, locked team tokens burned, redemption open with no fee and no deadline.
+### Rule 5: disclosure (stretch)
+The team posts a report each period: postReport(period, uri, hash).
+A Cournot market per period asks whether the report exists and matches on-chain facts. The verdict is relayed to the vault.
+A missing or failed report pauses tap accrual until a passing one lands.
+### Design choices worth defending
+Choice | Alternative considered | Why this one | 
+Exit by rule | Exit by vote or decision market | Works for one holder, needs no turnout and no market liquidity | 
+Exit rounds | Always-open window with hysteresis | Bounded pause on the tap, simpler state machine | 
+Pool tokens count in R | Exclude pool tokens for a higher floor | Book value cannot be diluted by buying from the pool | 
+Dollar tap and dollar unlock | BNB-denominated | A 2x that is only BNB moving is not performance | 
+No governance in v1 | Holder vote to raise the tap | Less to build and audit, fewer attack paths | 
+## Data and oracle design
+Covenant needs three numbers it cannot make up: the token's price in BNB, the BNB price in dollars, and a signal for when either should not be trusted. The pool gives the first and Atlas gives the other two.
+### Which data does which job
+Job | Source | Why this source | 
+Token price in BNB, time-weighted | PancakeSwap V2 pair cumulative prices, read on-chain | Exists from the first block of trading, needs no feed, cannot be moved by a single trade | 
+BNB price in dollars | Atlas BNB/USD (signed pull report first, push feed as fallback) | Sets the dollar tap and the dollar unlock multiples | 
+Token price across venues | Atlas feed for the token, once one exists | Cross-check against the pool once the token trades elsewhere | 
+Trust signal | Report freshness, pool depth, pool against Atlas agreement, and Atlas status when exposed on-chain | Decides whether time counts toward a trigger | 
+History and context off-chain | CoinMarketCap DEX API | Covenant sheet, alerts and the launch simulator | 
+### What Atlas exposes today
+Read from the Atlas docs and the interface repo on Nov 25, 2026.
+Mode | How a contract reads it | Notes | 
+Push, single feed | latestRoundData() on an ISingleFeed, Chainlink AggregatorV2V3 compatible (reference) | startedAt is the off-chain aggregation time, updatedAt the on-chain time. Only the latest round is stored. | 
+Push, multi feed | fetch(bytes4 feedId) returns PriceSnapshot { price, aggregatedTs, onchainTs } (reference, interfaces) | One contract, many feeds | 
+Pull | Signed report appended to calldata, verified in the consumer with _getVerifiedFeedData(feedId) (guide) | Stateless. Reference limits: maxDelay 180 s, maxFutureDrift 60 s. Needs an API key and feed ids from Atlas onboarding. | 
+Two facts shape the build:
+Push feeds can be read-restricted. In whitelist mode only approved contracts can read. Our adapter must be whitelisted, or the feed must be in open-read mode (push guide). Pull mode has no such gate, so it is our first choice.
+Status is not in the published interfaces yet. The Consensus Score page describes a score, six statuses and a reason code per feed. The push and pull interfaces we read return a price and timestamps only, and the data quality page lists the score as coming soon. This is question one for the Atlas team on site.
+### The trust gate
+An observation is trusted when all of these hold. Untrusted observations never advance or reset a counter.
+The Atlas BNB/USD report verifies and is no older than maxDelay.
+Its timestamp is not older than the last one accepted. Atlas notes that a signed report can be replayed inside its freshness window, so we enforce monotonic timestamps.
+The pool's BNB reserve is at least half of the launch seed.
+If a token feed is configured, the pool price and the Atlas price agree within 10%.
+If Atlas status is readable on-chain, it is one the counter accepts (table below).
+Atlas status | Score | Counts toward exit streak | Counts toward unlock and tap rate | 
+HEALTHY | at least 0.85 | Yes | Yes | 
+DEGRADED | 0.65 to 0.85 | Yes | Yes | 
+WARNING | 0.40 to 0.65 | Yes | No | 
+CRITICAL | below 0.40 | No | No | 
+SPLIT_MARKET | two price camps | No | No | 
+UNKNOWN | not enough data | No | No | 
+The gate is stricter when it pays the team than when it protects holders. At CRITICAL, Atlas publishes the last trusted value and stops advancing, so on a push feed the timestamp simply ages out and check 1 fails (Consensus Score).
+Atlas's own stress cases show why the gate matters for a new token: a roughly 7x price inflation on one DEX against other venues scores 0.10 and flips to SPLIT_MARKET, and a +2000% spike on a thin venue scores about 0.45 (Consensus Score). Those are exactly the moves a team would try in order to fake an unlock.
+### What the oracle does and does not decide
+The exit rule compares two BNB numbers the vault can read itself: pool price and treasury per token. It would work with no oracle. Atlas adds the cross-venue check and blocks counting during broken markets.
+The tap and the unlock are different. Both are set in dollars, so both depend on Atlas for every step. That is the honest split: the oracle is a guard for rule 3 and the engine for rules 1 and 2.
+### Time-weighted price
+Each poke() reads the pair's cumulative price and timestamp, in the style of the Uniswap V2 oracle. The average since the previous poke is the difference in cumulative price divided by elapsed time.
+Pokes are at least 1 hour apart. A keeper pokes hourly. Anyone else can too.
+One poke adds at most 6 hours to any counter, so sparse poking slows triggers instead of firing them on one long average.
+A flash loan cannot move it: the cumulative value only records prices that survived to the end of a block.
+### Fallback ladder
+Pull report verified in the poke transaction.
+Push feed read, if the adapter is whitelisted or the feed is open.
+No trusted observation for 14 days: pool-only mode. The tap falls back to its treasury cap alone, the exit streak runs on pool price with a 6 day requirement, and unlock counters freeze.
+The ladder fails toward holders. If the oracle disappears, the exit still works and the team cannot unlock tokens.
+### CoinMarketCap DEX API in the app
+Base URL https://pro-api.coinmarketcap.com, header X-CMC_PRO_API_KEY (token endpoints, candles).
+Use in Covenant | Endpoint | 
+Live pair quote, holders and security scan on the covenant sheet | GET /v4/dex/pairs/quotes/latest with aux=holders,security_scan | 
+Liquidity now and liquidity changes, for depth alerts | GET /v1/dex/token-liquidity/query, GET /v1/dex/liquidity-change/list | 
+Price history for the price against book chart | GET /v1/k-line/candles | 
+Recent swaps, to show who is selling into an exit round | GET /v1/dex/tokens/transactions | 
+Sample of new launches for the simulator | POST /v1/dex/new/list | 
+### The launch simulator
+A page that answers one question with CoinMarketCap data: what would have happened if recent BNB Chain launches had carried a covenant?
+Pull a sample of BNB Chain tokens from the new list, then daily candles for each from launch.
+Assume the default terms: floor at 60% of the opening price, falling by the tap cap each month.
+Report how many tokens crossed below that floor for three days, how soon, and what share of an assumed raise would have been redeemable at that point.
+This gives the pitch a number computed during the hackathon from sponsor data, and it is the clearest answer to the track's ask for meaningful use of data.
+## Positioning and prior art
+Covenant makes the same promise as MetaDAO's ownership coins, with a different engine and on a chain where nothing like it exists. The table shows where each approach puts the raise and what a holder can do when things go wrong. | Covenant (BNB Chain) | MetaDAO (Solana) | DAICO (2018 design) | Bonding-curve launchpads | Genius.fun (BNB Chain) | 
+Raise | Capped, pro rata refunds, full refund under minimum | Capped, pro rata refunds | Any sale format | No raise, curve purchases | No raise, curve then PancakeSwap | 
+Where the money sits | Vault governed by fixed rules | Treasury multisig signed by the futarchy DAO | Contract with a tap | Pool and creator wallet | Treasury of tokenized assets | 
+Team budget | Dollar tap, capped as a share of treasury | Fixed monthly allowance | Per-second tap | None | Share of trading fees | 
+Team tokens | Unlock at price multiples on a trusted average | Unlock at 2x to 32x on a three-month average | Not specified | Usually free from launch | Not specified | 
+Holder exit at asset value | Individual, by rule, in exit rounds | Collective, by liquidation proposal in decision markets | Collective, by vote | None | Depends on each product and issuer | 
+What enforces it | Contract plus price feed | Decision markets plus a legal entity | Token vote | Nothing | Not disclosed | 
+Sources: MetaDAO mechanics from Basis Point and RockawayX. DAICO from Buterin. Genius.fun from crypto.news, Sept 17, 2026, which notes the announcement described no specific investor protections.
+### How to say it in one breath
+MetaDAO proved that buyers want raises with a treasury they can get back. It needs a decision market and a company for every project. Covenant gets the same protection from one vault, one rule and one price feed, on the launchpads BNB Chain already uses.
+### Where Covenant is different on purpose
+One holder can leave. MetaDAO's exit is all or nothing and needs a proposal to pass. Three of its coins traded 7% to 36% under treasury value on Nov 1, 2026 with no individual way out (01Resolved).
+Trading tax feeds the treasury. Flap routes a share of every trade's tax to the vault, so book value can grow with volume. MetaDAO treasuries only shrink unless the project earns revenue.
+The rules are public before the raise. There is no proposal process to learn and nothing to vote on.
+It lives inside existing launchpads. A Flap launcher and vault pair, plus an OpenFour template. No new venue to bootstrap.
+### Where Covenant is weaker, stated up front
+No legal claim. MetaDAO wraps each project in a legal entity that the DAO controls. Covenant holders own a contract right to treasury BNB, not the company, its IP or its revenue.
+No governance. Holders cannot raise the tap, replace the team or redirect the treasury. v1 offers exit, not voice.
+The floor is below the sale price and falls as the team spends. Covenant limits losses. It does not remove them.
+It depends on a price feed for the dollar rules, and on Flap's Guardian for upgrades.
+### Why another team is unlikely to build this in 36 hours
+Pool Launch's launcher and vault interfaces were announced on Nov 4, 2026. Few teams will have read the spec closely enough to pair a launcher with a vault.
+The mechanism has traps that take time to find: counting pool tokens in book value, making a failed launch refundable, bounding the tap pause.
+Most teams on these tracks will build a trading agent or a dashboard. A fundraising primitive that uses Flap, Atlas and OpenFour for what each is best at stands alone.
+## System architecture
+Covenant is six contracts, one keeper and one web app. Flap creates the token, the pool and the vault. Our code decides who can raise, where the money sits and when it can move.
+Money enters through the launcher, rests in the vault and leaves only through the vault's rules. The Portal also hands the vault the sale and team tokens at launch. CovenantLiteVault for Four.meme is a separate, smaller contract and is not drawn.
+### Components
+Component | What it does | Built on | 
+CovenantLauncherFactory | Validates terms and deploys one launcher per raise | Flap LauncherFactoryBase, spec lf-v1 | 
+CovenantLauncher | Holds commitments, settles pro rata, launches once, forwards the treasury, pays refunds | Flap LauncherBase | 
+CovenantVaultFactory | Accepts only launches from our launchers with the exact expected shape, deploys the vault | Flap DirectLaunchVaultFactoryBase, spec pl-v1 | 
+CovenantVault | Holds treasury and reserved tokens, runs the five rules | Flap DirectLaunchVaultBase and IStrategy, Token Dock | 
+CovenantOracle | Verifies Atlas reports, reads the pair, sends one observation to a vault | Atlas pull consumer, PancakeSwap V2 pair | 
+CovenantLiteVault | Tax-only version of the rules for Four.meme tokens | OpenFour BaseTaxVault behind ForwardVault | 
+Keeper | Pokes hourly with a signed Atlas report, dispatches pending tax, raises alerts | TypeScript, viem, Atlas pull SDK | 
+Web app | Create, commit, covenant sheet, redeem, team console, simulator | Next.js, wagmi, viem, CoinMarketCap DEX API | 
+### Launch sequence
+Everything below happens inside one finalize() transaction.
+The launcher computes Q and Q_pool and builds Flap's CreateTaxTokenParams. The single fee slot is VAULT at 10000 bps with vaultData = abi.encode(launcher).
+It sets launching = true and calls Portal.launchTaxTokenV2{value: Q_pool} with Distribution { target: VAULT, amount: A + E }, inside a try and catch.
+The Portal calls CovenantVaultFactory.newVault(predictedToken, launcher, 0, abi.encode(params, distribution)). The factory checks every condition listed in the specification, then deploys and initializes the vault from launcher.terms().
+The Portal deploys the token, seeds the V2 pool with Q_pool and P, and locks the liquidity.
+The Portal calls vault.initializeDistribution(token, A + E, \"\", salt). The vault pulls exactly that amount and deposits it in Flap's Token Dock.
+Back in the launcher: vault.fundTreasury{value: Q - Q_pool}(pool), then state becomes LAUNCHED.
+The keeper's first poke records the sale price in dollars.
+If step 2 reverts, nothing after it happened. The launcher moves to FAILED and every commitment is refundable.
+### Poke sequence
+The keeper builds a call to CovenantOracle.poke(vault). The Atlas SDK appends the signed report to the calldata.
+The oracle verifies BNB/USD, and the token feed if one is configured. It reads the pair's cumulative price and reserves and computes the average price since the last poke and the trust flag.
+The oracle calls vault.onObservation(obs). The vault recognizes new tax revenue, accrues the tap, steps the exit streak and tranche counters, and changes state if a threshold is crossed.
+### Tax flow
+Trades on the pool leave tax in the token's tax processor. Anyone can call its dispatch(). The vault's share arrives as plain BNB in receive(), and the vault recognizes it by comparing its balance to its own ledger, as Flap's spec requires.
+### Trust boundaries
+Party | What it can do | What it cannot do | 
+Flap Portal | Create the vault once, hand over reserved tokens once | Move treasury or change terms | 
+Flap Guardian | Upgrade the vault implementation for all covenants | Act without Flap's security review, per Flap's stated process | 
+Atlas signer | Set BNB/USD inside a signed report | Open an exit round alone: book and pool price are read on-chain | 
+Keeper | Choose when to poke | Forge a report, skip the trust gate, or poke more than hourly | 
+Team | Claim tap, lower tap, heartbeat, wind down | Raise the tap, touch locked tokens, block redemptions | 
+Any holder | Poke, redeem in a round, declare abandonment when due | Redeem outside a round | 
+### Repository layout
+covenant/
+  contracts/                 Foundry project
+    src/flap/                Flap spec files, copied unchanged
+    src/launcher/            CovenantLauncher.sol, CovenantLauncherFactory.sol
+    src/vault/               CovenantVault.sol, CovenantVaultFactory.sol, CovenantTypes.sol
+    src/oracle/              CovenantOracle.sol, PairTwap.sol, IAtlas.sol
+    src/openfour/            CovenantLiteVault.sol
+    test/                    unit, fork (BNB Chain and testnet), invariant
+    script/                  Deploy.s.sol, Demo.s.sol
+  keeper/                    poke, dispatch, alerts
+  web/                       Next.js app
+  sim/                       CoinMarketCap simulator job
+### Stack
+Layer | Choice | Reason | 
+Contracts | Solidity 0.8.26, Foundry, solady, OpenZeppelin upgradeable | Same toolchain and versions as Flap's example repo, so its bases and fork tests drop in | 
+Proxies | Beacon proxy per launch, keyed by token address | Flap's recommended pattern | 
+Keeper | Node, viem, @atlas-oracle/pull-oracle-consumer-sdk | The SDK fetches and appends signed reports | 
+App | Next.js, wagmi, viem, Tailwind, Satoshi typeface | Fast to build, wallet support out of the box | 
+Data | CoinMarketCap DEX API behind a server route | Keeps the API key off the client | 
+## Smart contract specification
+This is the build spec: terms, functions, access, core logic and invariants. Interfaces marked Flap, OpenFour or Atlas were read from their source on Nov 25, 2026.
+### Terms
+Set once in newLauncher, stored in the launcher, copied into the vault at launch.
+struct Terms {
+    // token and raise
+    string name; string symbol; string meta;
+    bytes32 salt;               // mined so the token address ends in 0x7777
+    uint256 totalSupply;
+    uint16 saleBps;             // A / S
+    uint16 poolBps;             // P / S, must be <= saleBps
+    uint16[] trancheBps;        // team tranches, sum = 10000 - saleBps - poolBps
+    uint16[] trancheMultiple;   // 200 = 2x the sale price in dollars
+    uint256 minRaise; uint256 cap;
+    uint32 saleDuration;
+    // trading tax
+    uint16 buyTaxBps; uint16 sellTaxBps; uint32 taxDuration;
+    // rule 1: tap
+    address teamWallet;
+    uint256 tapUsdPer30d;       // 18 decimals
+    uint16 tapCapBps;           // share of treasury per 30 days
+    // rule 2: unlock
+    uint32 cliff; uint32 unlockWindow;
+    // rule 3: exit
+    uint32 exitStreak; uint32 roundLength; uint32 cooldown; uint16 exitFeeBps;
+    // rule 4: abandonment
+    uint32 heartbeat;
+}
+The launcher factory rejects terms outside these bounds:
+Field | Bound | Reason | 
+saleBps | at least 4000 | Buyers hold the largest share | 
+poolBps | 500 to saleBps | Pool must open at the sale price | 
+Team total | at most 3000 | Limits dilution of book value | 
+tapCapBps | at most 1000 | At least ten months of runway | 
+exitStreak | 1 to 14 days | Long enough to resist manipulation, short enough to matter | 
+roundLength | at least 3 days | Time for holders to act | 
+exitFeeBps | at most 300 | Exit must stay close to book | 
+heartbeat | 14 to 90 days | Avoids false alarms and endless silence | 
+minRaise * poolBps / saleBps | above Flap's creation floor | Otherwise the launch reverts LaunchLiquidityTooLow | 
+The last check uses Flap's PortalLaunchLens.graduationFloorV2. Flap's own tests seed 10 BNB at a 20% pool share and clear the floor. A second factory with time bounds in minutes is deployed for the demo only.
+### CovenantLauncher
+Function | Caller | Behavior | 
+initialize(hub, creator, terms) payable | Factory | Stores terms. Calls Portal.lockSalt itself with exactly SALT_LOCK_FEE, because Flap requires the locker to be the launcher. | 
+contribute() payable | Anyone | Adds to contributions[msg.sender] and committed while RAISING and before the deadline. | 
+finalize() | Anyone, after the deadline | Under minimum: FAILED. Otherwise settles, launches (sequence above), forwards the treasury. A reverted launch also ends in FAILED. | 
+claimRefund() | Contributor | Pays the full commitment if FAILED, or the unaccepted part if LAUNCHED. | 
+acceptedOf(a), allocationOf(a) | View | q_i and a_i. The vault reads these. | 
+terms(), state(), launching(), token(), vault() | View | Read by the vault factory, the vault and the app. | 
+description() | View | Flap's v1 JSON plus appended covenant keys, kept under 4 KB. Past that size the Portal silently stores an empty string. | 
+The launcher also declares the real creator with LaunchExtensionHelper.encodeCreator(creator), so Flap's launch event shows the team wallet and not the launcher contract.
+### CovenantVaultFactory
+newVault(token, creator, launchKind, launchParams) is onlyHub and reverts before deploying unless all of these hold:
+Flap's common checks pass (_validateLaunch): one VAULT slot naming this factory, non-zero bps, supported quote.
+Portal.getLauncher(creator).launcherFactory is our launcher factory. A stranger contract cannot pose as a launcher.
+vaultData is exactly abi.encode(address launcher) and names the caller.
+launcher.launching() is true and the launch parameters equal what launcher.terms() implies: supply, pool tokens, tax rates.
+Quote is native BNB. The VAULT slot is 10000 bps.
+distribution.target == VAULT, distribution.amount == A + E and poolToken + amount == totalSupply.
+Other surfaces: isQuoteTokenSupported(address(0)) only, factorySpecVersion() returns pl-v1, vaultDataSchema(), tokenCreationPolicies(), and upgradeVaultImplementation() restricted to Flap's Guardian.
+### CovenantVault
+Function | Caller | Behavior | 
+initialize(token, launcher, terms) | Factory | Copies terms, sets state ACTIVE, starts the heartbeat clock. | 
+initializeDistribution(token, amount, data, salt) | Flap Portal, once | Checks the token and amount, pulls exactly amount, verifies the balance change, deposits in the Token Dock, emits FlapDistributionInitialized. | 
+fundTreasury(pool) payable | Launcher, once | Records the raise treasury and the pair address. | 
+receive(), sync() | Anyone | Recognizes revenue by balance delta. Cheap and idempotent, since Flap may ping it with zero value. | 
+claimTokens() | Contributor | Withdraws allocationOf(msg.sender) from the Token Dock to the caller, once. | 
+onObservation(obs) | CovenantOracle only | Core step, shown below. | 
+claimTap() | Team wallet or Guardian | Pays accrued tap to the team wallet. Heartbeat. | 
+lowerTap(newUsd) | Team wallet or Guardian | Only downwards. Heartbeat. | 
+heartbeat() | Team wallet or Guardian | Resets the abandonment clock. | 
+releaseTeam() | Anyone | Sends unlocked tranches from the Token Dock to the team wallet. | 
+redeem(amount, minOut) | Any holder | Only in EXIT_ROUND or WIND_DOWN. Shown below. | 
+declareAbandoned() | Anyone, after the heartbeat lapses | Forfeits unclaimed tap, burns locked tranches, enters WIND_DOWN. | 
+windDown() | Team wallet or Guardian | Voluntary close. Same end state, accrued tap stays claimable. | 
+postReport(period, uri, hash) | Team wallet | Stretch. Stores the report pointer. Heartbeat. | 
+bookValue(), redeemableSupply(), state(), exitStreak(), trancheProgress(k), tapAccrued() | View | Drive the covenant sheet. | 
+description(), vaultUISchema() | View | Flap's two mandatory vault methods. | 
+Flap's spec asks that every permissioned vault function also accept the Guardian. The payout address is fixed, so a Guardian call to claimTap() still pays the team.
+### CovenantOracle
+struct Observation {
+    uint32  elapsed;     // seconds since this vault's previous observation
+    uint256 twapBnb;     // average pool price over that interval, 1e18
+    uint256 bnbUsd;      // Atlas BNB/USD, 1e18
+    bool    trusted;     // gate passed for the exit streak
+    bool    strict;      // gate passed for unlock and tap rate
+}
+function poke(address vault) external;   // signed Atlas report rides in trailing calldata
+The oracle is a singleton with no owner. It stores, per vault, the last cumulative price, the last pair timestamp and the last Atlas timestamp accepted. It refuses a second poke within 1 hour.
+### Core logic
+function onObservation(Observation calldata o) external onlyOracle {
+    _tick();                                            // time-based state changes
+    _sync();                                            // recognize tax revenue
+    uint256 dt = o.elapsed > MAX_STEP ? MAX_STEP : o.elapsed;   // 6 hours at most
+    if (state == State.ACTIVE || state == State.COOLDOWN) _accrueTap(dt, o);
+    if (o.trusted) {
+        if (usdSalePrice == 0 && o.strict) usdSalePrice = salePriceBnb * o.bnbUsd / 1e18;
+        if (o.strict) _stepTranches(dt, o.twapBnb * o.bnbUsd / 1e18);
+        if (state == State.ACTIVE) {
+            exitStreak = o.twapBnb < bookValue() ? exitStreak + dt : 0;
+            if (exitStreak >= terms.exitStreak) _openRound();
+        }
+    }
+    emit Observed(o.twapBnb, o.bnbUsd, bookValue(), o.trusted, state);
+}
+function redeem(uint256 amount, uint256 minOut) external nonReentrant {
+    _tick();
+    if (state != State.EXIT_ROUND && state != State.WIND_DOWN) revert NotRedeemable();
+    _sync();
+    uint256 b = bookValue();                            // read before the burn, rounded down
+    uint256 got = _pullAndBurn(msg.sender, amount);     // measures tokens received, sends them to 0xdEaD
+    uint256 gross = got * b / 1e18;
+    uint256 out = state == State.WIND_DOWN ? gross : gross - gross * terms.exitFeeBps / 10_000;
+    if (out < minOut) revert Slippage();
+    totalOut += out;                                    // ledger first, transfer last
+    msg.sender.safeTransferETH(out);
+    emit Redeemed(msg.sender, got, out, b);
+}
+bookValue() is (address(this).balance - owedTeam) * 1e18 / R, with R = totalSupply - balanceOf(DEAD) - lockedTeam.
+### Events
+Contributed, Finalized, Refunded, TreasuryFunded, RevenueRecognized, Observed, TapClaimed, TapLowered, ExitRoundOpened, ExitRoundClosed, Redeemed, TrancheUnlocked, Heartbeat, WoundDown, ReportPosted. The app and the keeper index these and nothing else.
+### Invariants to test
+The vault's BNB balance is never less than owedTeam.
+A redemption never lowers book value for the holders who remain.
+Accepted amounts sum to at most Q, and for every buyer accepted plus refund equals the commitment.
+Tap paid over any 30 days is at most tapCapBps of the treasury at the start of that window.
+Locked team tokens leave the vault only to the team wallet after an unlock, or to the burn address at wind-down.
+State only moves along the edges in the state table. FAILED and WIND_DOWN are terminal.
+With no trusted observation, no counter changes.
+### What Flap.sh will render
+description() must disclose fees and every party that receives revenue or reserved tokens. Ours reads like this:
+CovenantVault: 100% of this vault's revenue goes to the treasury. State ACTIVE.
+Treasury 317.47 BNB, book value 0.000000427 BNB per token.
+Team 0x...: tap up to 4% of treasury per 30 days, 4.10 BNB claimable.
+Team tokens: 250,000,000 locked, unlock at 2x, 4x, 8x of the sale price.
+Sale buyers claim 600,000,000 tokens pro rata. Exit fee 1%, kept by the treasury.
+vaultUISchema() lists bookValue, state, claimTokens, redeem (with its token approval), releaseTeam, declareAbandoned and sync. Flap.sh builds its interaction panel from that schema, so a covenant is usable there without our app.
+## Sponsor integrations
+Each sponsor's technology does a job in Covenant that nothing else could do. That is the test judges apply to integration, and it is why one product can credibly enter three tracks.
+Sponsor and track | What Covenant uses | What breaks without it | First ask on site | 
+Flap: build on Pool Launch ($10,000) | Launcher and vault pair, reserve hand-off, Token Dock, tax to vault | No raise, no treasury, no token | Enable our launcher factory on BNB testnet | 
+CoinMarketCap and Atlas: meaningful use of data ($10,000) | Atlas for dollar tap, dollar unlock and the trust gate. CoinMarketCap DEX API for the sheet and simulator | Tap and unlock cannot be set in dollars. Triggers count during broken markets | API key, BNB/USD feed id, and whether status is readable on-chain | 
+Four.meme: meaningful OpenFour integration ($10,000) | CovenantLiteVault, a tax vault template on the Unverified Royalty path | Four.meme creators cannot adopt the rules | Does a vault template count for the track | 
+Cournot ($2,000) | Verdict on each period's disclosure report | Rule 5 has no judge | Partner source id and how markets are created | 
+### Flap
+Flap's repo names two things to build on a launch: a vault and a launcher. Covenant builds both as a locked pair, and the vault also takes the reserved tokens. That covers every extension point in the spec (README).
+Extension point | Flap requirement, from source | How Covenant meets it | 
+Launcher factory | newLauncher(creator, data) callable by the Portal only, factorySpecVersion() returns lf-v1, launcherDataSchema() | CovenantLauncherFactory on LauncherFactoryBase | 
+Salt | The launcher must call lockSalt itself. The token address must end in 7777 | Locked in initialize. The app mines the salt | 
+Launch call | For native quote, msg.value must equal poolQuote + creatorBuyQuote. One launch per launcher | Value is exactly Q_pool. No creator buy | 
+Vault factory | newVault is onlyHub, validates before deploying, factorySpecVersion() returns pl-v1 | Six checks listed in the specification | 
+Reserve hand-off | IStrategy.initializeDistribution: Portal only, once, pull exactly amount, emit the event | Vault takes A + E | 
+Token Dock | Hold reserves through _getTokenDockRouter(), never cache it | Deposit at hand-off, withdraw on claim and unlock | 
+Revenue | Native value lands in receive(). Use balance-delta accounting, decrement on every outflow | _sync() ledger | 
+Fee slots | At most four, summing to 10000 bps. VAULT and MARKETING are exclusive | One VAULT slot at 10000 | 
+Disclosure | description() must name fees and every recipient. vaultUISchema() lists user methods | Both implemented, example in the specification | 
+Upgrades | Guardian only for the low-risk badge | onlyGuardian, no other path | 
+Addresses, same on BNB Chain (56) and BNB testnet (97) unless noted:
+Contract | Address | 
+Direct Launch Portal | 0x000042108465206185A077Edc3F3fd2b49060000 | 
+TokenDockRouter | 0x000048E888aBf09f690a952E1b386b2D031a0000 | 
+Guardian, BNB Chain | 0x9e27098dcD8844bcc6287a557E0b4D09C86B8a4b | 
+Guardian, testnet | 0x00004d58290854c5E9880F4b5B1993c6Ad8b0000 | 
+Tax token implementation | 0x7777c57ff7dc441c1715b2e36fa581c48B782222 | 
+Two things gate a live launch. A launcher factory must be enabled by Flap before newLauncher works, and factories must pass Flap's audit before mainnet launches open. Until then vaults show as unverified. If Flap cannot enable us in time, we demo on a fork and enable the factory the way Flap's own fork tests do, by acting as the Portal admin.
+### CoinMarketCap and Atlas
+Atlas data moves money in three places, and CoinMarketCap data explains it to users.
+Dollar tap. Every accrual converts the team's dollar budget at the verified BNB/USD rate.
+Dollar unlock. Tranche counters only advance on prices that pass the strict gate.
+Trust gate. No trigger counts time during stale, split or thin markets.
+Covenant sheet and simulator. CoinMarketCap DEX endpoints listed in the data section.
+Integration facts from the Atlas docs: the pull consumer is installed with forge install oracle-atlas/pull-oracle-consumer, the SDK is @atlas-oracle/pull-oracle-consumer-sdk, and the default authorized signer is 0x59eD4701224fD9e2a85Ef2946c2ab828C1dDC600 (pull guide). Venus and Lista already price assets from Atlas (Venus forum).
+### Four.meme and OpenFour
+CovenantLiteVault brings rules 1 and 4 to any Four.meme tax token through the Unverified Royalty path (mechanism doc).
+What it does:
+The founder's share of trading tax lands in the vault instead of the founder's wallet.
+The founder can withdraw at most tapBps of the balance per period. Each withdrawal is a heartbeat.
+If the founder is silent past the heartbeat window, or winds down, the balance becomes redeemable. Holders burn tokens for a pro rata share.
+How it plugs in, from source:
+Item | Fact | 
+Wrapper | The platform clones ForwardVault as the token's founder. It clones our template (EIP-1167) and initializes it with token, quote, owner = creator, empty roles and our initData | 
+Royalty | ROYALTY_BPS = 600: about 6% of each receipt goes to the template's authorWallet(), the rest to the clone | 
+Required interface | initialize, taxVaultToken(), taxVaultQuote(), authorWallet(), onERC20TaxReceived(), plus a payable receive() | 
+Base | Inherit BaseTaxVault, implement _customInit and moduleEncodeSchema(), call _disableInitializers() in the constructor | 
+Limits | updateShares() is not forwarded, so the template cannot track holder balances. Burn-to-redeem needs none. The first receipt locks native or ERC20 mode | 
+Create | taxVaultTypeId = keccak256(\"SafuSkill.ForwardVault.v1\"), params abi.encode(template, initData). Four.meme's create page builds the form from moduleEncodeSchema() | 
+BSC implementation | 0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4 | 
+Permanence | Template and init params cannot be changed after create | 
+Our schema has four fields: tapBps, tapPeriod, heartbeat, redeemFeeBps. Testing runs on OpenFour's developer/fork-deploy environment, which ships the Bonding Tax V1 preset with ForwardVault already registered.
+### Cournot
+Cournot resolves questions about real-world events and publishes a verdict with reasoning and an on-chain proof (docs). Rule 5 asks it one question per period: did the team publish the report it committed to, and does it match on-chain facts?
+The public API returns a market's status, verdict, confidence, reasoning and proofs with a BSC transaction hash, from GET /cournot/markets/public on https://interface.cournot.ai (API reference).
+The docs list no endpoint for creating a market, and no contract for reading a verdict on-chain. Both need the Cournot team.
+v1 design: the keeper polls, then a relayer address fixed at creation records the verdict and the proof hash in the vault. The relayer is a trust assumption, stated on the sheet.
+This is the first thing cut if time runs short. Rules 1 to 4 do not depend on it.
+## Security, threat model and testing
+The vault holds other people's money under rules that pay out on price. The threats that matter are the ones that move a price, a clock or a balance.
+### Threats and defenses
+Threat | How it would work | Defense | What remains | 
+Fake an unlock | Team pumps the pool above a multiple | 30 trusted days on a time-weighted price, strict gate, pool depth check, cross-venue check, cliff | A team willing to hold the price up with real money for a month. Holders can sell to them at that price | 
+Force an exit round | Attacker dumps to push price under book for three days | Selling below book hands value to buyers. Cooldown bounds the tap pause | Griefing that costs the attacker more than the team | 
+Flash-loan the price | Move the pool inside one transaction | Cumulative prices only record end-of-block values. Hourly minimum between pokes | None practical | 
+Replay an old Atlas report | Reuse a signed report inside its freshness window | Monotonic timestamp per vault, maxDelay of 180 s | Choice of report within three minutes | 
+Stale or halted feed | Atlas stops updating | Freshness check fails, counters freeze, fallback ladder after 14 days | Tap paid on the treasury cap alone during the outage | 
+Reentrancy on payout | Receiver re-enters during a BNB transfer | Ledger updated before transfer, nonReentrant, pull payments only | None known | 
+Trapped raise | Launch reverts after the raise succeeded | Try and catch around the launch, FAILED state, full refunds | None known | 
+Vault squatting | Someone deploys at the vault's address first | newVault is onlyHub, as Flap's spec requires | None | 
+Impostor launcher | A contract names our vault factory in its launch | Factory checks the Portal's launcher record and the launching flag | None | 
+Tax on transfer during redeem | Fewer tokens arrive than were sent | Payout uses the measured amount received | None | 
+Forced BNB into the vault | Self-destruct or plain send | Counted as revenue. It raises book value | None, it is a gift | 
+Rounding | Many small redemptions | Division rounds toward the vault | Dust stays with remaining holders | 
+Team redeems its unlocked tokens | Team exits at book in a round | Disclosed on the sheet. Stretch: linear release after unlock | Team shares the floor for tokens it earned | 
+Abandonment false alarm | Honest team forgets the heartbeat | Any team action counts, 45 day window, keeper reminders | Irreversible if missed. The window is deliberately long | 
+Nobody pokes | Counters never advance | Anyone can poke. The app has a button. Sparse pokes add at most 6 hours each | Triggers arrive late, never early | 
+### Trust assumptions, all shown on the covenant sheet
+Flap's Guardian can upgrade the vault. It is the only upgrade path, as Flap's low-risk badge requires. Flap states that upgrades take about 24 hours of security review. After audit we can ship a factory whose upgrade function always reverts.
+Atlas's signer is honest about BNB/USD. A wrong rate misprices the tap and the unlock. It cannot open or block an exit round, because book value and pool price are both read on-chain.
+The PancakeSwap V2 pair is the price. Liquidity is locked at launch, so the pair cannot be pulled.
+The Cournot relayer is honest, for rule 5 only.
+There are no Covenant admin keys. No owner, no pause, no fee switch.
+### What the contract does not protect against
+A treasury that is legitimately spent. The floor falls with every tap claim.
+A falling BNB price. The treasury is BNB, so its dollar value moves.
+Anything off-chain: the team's company, IP and revenue are outside the contract.
+Legal classification. A token with a redemption right may be treated as a security in some places. This needs counsel before mainnet.
+### Test plan
+Layer | What | Tool | 
+Unit | Raise math, pro rata rounding, state machine edges, tap accrual, counters with trusted and untrusted steps | Foundry | 
+Fork, live Portal | Full journey on BNB Chain and testnet forks: create, commit, finalize, real pool trades, tax dispatch, tap, exit round, redeem, wind-down | Foundry fork tests modeled on Flap's ForkBase | 
+Invariant | The seven invariants in the specification under random sequences of commit, trade, poke, redeem, claim | Foundry invariant testing | 
+Oracle | Signature checks, stale and replayed reports, gate conditions one by one | Foundry with fixture reports | 
+OpenFour | Template behind ForwardVault: native receipts, royalty split, tap, heartbeat lapse, redeem | OpenFour fork-deploy and Workbench | 
+Flap's README lists nine scenarios every vault test suite should cover before audit. We adopt them as written: Hub creates the vault, a non-Hub caller reverts, bad input reverts before deployment, native revenue is credited, a spurious ping credits nothing twice, every outflow decrements the ledger, the core action is gated, only the Guardian upgrades with state preserved, and the reserve hand-off is Hub-only and exact.
+Flap's test notes also warn against makeAddr on forks, because a hashed address can collide with a live account that carries code. We use plain numbered accounts as they do.
+### Before mainnet
+Flap factory audit for both factories
+Independent review of the vault and oracle
+Atlas whitelisting or pull credentials for production
+Legal review of redemption rights
+Decide on Guardian upgrades or an immutable factory
+Keeper redundancy: two operators and a public poke button
+## Frontend and UX
+The app has one job: let a buyer read five rules in under a minute and see, at any moment, whether each one is holding. Design and usability is the first criterion on the Developer Track rubric, so the covenant sheet is the screen that gets the polish.
+### Screens
+Screen | For | Shows | Main action | 
+Create | Team | Terms form with live preview of sale price, pool seed, treasury and starting floor. Salt mining progress | Create covenant | 
+Raise | Buyer | Terms in plain words, committed against minimum and cap, time left, your commitment and expected allocation | Commit BNB | 
+Settle | Buyer | Result of the raise: accepted, refund, tokens | Claim tokens, claim refund | 
+Covenant sheet | Everyone | The five rules with live status, price against book chart, treasury ledger, event feed | Poke, redeem when open | 
+Redeem | Holder | Tokens in, BNB out, comparison with selling on the pool, time left in the round | Redeem | 
+Team console | Team | Tap claimable, heartbeat countdown, tranche progress, report due | Claim tap, heartbeat, lower tap, wind down | 
+Simulator | Judges and teams | What recent BNB launches would have looked like under a covenant | Change terms, rerun | 
+### The covenant sheet
+One page per token, readable without a wallet. Top to bottom:
+Header. Token, state badge, treasury in BNB and dollars, book value per token, pool price, premium or discount to book.
+Five rule cards. Each has a one-line rule, a meter and the next event.
+Price against book chart. Two lines over time. Shaded bands mark exit rounds. Candles come from CoinMarketCap, book value from Observed events.
+Treasury ledger. Raised, tax in, tap out, redeemed out. Every row links to its transaction.
+Trust panel. Atlas report age, gate result for the last poke, the trust assumptions in plain words.
+Rule card | Meter | Next event line | 
+Tap | Claimed this period against the cap | 4.1 BNB claimable now | 
+Performance unlock | Days above each multiple, out of 30 | 2x tranche: 11 of 30 days | 
+Book-value exit | Streak days below book, out of 3 | Opens in 1 day 4 hours at this price | 
+Abandonment switch | Days since last heartbeat, out of 45 | Team last active 6 days ago | 
+Disclosure | Reports passed against due | Next report due in 12 days | 
+### Principles
+Numbers before adjectives. No safety score, no badge. Show the treasury, the floor and the countdowns.
+Say what it does not cover. The sheet states that the floor is below the sale price and falls with spending.
+Every number is checkable. Each figure links to the contract read or transaction behind it.
+One action per state. The sheet shows redeem only when a round is open, and says when it would open otherwise.
+Plain verbs. Commit, claim, redeem, poke. No protocol jargon on buyer screens.
+### Build notes
+Salt mining. Flap requires the token address to end in 7777. The app mines a salt in a web worker by predicting the clone address from the tax token implementation and the Portal. About 65,000 tries on average.
+Reads. One multicall per screen against the launcher, vault and pair. No indexer for the hackathon. Events are fetched by log filter from the launch block.
+Poke button. Calls the keeper's endpoint to fetch a signed Atlas report, then sends poke from the user's wallet. This keeps the system live without our keeper.
+Flap.sh. The vault's vaultUISchema() gives Flap's site a working panel with no extra work. Show it in the demo.
+Look. Satoshi for text, a monospace face for every figure, one accent color for the state badge. Light and dark themes.
+## Build plan for the 36 hours
+The build runs from the evening of Nov 25 to the morning of Nov 27, with Demo Night on Nov 27 from 15:00 to 18:00 (BNB Chain blog). The plan is in hours from kickoff, with three gates. If a gate slips, cut scope from the list below instead of pushing the gate.
+### First two hours: sponsor asks
+These unblock the most work for the least effort. Do them before writing code.
+Flap: enable our launcher factory on BNB testnet once deployed. Ask what tax does after taxDuration, and whether commissionReceiver is open to third-party launchers
+Atlas: API key and BNB/USD feed id for pull mode. Ask whether Consensus Score status is readable on-chain, and how a new token gets a feed
+CoinMarketCap: API key with DEX endpoints
+Four.meme: confirm a tax vault template qualifies, and that token creation is open during the event
+Cournot: partner source id and how to create a market
+### Workstreams by phase
+Hours | Contracts: Flap pair | Contracts: oracle, OpenFour, tests | App | Keeper, data, pitch | 
+0 to 2 | Fork Flap's example repo. Get the Crowd fork test green | Read Atlas pull consumer. Stand up OpenFour fork-deploy | Scaffold, wallet connect, design tokens | Sponsor asks. Keys and RPC endpoints | 
+2 to 10 | Launcher: commit, finalize, refunds, launch. Vault factory checks. Vault: hand-off, treasury, token claims | Pair time-weighted price library. Oracle with pull verification and trust gate | Create and Raise screens on mock data. Salt miner | Keeper skeleton: fetch report, poke. Simulator data pull | 
+Gate A, hour 10 | Fork test: commit, finalize, token and pool and vault exist, tokens claimed |  |  |  | 
+10 to 18 | Tap, exit streak, rounds, redeem, heartbeat, wind-down | Unlock counters. Unit tests for every rule | Covenant sheet on live contract reads | Tax dispatch in keeper. First simulator numbers | 
+Gate B, hour 18 | Fork test runs the whole demo story end to end |  |  |  | 
+18 to 26 | Testnet deployment if Flap enabled us. Demo factory with short timers | CovenantLiteVault and its fork test. Cournot relay if time | Redeem flow, team console, simulator page | Demo script on the fork. Slides draft | 
+Gate C, hour 26 | Feature freeze. Fixes only from here |  |  |  | 
+26 to 32 | Invariant tests. Gas and revert message pass | Review each other's contracts | Polish the sheet. Empty and error states. Deploy | Record backup video. README and diagrams | 
+32 to 36 | Tag the release | Verify contracts on the explorer | Final build | Submission text. Two timed rehearsals | 
+### Cut order
+Cut from the top. Each cut keeps the demo story intact.
+Cournot relay and rule 5.
+Token feed cross-check. Keep BNB/USD.
+Team console. Use scripts for team actions in the demo.
+Unlock meters in the app. Keep the contract logic and one test.
+Simulator breadth. Fifty tokens is enough for one number.
+CovenantLiteVault down to tap and heartbeat only.
+Never cut: raise with refunds, launch on Flap, treasury in the vault, dollar tap through Atlas, exit round with redeem, the covenant sheet.
+### If the team is small
+Two people. One owns all contracts and the fork demo. One owns the app and keeper. Skip the OpenFour template until Gate B is green.
+One person. Launcher, vault with tap and exit, a single-page sheet, a scripted fork demo. Enter the Developer Track and Flap only.
+### Fallbacks already decided
+If this fails | Do this | 
+Flap cannot enable the factory on testnet | Demo on a fork and enable it as the Portal admin, as Flap's fork tests do | 
+Atlas credentials arrive late | Test with a local signer in the consumer. Say so in the demo and switch when the key lands | 
+Atlas push feed is whitelisted | Use pull mode only | 
+CoinMarketCap key is delayed | Use the keyless /public-api prefix that some endpoints support | 
+A long test run on public RPC | Use a provider key. Flap's notes say public endpoints rate limit and prune state | 
+### Submission checklist
+Public repo with MIT license, README, architecture diagram and setup steps
+Contracts deployed and verified, addresses in the README
+Fork demo runs from one command
+Three-minute video
+Live app URL
+One paragraph per sponsor track on what we used and why
+A plain statement that all code was written during the build, with third-party files in their own folders
+## Demo script and pitch
+The demo tells one story in three minutes: money goes in, rules hold it, and a holder gets it back when the price says the project has failed. Everything on screen is a real transaction on a fork or testnet with short timers.
+### One line
+Covenant is a token launch where the raise sits in a vault that pays the team a capped salary, unlocks their tokens only on performance, and lets any holder cash out at treasury value when the price falls below it.
+### Three-minute script
+Time | On screen | Say | 
+0:00 | One number, full screen: 80.96% of BSC meme coins inactive within about two months | \"Most meme coins launched on this chain go quiet within two months. The money buyers put in never comes back. We built the launch where it can.\" | 
+0:20 | Raise page. Three wallets commit 1,400 BNB against a 500 BNB cap. Press finalize | \"Buyers commit. The raise is capped, so everyone is scaled back pro rata and refunded the rest. One transaction refunds, launches the token on Flap and creates the vault.\" | 
+0:50 | Covenant sheet. Treasury 375 BNB. Floor at 60% of sale price. A trade lands and tax arrives. Team claims tap | \"Three quarters of the raise is in this vault, not in the team's wallet. Trading tax adds to it. The team draws a dollar salary at the Atlas rate, capped at four percent a month.\" | 
+1:20 | A whale sells. Price line drops under the book line. Streak meter fills. State flips to exit round. Tap card shows paused | \"Now the price falls below what the treasury is worth per token and stays there. No vote. No proposal. The exit opens.\" | 
+1:45 | Redeem screen: 6M tokens return 2.53 BNB, against 2.1 BNB on the pool. Confirm | \"This holder burns tokens and takes their share of the treasury. Everyone who stays keeps exactly the same book value.\" | 
+2:05 | Skip time. Heartbeat meter runs out. Press declare abandoned. Locked team tokens burn | \"If the team simply disappears, anyone can flip this switch. The salary stops, their locked tokens burn and the treasury opens to holders.\" | 
+2:25 | Four.meme create page with our template pasted. Then the simulator with one headline number | \"The same rules ship as a Four.meme vault template. And with CoinMarketCap data we replayed recent BNB launches: this share would have triggered an exit.\" | 
+2:45 | Closing slide | \"MetaDAO showed the demand: $580M committed for raises that accepted about $45M. Covenant brings that to BNB Chain with one vault, one rule and one price feed. It is open source and it runs on Flap today.\" | 
+Sources for the two numbers: MemeChain and Basis Point. The simulator number is ours and is computed during the build.
+### Five slides for the pitch
+Problem. Buyers fund launches and have no claim on the money. Two statistics.
+Insight. Protected raises are heavily oversubscribed, but today's version needs a decision market and a company per project, and gives no individual exit.
+Product. Five rules, one picture of the lifecycle, the worked example.
+How it is built. Flap creates the token and vault, Atlas prices the rules, OpenFour distributes the template. One line on tests.
+Business and roadmap. Revenue from launchpad-native fees, audit, first three launches, sealed-bid raises next.
+### Hard questions
+Question | Answer | 
+Is this MetaDAO on BNB Chain? | Same promise, different engine. A rule instead of a market, an exit for one holder instead of a vote for all, and it lives inside launchpads people already use. | 
+Why would a team accept these limits? | Protected raises drew about thirteen times the capital they could take. Limits are what make the raise credible. The team keeps the upside through price tranches and gets tax revenue into its runway. | 
+What stops the team draining the treasury first? | The tap is capped at 4% of the treasury per 30 days and cannot be raised. | 
+What is the floor really worth? | 60% of the sale price at launch with default terms. It falls as the team spends and rises with tax. We show the table. | 
+Can a whale trigger an exit to hurt the team? | They would be selling below treasury value for three days. It costs them, and the tap pause is bounded by the round and cooldown. | 
+What if Atlas is wrong or down? | The exit compares two on-chain numbers and still works. The dollar rules freeze, then fall back in the holders' favor. | 
+Why not let holders redeem at any time? | Price would be pinned at book and an honest team could be starved for months. Rounds give a clean exit, then funding resumes. | 
+Is this token a security? | A redemption right raises that question in some places. Legal review is on the list before mainnet. The hackathon build is on testnet. | 
+How do you make money? | Flap's launch parameters include a commission receiver, and OpenFour pays template authors about 6% of tax receipts. Neither adds a fee for users. | 
+What did you build here? | Every contract, the keeper and the app. The design document came first. Sponsor code sits in its own folders. | 
+### Demo logistics
+Environment. A fork with the demo factory: exit streak 3 minutes, round 5 minutes, heartbeat 10 minutes. A script advances time between scenes.
+Accounts. Three buyers, one team wallet, one whale, one keeper. Balances preset.
+Backup. A recorded run of the same script. If the network fails, play it and keep talking.
+Proof. Keep the explorer tab open on the vault. Judges trust a transaction list more than a chart.
+## Track map against judging criteria
+One build enters four tracks. The Developer Track rubric has five criteria, and judges also weigh roadmap, community engagement and a path to a sustainable business (BNB Chain blog).
+### Developer Track ($5,000, $3,000, $2,000)
+Criterion | What we show | Where | 
+Design and usability | A covenant sheet anyone can read in a minute. One action per state. Works on Flap.sh through the vault schema | Demo from 0:50 | 
+Scalability | One factory pair serves every launch. A beacon proxy per token. No per-launch deployment by us. Keeper is optional because anyone can poke | Architecture section | 
+Innovation | Individual exit at treasury value by rule. Exit rounds. Dollar-priced tap and unlock on a trust-gated feed | Demo from 1:20 | 
+Open source | MIT license, fork tests against the live Portal, a reusable OpenFour template | Repo | 
+Integration | Flap, Atlas, CoinMarketCap and OpenFour each do a job nothing else could | Sponsor table | 
+Roadmap and business | Fees that already exist in sponsor contracts, audit path, three design partners | Slide 5 | 
+Community engagement | Open template that other creators can adopt on Four.meme, simulator anyone can run | Demo at 2:25 | 
+First place also carries up to $50,000 in Kickstart support and a fast track to interviews for YZi Labs' EASY Residency, per the same post. That matters more than the cash if this becomes a company.
+### Sponsor tracks
+Track | What likely wins it | Our strongest evidence | Weak spot | 
+Flap: build on Pool Launch | A launcher or vault Flap would want live on its site | Pairs a launcher with a vault and takes the reserve, the fullest use of the spec. Built to Flap's own test checklist | Needs Flap to enable the factory for a live launch | 
+CoinMarketCap and Atlas: meaningful use of data | Data that changes an outcome, not a dashboard | Atlas rate sets every tap payment and every unlock. Simulator built on DEX data | Status is not on-chain yet, so the gate uses freshness and agreement | 
+Four.meme: meaningful OpenFour integration | A module or template creators will use | A royalty-earning vault template with a working form on the create page | Smaller than the Flap build. A vault template may rank below a full module | 
+Cournot | A real use of verdicts | Disclosure checks with on-chain consequences | Stretch scope, relayer trust | 
+### Confidence
+These are judgment calls, not measurements. They assume 25 to 40 teams and a working end-to-end demo.
+Outcome | Estimate | What would raise it | 
+Developer Track, top three | 25% | A flawless three-minute demo and a sheet that looks finished | 
+Flap track | 45% | A live testnet launch through Flap's Portal, shown on Flap.sh | 
+CoinMarketCap and Atlas track | 30% | Real pull reports from Atlas in the demo and one strong simulator number | 
+","complete":false,"next":{"parentId":"m84kzafkyhc.72978","from":"m84kzafkyhc.73308","then":{"from":"m84kzafkyhc.73484"}}},"frame":{"slug":"499217c5-7688-4c33-939d-f20dcacdccea","url":"https://claude.ai/artifact/A5vLXGJHCopNSzS5kAdqCV","artifactUrl":"https://claude.ai/artifact/A5vLXGJHCopNSzS5kAdqCV"}}
+This doc takes suggestions. Rewording what is already here ("tighten", "improve", "review", "clean up", "this is clunky") → lay the changes in the doc as suggestions: guide( items = ["topic.index", "topic.suggestions"] ) first. Small fixes met on the way (a typo) go in as suggestions with them. The same when asked to suggest, propose or mark up, when the person wants to look before it goes in, and for a question that invites changes ("Any suggestions?", "What would you change?"): suggestions in the doc on this reply, not a list in chat and not comments. An ask for only an exact fix (a typo, a stated fact), new content, a delete or a move → save the edit as usual; the same in a doc you made in this chat, for a rewrite of the whole doc, when told to edit directly, and on an unattended run. While the person is in Suggesting mode, lay it as a suggestion. The person tells you in chat to go ahead with suggestions you laid on an earlier reply ("go ahead", "do the second one") → accept the ones they mean, one call each (topic.suggestions), rather than write the change again. Any other question about the doc → answer in chat.{"verdict":"allow","rev":44,"data":{"rev":44,"xml":"The biggest single lever is Gate B. A complete story on a fork beats a broader build that breaks on stage.
+### Where to spend the last six hours
+Rehearse the demo until it runs in three minutes without notes.
+Make the covenant sheet look finished: spacing, numbers in a monospace face, clear state badge.
+Write the README sections each sponsor will read first.
+## Business model and roadmap
+Covenant earns when tokens launched through it keep trading, through fee paths that already exist in the sponsors' contracts. It adds no new fee for buyers or teams in v1.
+### Revenue lines
+Line | Mechanism | Who pays | Status | 
+Flap commission | Flap's launch parameters carry a commissionReceiver. Per the Portal interface, its share is derived from the launch's tax rate and paid from the protocol-fee remainder | Flap's protocol fee, not the project | Field exists in source. Rate and eligibility for third-party launchers to confirm with Flap | 
+OpenFour royalty | ForwardVault sends about 6% of every tax receipt to the template's authorWallet() | The founder's tax share on tokens that adopt the template | Live mechanism, documented by Four.meme | 
+Raise fee | A small share of the accepted raise, taken at launch | The project | Set to zero in v1. A lever for later | 
+Services | Managed keeper, monitoring and alerts for launchpads and teams | Launchpads, teams | After mainnet | 
+The first two lines pay on trading volume over a token's whole life. That ties our income to launches that last, which is the behavior the product exists to produce.
+A worked illustration, with made-up volume: a Four.meme token with $10M of monthly volume and a 1% tax each way produces $100,000 of tax a month. If the founder weight is 100%, the template author's 6% is $6,000 a month from that one token.
+### Who adopts first
+Teams that want a credible raise. Builders with a product who lose buyers to the assumption that every launch is a rug. The covenant sheet is their answer.
+Launchpads that want fewer rugs on their front page. A verified covenant factory on Flap, and a template on Four.meme's create page.
+Buyers who filter by terms. Once several covenants exist, the sheet becomes the thing people compare.
+### Go to market
+Pass Flap's factory audit so covenant vaults carry the low-risk badge instead of the unverified label.
+Launch with three design-partner teams and publish their covenant sheets.
+Publish the simulator and its dataset, so anyone can test their own terms against real launches.
+Offer the OpenFour template as the low-commitment entry: a founder can adopt the tap and the switch without changing how they launch.
+### Roadmap
+When | Milestone | 
+Nov 25 to 27, 2026 | Hackathon build: full lifecycle on a fork or testnet, OpenFour template, simulator | 
+December 2026 | Flap audit of both factories. Independent review of the vault and oracle. Atlas production credentials. Legal review of redemption rights | 
+Q1 2027 | Mainnet with three design partners. Decision on Guardian upgrades against an immutable factory. Stablecoin-quoted treasuries once Flap enables the pair | 
+Q2 2027 | Sealed-bid raise mode with a uniform clearing price, using Peal's batched threshold encryption. Holder vote to raise the tap. Linear release after an unlock | 
+Later | Treasuries held in tokenized assets priced by Atlas. A covenant standard other launchpads can implement. An optional legal wrapper for teams that want one | 
+Peal is existing work and is not part of the hackathon build. It enters only on the roadmap.
+### Numbers to track from day one
+Metric | Why it matters | 
+BNB held under covenant | Size of the promise being kept | 
+Oversubscription ratio per raise | Demand for protected launches | 
+Exit rounds opened, and BNB redeemed | Proof the floor pays out | 
+Tap paid, and months of runway left per project | Proof the budget rule holds | 
+Share of covenants still active at 90 days | The comparison against the 80.96% two-month failure rate | 
+## Risks and open questions
+The biggest risks this week are access, not code: a factory Flap has not enabled and oracle credentials that arrive late. Both have fallbacks in the build plan.
+### Risks
+Risk | Area | Chance | Impact | Response | 
+Flap does not enable our launcher factory during the event | Hackathon | Medium | No live testnet launch | Fork demo with the factory enabled as Portal admin. Say so plainly | 
+Atlas pull credentials or feed id arrive late | Hackathon | Medium | Dollar rules run on a test signer | Build against the consumer with a local signer, swap when the key lands | 
+Atlas push feed is read-restricted | Hackathon | Medium | Fallback path unavailable | Pull mode is primary. Ask for whitelisting anyway | 
+Scope too wide for the team | Hackathon | High | Nothing finished | Gates and the cut order. Gate B is the line that matters | 
+Flap token behaves differently from the examples on transfer or burn | Technical | Low | Redeem or claim reverts | Measure received amounts. Burn by sending to the dead address. Test on a fork early | 
+Launch reverts on Flap's liquidity floor | Technical | Low | Raise cannot launch | Check the floor in the factory. Try and catch, then refund | 
+Tax ends after taxDuration | Product | Unknown | Treasury stops growing | Treat tax as upside. The floor math does not rely on it | 
+Teams do not want these limits | Product | Medium | No supply | Lead with oversubscription data. Offer the Lite template as a first step | 
+Floor is too low to matter after a year of spending | Product | Medium | Weak protection late in life | Show the runway table. Let teams choose a lower tap cap as a selling point | 
+Many covenants enter exit rounds in a market crash | Product | Medium | Treasuries shrink together | That is the rule working. Rounds and cooldowns keep teams funded between them | 
+Wrong BNB/USD from the oracle | Technical | Low | Tap or unlock mispriced | Strict gate, treasury cap on the tap, 30 day window on unlocks | 
+Guardian upgrade misused or compromised | Trust | Low | Rules could be changed | Disclosed. Flap states a security review. Immutable factory is an option after audit | 
+Redemption right treated as a security | Legal | Unknown | Limits who can use it | Legal review before mainnet. Testnet only for now | 
+Flap or another team ships the same idea | Competitive | Medium | Lose the novelty | Speed, the audit relationship and published design partners | 
+### Questions for sponsors
+Flap. What happens to buy and sell tax after taxDuration?
+Flap. Do transfers out of the Token Dock right after launch hit the anti-sniper or anti-farmer windows?
+Flap. Is forwarding the unspent raise from launcher to vault in the launch transaction acceptable for audit? The spec is silent and our design depends on it.
+Flap. What floor multiplier would a covenant factory get, given a 15% pool share?
+Flap. Is commissionReceiver open to third-party launchers, and at what rate?
+Atlas. Is Consensus Score status readable on-chain on BNB Chain or testnet today? If not, when?
+Atlas. Which feed id is BNB/USD, and is the push feed open-read?
+Atlas. How does a token launched an hour ago get a feed? The docs list self-service feed creation as coming soon.
+Four.meme. Does a tax vault template count as a meaningful OpenFour integration for the track?
+Four.meme. Can a template read the token's phase, so redemption can wait for migration?
+Cournot. How does a partner create a market, and is there a contract that exposes a verdict on-chain?
+### Design questions still open
+Question | Current answer | What would change it | 
+Should the tap pause fully during an exit round? | Yes | Evidence that honest teams get starved. Then pay half | 
+Is a 1% exit fee right? | Yes, and zero at wind-down | If it visibly widens the discount, drop it | 
+What happens to the treasury share that backs pool-held tokens after wind-down? | It stays as backing. Arbitrage extracts most of it over time | A sweep rule after a long delay | 
+Should unlocked team tokens be redeemable at once? | Yes, disclosed | Add a linear release after unlock | 
+Should holders be able to raise the tap by vote? | Not in v1 | Demand from design partners | 
+BNB or stablecoin treasury? | BNB, because Flap's native quote is the proven path | Flap enabling a stablecoin quote pair | 
+### Things to recheck before the pitch
+Two adjacent mechanisms came up in earlier research and could not be reopened today: Cooking.City's conviction pool and a creator-incentives mode from GoPlus on OpenFour. Check both before saying nothing similar exists on BNB Chain.
+A remark attributed to CZ about IPOs moving on-chain appeared in a search listing. The article would not open, so it is not used in this document. Verify it before putting it on a slide.
+The simulator number does not exist yet. Do not quote one until the job has run.
+## References
+Every linked page below was opened while preparing this document. The classic papers at the end are standard citations and were not reopened.
+### Evidence on launches
+Solidus Labs, Solana rug pulls and pump-and-dumps, May 2025.
+Cernera, La Morgia, Mei and Sassi, Token spammers, rug pulls, and sniper bots: an analysis of the ecosystem of tokens in Ethereum and in the Binance Smart Chain, USENIX Security 2023 (arXiv 2206.08202).
+MemeChain, arXiv 2601.22185.
+Howell, Niessner and Yermack, Initial coin offerings: financing growth with cryptocurrency token sales, NBER w24774. Published in Review of Financial Studies 33(9), 2020.
+### Mechanism precedents
+Vitalik Buterin, Explanation of DAICOs, Jan 6, 2018.
+Basis Point, MetaDAO ownership coins, Aug 2, 2026.
+RockawayX, Novel permissionless fundraising mechanisms.
+01Resolved, MetaDAO research note, Nov 1, 2026.
+CoinDesk, ROOK token holders poised to collect $25M payout, Apr 13, 2023.
+Blockworks, Aragon DAO dissolves, Nov 2023.
+crypto.news, Genius.fun launches on BNB Chain, Sept 17, 2026.
+### Hackathon and sponsor documentation
+BNB Chain, BNB Hack Bangkok: build, demo and pitch.
+Flap, Pool Launch vault and launcher examples: README, src/flap interfaces, Crowd and StakeMine examples, fork tests.
+Odaily, Flap Pool Launch announcement, Nov 4, 2026.
+Four.meme, OpenFour docs: developer guide, unverified royalty, tax token, and the BaseTaxVault and ForwardVault contracts.
+Atlas, Consensus Score.
+Atlas docs: what makes Atlas different, push mode, pull mode, data quality, API summary, single feed, multi feed.
+Atlas, push oracle interfaces on GitHub.
+Venus community forum, oracle updates for the core pool.
+CoinMarketCap API: DEX token endpoints, candles.
+Cournot: documentation, partner public API.
+### Classic theory
+Akerlof, G. (1970). The market for lemons. Quarterly Journal of Economics 84(3).
+Aghion, P. and Bolton, P. (1992). An incomplete contracts approach to financial contracting. Review of Economic Studies 59(3).
+Bradley, M., Brav, A., Goldstein, I. and Jiang, W. (2010). Activist arbitrage: a study of open-ending attempts of closed-end funds. Journal of Financial Economics 95(1).
+Gompers, P. (1995). Optimal investment, monitoring, and the staging of venture capital. Journal of Finance 50(5).
+Grossman, S. (1981). The informational role of warranties and private disclosure about product quality. Journal of Law and Economics 24(3).
+Holmstrom, B. (1979). Moral hazard and observability. Bell Journal of Economics 10(1).
+Jensen, M. and Meckling, W. (1976). Theory of the firm: managerial behavior, agency costs and ownership structure. Journal of Financial Economics 3(4).
+Jensen, M. and Murphy, K. (1990). Performance pay and top-management incentives. Journal of Political Economy 98(2).
+Lee, C., Shleifer, A. and Thaler, R. (1991). Investor sentiment and the closed-end fund puzzle. Journal of Finance 46(1).
+Leland, H. and Pyle, D. (1977). Informational asymmetries, financial structure, and financial intermediation. Journal of Finance 32(2).
+Smith, C. and Warner, J. (1979). On financial contracting: an analysis of bond covenants. Journal of Financial Economics 7(2).
+### A correction to earlier notes
+An earlier chat answer cited Howell, Niessner and Yermack as covering 453 token sales and $5.7B. That came from a draft. The NBER page for the paper states more than 1,500 ICOs raising $12.9B, and this document uses those figures.
+## Appendix A: default parameters
+The defaults below are the terms used in every example in this document. The demo column is the short-timer factory used on stage only.
+Parameter | Default | Demo | Can change after launch | 
+Supply split | Sale 60%, pool 15%, team 25% | Same | No | 
+Team tranches | 5% at 2x, 10% at 4x, 10% at 8x | Same | No | 
+Sale window | 4 days | 2 minutes | No | 
+Minimum and cap | Set by the team | 200 BNB and 500 BNB | No | 
+Share of raise to the pool | 25% (follows from the split) | Same | No | 
+Trading tax | 1% buy, 1% sell, all of the fee slots to the vault | Same | No | 
+Tap budget | Set by the team, in dollars per 30 days | $30,000 | Team can lower it | 
+Tap cap | 4% of treasury per 30 days | Same | No | 
+Cliff | 6 months | None | No | 
+Unlock window | 30 trusted days | 2 minutes | No | 
+Exit streak | 3 trusted days below book | 3 minutes | No | 
+Round length | 7 days | 5 minutes | No | 
+Cooldown | 14 days | 2 minutes | No | 
+Exit fee | 1%, zero at wind-down | Same | No | 
+Heartbeat window | 45 days | 10 minutes | No | 
+Minimum time between pokes | 1 hour | 20 seconds | No | 
+Most time one poke can add | 6 hours | 1 minute | No | 
+Atlas report age | 180 seconds | Same | No | 
+Pool depth for a trusted observation | Half of the launch seed | Same | No | 
+Pool against Atlas agreement band | 10% | Same | No | 
+Pool-only fallback | After 14 days without a trusted observation | Not shown | No | 
+Notes on the choices:
+Four-day sale follows MetaDAO's raise length.
+Trading tax is lower than the 3% and 5% in Flap's examples. A lower buy tax keeps the pool price closer to book during an exit round, because arbitrage has to pay it.
+Tap cap of 4% leaves the treasury at 37.5% of its start after two years, with no tax income.
+Three trusted days is long enough that a single bad day does not open a round, and short enough that a holder is not trapped.
+Forty-five days of silence is about six weeks. Any team action resets it.
+## Appendix B: glossary
+Term | Meaning | 
+Accepted raise | The part of total commitments the sale keeps: the smaller of commitments and the cap | 
+Book value | Treasury BNB, less tap already owed to the team, divided by redeemable supply | 
+Cooldown | The period after an exit round when the exit trigger is disarmed | 
+Covenant | One launcher and one vault with fixed terms. Also the set of five rules | 
+Covenant sheet | The public page that shows a covenant's terms and live status | 
+Exit round | A fixed window in which any holder can burn tokens for their share of the treasury | 
+Guardian | Flap's security address. The only party that can upgrade vaults | 
+Heartbeat | Any team action that proves the team is active | 
+Launcher | The contract buyers interact with before the token exists. It runs the raise and launches once | 
+Poke | The public call that records a price observation and advances the rules | 
+Pool Launch | Flap's launch type where a token starts directly in a DEX pool with locked liquidity | 
+Redeemable supply | Total supply, less burned tokens, less team tokens still locked | 
+Strict gate | The tighter trust check used for the tap rate and unlock counters | 
+Tap | The team's capped budget, accrued over time | 
+Time-weighted price | The average pool price over an interval, from the pair's cumulative price | 
+Token Dock | Flap's shared custody for reserved tokens, reached through its router | 
+Tranche | A slice of team tokens that unlocks at a price multiple | 
+Trust gate | The checks an observation must pass before its time counts toward a trigger | 
+Trusted day | A day of time accumulated from observations that passed the trust gate | 
+Vault | The contract that holds the treasury and reserved tokens and enforces the rules | 
+Wind-down | The final state: no tap, locked team tokens burned, redemption open with no fee | 
+","complete":true},"frame":{"slug":"499217c5-7688-4c33-939d-f20dcacdccea","url":"https://claude.ai/artifact/A5vLXGJHCopNSzS5kAdqCV","artifactUrl":"https://claude.ai/artifact/A5vLXGJHCopNSzS5kAdqCV"}}
+This doc takes suggestions. While the person is in Suggesting mode, lay a change as a suggestion. Otherwise, when to suggest and when to edit: guide( items = ["topic.suggestions"] ).
