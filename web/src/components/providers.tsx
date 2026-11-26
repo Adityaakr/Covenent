@@ -13,7 +13,7 @@ import { createContext, useContext, useMemo, useState, useSyncExternalStore, typ
 import { http, type Address } from "viem";
 import { WagmiProvider, createConfig, useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected, mock } from "wagmi/connectors";
-import { ANVIL_ACCOUNTS, anvil, bscTestnet } from "@/lib/chain/chains";
+import { ANVIL_ACCOUNTS, anvil, bscTestnet, configureLocalChain, type LocalChainInfo } from "@/lib/chain/chains";
 
 const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
 const DEV_WALLET = process.env.NEXT_PUBLIC_DEV_WALLET === "1";
@@ -61,7 +61,6 @@ function setMode(m: WalletMode) {
   window.location.reload();
 }
 
-const transports = { [anvil.id]: http(), [bscTestnet.id]: http() } as const;
 
 function BrowserBridge({ children }: { children: ReactNode }) {
   const { address, chainId, connector, status } = useAccount();
@@ -113,14 +112,22 @@ function localConnectors() {
 
 const subscribeNoop = () => () => {};
 
-export function Providers({ children }: { children: ReactNode }) {
+/** The local chain first; BSC testnet too unless the local chain already is 97. */
+function chainsFor() {
+  return (anvil.id === bscTestnet.id ? [anvil] : [anvil, bscTestnet]) as unknown as readonly [typeof anvil, ...(typeof anvil)[]];
+}
+
+export function Providers({ children, localChain }: { children: ReactNode; localChain?: LocalChainInfo | null }) {
+  configureLocalChain(localChain);
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } }));
   // The server renders the Privy stack's shape; the client reads the remembered mode before the first effect.
   const mode = useSyncExternalStore(subscribeNoop, readMode, () => (APP_ID && FORCED !== "injected" ? "privy" : "browser") as WalletMode);
   const theme = useSyncExternalStore(subscribeNoop, () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light"), () => "light" as const);
 
-  const browserConfig = useMemo(() => createConfig({ chains: [anvil, bscTestnet], transports, connectors: [injected(), ...localConnectors()], ssr: true }), []);
-  const privyConfig = useMemo(() => createPrivyConfig({ chains: [anvil, bscTestnet], transports, ssr: true }), []);
+  const chainKey = `${anvil.id}:${anvil.rpcUrls.default.http[0]}`;
+  const transports = useMemo(() => Object.fromEntries(chainsFor().map((c) => [c.id, http(c.rpcUrls.default.http[0])])), [chainKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const browserConfig = useMemo(() => createConfig({ chains: chainsFor(), transports, connectors: [injected(), ...localConnectors()], ssr: true }), [transports]);
+  const privyConfig = useMemo(() => createPrivyConfig({ chains: chainsFor(), transports, ssr: true }), [transports]);
 
   if (mode === "browser") {
     return (
@@ -139,7 +146,7 @@ export function Providers({ children }: { children: ReactNode }) {
         loginMethods: ["wallet", "email"],
         embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
         defaultChain: anvil,
-        supportedChains: [anvil, bscTestnet],
+        supportedChains: [...chainsFor()],
       }}
     >
       <QueryClientProvider client={queryClient}>

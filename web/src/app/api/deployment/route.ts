@@ -27,7 +27,10 @@ export async function GET() {
         rpcUrl: typeof raw.rpcUrl === "string" ? raw.rpcUrl : undefined,
         addresses: raw.addresses,
         demo: typeof raw.demo === "object" && raw.demo !== null ? raw.demo : {},
-        startBlock: raw.startBlock ?? raw.deployBlock ?? raw.blockNumber,
+        // First block worth reading logs from. On a fork, deployedAtBlock is the fork block itself, and any log range
+        // that touches it makes anvil ask the upstream public RPC (which rate-limits), so start one block above it.
+        startBlock: raw.startBlock ?? (typeof raw.deployedAtBlock === "number" ? raw.deployedAtBlock + (raw.mode === "fork" ? 1 : 0) : undefined),
+        mode: typeof raw.mode === "string" ? raw.mode : undefined,
       };
     }
   } catch (e) {

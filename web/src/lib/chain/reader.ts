@@ -89,7 +89,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     call(ctx, launcher, L, pickFn(L, "terms", "getTerms")),
     call(ctx, launcher, L, "state"),
     call(ctx, launcher, L, pickFn(L, "committed", "totalCommitted")),
-    call(ctx, launcher, L, pickFn(L, "deadline", "saleEnd", "endsAt")),
+    call(ctx, launcher, L, pickFn(L, "saleDeadline", "deadline", "saleEnd", "endsAt")),
     call<Address>(ctx, launcher, L, "token"),
     call<Address>(ctx, launcher, L, "vault"),
   ]);
@@ -144,22 +144,26 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
 
   const tranches: Tranche[] = await Promise.all(terms.trancheBps.map(async (bps, k) => {
     const p = await call(ctx, vault, V, "trancheProgress", [BigInt(k)]);
+    // real vault: (amount, multiple x100, progress seconds, unlocked, targetUsd); older shape: (progress, unlocked)
     const tuple = Array.isArray(p) ? p : null;
-    const progress = tuple ? num(tuple[0]) : num(p);
-    return { bps, multiple: terms.trancheMultiple[k] ?? 0, progress, unlocked: tuple ? Boolean(tuple[1]) : false };
+    const full = tuple !== null && tuple.length >= 4;
+    const progress = tuple ? num(full ? tuple[2] : tuple[0]) : num(p);
+    return { bps, multiple: terms.trancheMultiple[k] ?? 0, progress, unlocked: tuple ? Boolean(full ? tuple[3] : tuple[1]) : false };
   }));
 
   // Position
   let position: CovenantView["position"];
   if (account) {
-    const [c, acc, alloc] = await Promise.all([
+    const [c, acc, alloc, claimedRaw, refundedRaw] = await Promise.all([
       call(ctx, launcher, L, pickFn(L, "contributions", "contributionOf", "committedOf"), [account]),
       call(ctx, launcher, L, "acceptedOf", [account]),
       call(ctx, launcher, L, "allocationOf", [account]),
+      call<boolean>(ctx, vault, V, "tokensClaimed", [account]),
+      call<boolean>(ctx, launcher, L, "refunded", [account]),
     ]);
     const cBnb = eth(c);
     const accBnb = acc !== undefined ? eth(acc) : r.failed ? 0 : (cBnb * r.Q) / Math.max(committed, 1e-18);
-    position = { committed: cBnb, accepted: accBnb, refund: Math.max(0, cBnb - accBnb), allocation: alloc !== undefined ? eth(alloc) : 0, tokensClaimed: false, refundClaimed: false, balance: eth(balRaw) };
+    position = { committed: cBnb, accepted: accBnb, refund: Math.max(0, cBnb - accBnb), allocation: alloc !== undefined ? eth(alloc) : 0, tokensClaimed: claimedRaw === true, refundClaimed: refundedRaw === true, balance: eth(balRaw) };
   }
 
   // Events: ledger, feed and the price-against-book history from Observed

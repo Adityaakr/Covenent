@@ -2,15 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { parseEther, type Abi, type AbiParameter } from "viem";
+import { useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "wagmi";
-import { waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { Icon } from "@/components/app/icons";
 import { Meter, Note, Segmented } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
-import { abiFor, addressOf, fn } from "@/lib/chain/deployment";
+import { agentOwner, checkTerms, createCovenantLive, createTargets, registerAgent, type FactoryKind } from "@/lib/chain/create";
+import { addressOf } from "@/lib/chain/deployment";
 import type { MineMessage } from "@/lib/chain/salt";
-import { BOUNDS, DEFAULT_TERMS, ERC8004, FLAP } from "@/lib/covenant/defaults";
+import { BOUNDS, DEFAULT_TERMS, DEMO_TIMERS, ERC8004, FLAP } from "@/lib/covenant/defaults";
 import { floorAfterMonths, runwayMonths, settleRaise, split, startingFloorRatio, tapPer30d } from "@/lib/covenant/math";
 import { DAY } from "@/lib/covenant/time";
 import type { Address, Terms } from "@/lib/covenant/types";
@@ -25,9 +25,35 @@ export default function CreatePage() {
   const src = useSource();
   const wallet = useWallet();
   const config = useConfig();
+  const qc = useQueryClient();
   const [t, setT] = useState<Terms>({ ...DEFAULT_TERMS, name: "", symbol: "", meta: "", teamWallet: (wallet.address as Address) ?? DEFAULT_TERMS.teamWallet });
   const [issuerKind, setIssuerKind] = useState<"agent" | "human">("agent");
   const [agentId, setAgentId] = useState("4127");
+  // Live only: the short-timer demo factory (time in minutes) or the production factory (time in days)
+  const [factory, setFactory] = useState<FactoryKind>("demo");
+  const demo = src.mode === "live" && factory === "demo";
+  const UNIT = demo ? 60 : DAY;
+  const unit = demo ? "minutes" : "days";
+  const [agentNote, setAgentNote] = useState<string | null>(null);
+  const timers = (k: FactoryKind) => (k === "demo"
+    ? { saleDuration: DEMO_TIMERS.saleDuration, unlockWindow: DEMO_TIMERS.unlockWindow, cliff: 0, exitStreak: DEMO_TIMERS.exitStreak, roundLength: DEMO_TIMERS.roundLength, cooldown: DEMO_TIMERS.cooldown, heartbeat: DEMO_TIMERS.heartbeat }
+    : { saleDuration: DEFAULT_TERMS.saleDuration, unlockWindow: DEFAULT_TERMS.unlockWindow, cliff: DEFAULT_TERMS.cliff, exitStreak: DEFAULT_TERMS.exitStreak, roundLength: DEFAULT_TERMS.roundLength, cooldown: DEFAULT_TERMS.cooldown, heartbeat: DEFAULT_TERMS.heartbeat });
+  function pickFactory(k: FactoryKind) {
+    setFactory(k);
+    setT((x) => ({ ...x, ...timers(k) }));
+  }
+  // Adjust state while rendering (no effect): demo timers once the live deployment is found, and the connected
+  // wallet as the team wallet unless the visitor typed one.
+  const [seenMode, setSeenMode] = useState(src.mode);
+  if (seenMode !== src.mode) {
+    setSeenMode(src.mode);
+    if (src.mode === "live") setT((x) => ({ ...x, ...timers(factory) }));
+  }
+  const [seenWallet, setSeenWallet] = useState<string | undefined>(undefined);
+  if (wallet.address && seenWallet !== wallet.address) {
+    setSeenWallet(wallet.address);
+    if (t.teamWallet === DEFAULT_TERMS.teamWallet) setT((x) => ({ ...x, teamWallet: wallet.address as Address }));
+  }
   const [mine, setMine] = useState<Mine>({ state: "idle", tries: 0, rate: 0 });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -51,16 +77,17 @@ export default function CreatePage() {
     if (teamBps > BOUNDS.teamBpsMax || teamBps < 0) p.push("Team share must be at most 30%");
     if (tranchesSum !== teamBps) p.push(`Tranches add to ${bps(tranchesSum)}; the team share is ${bps(teamBps)}`);
     if (t.tapCapBps > BOUNDS.tapCapBpsMax) p.push("Tap cap must be at most 10% a month");
-    if (t.exitStreak < BOUNDS.exitStreakMin || t.exitStreak > BOUNDS.exitStreakMax) p.push("Exit streak must be 1 to 14 days");
-    if (t.roundLength < BOUNDS.roundLengthMin) p.push("Exit round must be at least 3 days");
+    // the demo factory's minute-scale bounds are checked by the factory itself (checkTerms) before sending
+    if (!demo && (t.exitStreak < BOUNDS.exitStreakMin || t.exitStreak > BOUNDS.exitStreakMax)) p.push("Exit streak must be 1 to 14 days");
+    if (!demo && t.roundLength < BOUNDS.roundLengthMin) p.push("Exit round must be at least 3 days");
     if (t.exitFeeBps > BOUNDS.exitFeeBpsMax) p.push("Exit fee must be at most 3%");
-    if (t.heartbeat < BOUNDS.heartbeatMin || t.heartbeat > BOUNDS.heartbeatMax) p.push("Heartbeat must be 14 to 90 days");
+    if (!demo && (t.heartbeat < BOUNDS.heartbeatMin || t.heartbeat > BOUNDS.heartbeatMax)) p.push("Heartbeat must be 14 to 90 days");
     if (!(t.minRaise > 0) || t.cap < t.minRaise) p.push("The cap must be at least the minimum");
     if ((t.minRaise * t.poolBps) / t.saleBps < 1) p.push("Pool seed at the minimum is under Flap's creation floor (about 1 BNB here)");
     if (!/^0x[0-9a-fA-F]{40}$/.test(t.teamWallet)) p.push("Team wallet must be an address");
     if (issuerKind === "agent" && !(Number(agentId) > 0)) p.push("Agent id must be a registered ERC-8004 id");
     return p;
-  }, [t, teamBps, tranchesSum, issuerKind, agentId]);
+  }, [t, teamBps, tranchesSum, issuerKind, agentId, demo]);
 
   useEffect(() => () => worker.current?.terminate(), []);
 
@@ -88,23 +115,42 @@ export default function CreatePage() {
       router.push(`/app/c/${id}/raise`);
       return;
     }
-    // Live: the launcher factory's create function, with the Terms tuple encoded from the loaded ABI's own field names.
+    // Live: Portal.newLauncher(factory, abi.encode(Terms)), Terms encoded from the factory's own checkTerms input.
     const d = src.payload!.deployment!;
-    const F = abiFor(src.payload!.abis, "CovenantLauncherFactory", "LauncherFactory");
-    const P = abiFor(src.payload!.abis, "Portal", "MockPortal", "IPortal", "FlapPortal");
-    const target = [
-      { abi: F, address: addressOf(d, "launcherFactory", "covenantLauncherFactory", "demoLauncherFactory"), names: ["createCovenant", "create", "createLauncher", "newCovenant"] },
-      { abi: P, address: addressOf(d, "portal", "mockPortal", "flapPortal"), names: ["newLauncherWithTerms", "createCovenant"] },
-    ].map((c) => ({ ...c, f: c.names.map((n) => fn(c.abi, n)).find(Boolean) })).find((c) => c.f && c.address);
-    if (!target || !target.f) { setErr("The deployment has no create entry point the app recognises yet. Use the contracts' dev script to create a covenant, then it appears here."); return; }
+    const tg = createTargets(src.payload, factory);
+    if (!tg.portal || !tg.factory || !tg.termsParam) { setErr("The deployment names no Flap Portal and covenant launcher factory."); return; }
     if (!wallet.address) { wallet.connect(); return; }
+    if (!mine.salt) { setErr("Mine a 7777 salt first."); return; }
     setBusy(true);
     try {
-      const args = target.f.inputs.map((inp) => encodeInput(inp, terms, mine.salt));
-      const value = (target.f.stateMutability === "payable" ? parseEther("0.01") : undefined);
-      const hash = await writeContract(config, { address: target.address!, abi: target.abi as Abi, functionName: target.f.name, args, value, chainId: d.chainId } as Parameters<typeof writeContract>[1]);
-      await waitForTransactionReceipt(config, { hash, chainId: d.chainId });
-      router.push("/app");
+      if (terms.agentId > 0 && tg.identityRegistry) {
+        const owner = await agentOwner(src.client!, tg.identityRegistry, BigInt(terms.agentId));
+        if (!owner) throw new Error(`Agent #${terms.agentId} is not registered on this chain. Register one below.`);
+        if (owner.toLowerCase() !== terms.teamWallet.toLowerCase()) throw new Error(`Agent #${terms.agentId} belongs to ${owner}, not the team wallet.`);
+      }
+      const why = await checkTerms(src.client!, tg, terms, mine.salt);
+      if (why) throw new Error(`The factory refuses these terms: ${why}`);
+      const { launcher } = await createCovenantLive(config, src.client!, d.chainId, tg, terms, mine.salt);
+      await qc.invalidateQueries({ queryKey: ["source"] }); // rediscover launchers so the new one opens at once
+      router.push(launcher ? `/app/c/${launcher}/raise` : "/app");
+    } catch (e) {
+      setErr((e as { shortMessage?: string }).shortMessage ?? (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function register() {
+    setErr(null);
+    const tg = createTargets(src.payload, factory);
+    if (!wallet.address) { wallet.connect(); return; }
+    if (!tg.identityRegistry || !src.payload?.deployment) { setErr("The deployment names no ERC-8004 identity registry."); return; }
+    setBusy(true);
+    try {
+      const id = await registerAgent(config, src.payload.deployment.chainId, tg.identityRegistry, wallet.address, `covenant://agent/${(t.symbol || "issuer").toLowerCase()}`);
+      setAgentId(id.toString());
+      set("teamWallet", wallet.address as Address);
+      setAgentNote(`Registered agent #${id} to ${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}, now the team wallet.`);
     } catch (e) {
       setErr((e as { shortMessage?: string }).shortMessage ?? (e as Error).message);
     } finally {
@@ -133,13 +179,24 @@ export default function CreatePage() {
               <Field label="Team wallet" hint="receives the tap, fixed forever"><input className="field mono" value={t.teamWallet} onChange={(e) => set("teamWallet", e.target.value.trim() as Address)} /></Field>
               {issuerKind === "agent" ? <Field label="Agent id" hint="owned by the team wallet"><input className="field mono" value={agentId} inputMode="numeric" onChange={(e) => setAgentId(e.target.value.replace(/[^0-9]/g, ""))} /></Field> : <div />}
             </div>
+            {src.mode === "live" && issuerKind === "agent" ? (
+              <div className="row between small" style={{ gap: 12, flexWrap: "wrap" }}>
+                <span className="muted">{agentNote ?? "No agent identity yet? Register one from the connected wallet (ERC-8004 identity registry)."}</span>
+                <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void register()}>Register agent identity</button>
+              </div>
+            ) : null}
+            {src.mode === "live" ? (
+              <Field label="Launcher factory" hint="same five rules, different clocks">
+                <Segmented label="Launcher factory" value={factory} onChange={pickFactory} options={[{ value: "demo", label: "Demo timers (minutes)" }, { value: "production", label: "Production (days)" }]} />
+              </Field>
+            ) : null}
           </Section>
 
           <Section title="Raise" sub="Commitments are uncapped. Above the cap, everyone is scaled back pro rata.">
             <div className="grid3">
               <Field label="Minimum" hint="BNB"><Num value={t.minRaise} onChange={(n) => set("minRaise", n)} /></Field>
               <Field label="Cap" hint="BNB"><Num value={t.cap} onChange={(n) => set("cap", n)} /></Field>
-              <Field label="Sale window" hint="days"><Num value={t.saleDuration / DAY} onChange={(n) => set("saleDuration", n * DAY)} /></Field>
+              <Field label="Sale window" hint={unit}><Num value={t.saleDuration / UNIT} onChange={(n) => set("saleDuration", n * UNIT)} /></Field>
             </div>
           </Section>
 
@@ -160,10 +217,10 @@ export default function CreatePage() {
             <div className="grid2">
               <Field label="Tap budget" hint="USD per 30 days"><Num value={t.tapUsdPer30d} onChange={(n) => set("tapUsdPer30d", n)} /></Field>
               <Field label="Tap cap" hint="% of treasury per 30 days, max 10"><Num value={t.tapCapBps / 100} onChange={(n) => set("tapCapBps", Math.round(n * 100))} /></Field>
-              <Field label="Exit streak" hint="days under book, 1 to 14"><Num value={t.exitStreak / DAY} onChange={(n) => set("exitStreak", n * DAY)} /></Field>
-              <Field label="Exit round" hint="days, at least 3"><Num value={t.roundLength / DAY} onChange={(n) => set("roundLength", n * DAY)} /></Field>
+              <Field label="Exit streak" hint={demo ? "minutes under book" : "days under book, 1 to 14"}><Num value={t.exitStreak / UNIT} onChange={(n) => set("exitStreak", n * UNIT)} /></Field>
+              <Field label="Exit round" hint={demo ? "minutes" : "days, at least 3"}><Num value={t.roundLength / UNIT} onChange={(n) => set("roundLength", n * UNIT)} /></Field>
               <Field label="Exit fee" hint="%, max 3, zero at wind-down"><Num value={t.exitFeeBps / 100} onChange={(n) => set("exitFeeBps", Math.round(n * 100))} /></Field>
-              <Field label="Heartbeat" hint="days, 14 to 90"><Num value={t.heartbeat / DAY} onChange={(n) => set("heartbeat", n * DAY)} /></Field>
+              <Field label="Heartbeat" hint={demo ? "minutes" : "days, 14 to 90"}><Num value={t.heartbeat / UNIT} onChange={(n) => set("heartbeat", n * UNIT)} /></Field>
             </div>
             <Note tone="good" icon="check"><b>Exit rule, as fixed after review.</b> The streak decays instead of resetting (an hour above book takes an hour off), compares on-chain numbers only, and never waits on pool depth or Atlas. Depth and Atlas guard team unlocks.</Note>
           </Section>
@@ -254,23 +311,4 @@ function Slider({ label, value, min, max, step, onChange }: { label: string; val
       <input className="range" type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-label={label} />
     </div>
   );
-}
-
-/** Build one ABI argument from the terms by field name, so the create call follows the contract's own Terms struct. */
-function encodeInput(p: AbiParameter, t: Terms, salt?: `0x${string}`): unknown {
-  const wei = (n: number) => parseEther(String(n));
-  const map: Record<string, unknown> = {
-    name: t.name, symbol: t.symbol, meta: t.meta, salt: salt ?? `0x${"0".repeat(64)}`,
-    totalSupply: wei(t.totalSupply), saleBps: t.saleBps, poolBps: t.poolBps, trancheBps: t.trancheBps, trancheMultiple: t.trancheMultiple,
-    minRaise: wei(t.minRaise), cap: wei(t.cap), saleDuration: t.saleDuration, buyTaxBps: t.buyTaxBps, sellTaxBps: t.sellTaxBps, taxDuration: 0,
-    teamWallet: t.teamWallet, tapUsdPer30d: wei(t.tapUsdPer30d), tapCapBps: t.tapCapBps, cliff: t.cliff, unlockWindow: t.unlockWindow,
-    exitStreak: t.exitStreak, roundLength: t.roundLength, cooldown: t.cooldown, exitFeeBps: t.exitFeeBps, heartbeat: t.heartbeat, agentId: BigInt(t.agentId),
-    creator: t.teamWallet,
-  };
-  if (p.type === "tuple" && "components" in p) return Object.fromEntries(p.components.map((c) => [c.name, encodeInput(c, t, salt)]));
-  const v = p.name ? map[p.name] : undefined;
-  if (v === undefined) return p.type.startsWith("uint") ? 0n : p.type === "address" ? t.teamWallet : p.type === "bytes" ? "0x" : p.type === "string" ? "" : 0;
-  if (p.type.startsWith("uint") && typeof v === "number") return BigInt(v);
-  if (p.type.endsWith("[]") && Array.isArray(v)) return v.map((x) => (typeof x === "number" ? (p.type.startsWith("uint") ? BigInt(x) : x) : x));
-  return v;
 }

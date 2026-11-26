@@ -8,6 +8,8 @@ export interface Deployment {
   addresses: Record<string, unknown>;
   demo: Record<string, unknown>;
   startBlock?: number;
+  /** "fork" (BNB Chain fork, chain id 56) or "mock" (offline stand-ins) */
+  mode?: string;
 }
 
 export interface DeploymentPayload {

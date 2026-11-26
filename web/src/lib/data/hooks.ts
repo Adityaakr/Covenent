@@ -6,7 +6,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { createPublicClient, http, type PublicClient } from "viem";
-import { anvil, bscTestnet, LOCAL_RPC } from "@/lib/chain/chains";
+import { anvil, bscTestnet, LOCAL_RPC, makeLocalChain } from "@/lib/chain/chains";
 import { abiFor, addressOf, hasFn, launchersOf, type DeploymentPayload } from "@/lib/chain/deployment";
 import { readCovenant } from "@/lib/chain/reader";
 import type { Address, CovenantView } from "@/lib/covenant/types";
@@ -50,8 +50,8 @@ async function probe(): Promise<SourceStatus> {
     return { mode: "mock", reason: payload.problems[0] ?? "No local deployment yet", payload };
   }
   const d = payload.deployment;
-  const chain = d.chainId === 97 ? bscTestnet : anvil;
-  const client = createPublicClient({ chain, transport: http(d.rpcUrl || (d.chainId === 31337 ? LOCAL_RPC : undefined), { timeout: 4000, retryCount: 0 }) }) as PublicClient;
+  const chain = d.chainId === anvil.id ? anvil : d.chainId === 97 ? bscTestnet : makeLocalChain({ id: d.chainId, rpcUrl: d.rpcUrl || LOCAL_RPC });
+  const client = createPublicClient({ chain, transport: http(d.rpcUrl || LOCAL_RPC, { timeout: 4000, retryCount: 0 }) }) as PublicClient;
   try {
     const id = await client.getChainId();
     if (id !== d.chainId) return { mode: "mock", reason: `RPC answers chain ${id}, deployment is for ${d.chainId}`, payload };

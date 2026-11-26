@@ -3,31 +3,61 @@ import { bscTestnet } from "viem/chains";
 
 export const LOCAL_RPC = process.env.NEXT_PUBLIC_LOCAL_RPC || "http://127.0.0.1:8545";
 
-/** The local anvil chain the contracts' dev script deploys to. */
-export const anvil = defineChain({
-  id: 31337,
-  name: "Anvil (local)",
-  nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-  rpcUrls: { default: { http: [LOCAL_RPC] } },
-  testnet: true,
-});
+export interface LocalChainInfo { id: number; rpcUrl: string; mode?: string }
+
+const isLoopback = (url: string) => /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(url);
+
+/**
+ * A viem chain for the dev node. Its id comes from contracts/deployments/local.json: 31337 offline, 56 on a BNB Chain
+ * fork (Flap's Portal refuses other ids). Every RPC URL, including the one Privy's embedded wallet uses
+ * (privyWalletOverride), points at the local node, so nothing is ever sent to a public network from here.
+ */
+export function makeLocalChain(info: LocalChainInfo) {
+  const rpc = info.rpcUrl || LOCAL_RPC;
+  return defineChain({
+    id: info.id,
+    name: info.id === 56 ? "BNB Chain fork (local)" : info.id === 31337 ? "Anvil (local)" : `Local chain ${info.id}`,
+    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+    rpcUrls: { default: { http: [rpc] }, privyWalletOverride: { http: [rpc] } },
+    testnet: true,
+  });
+}
+
+/**
+ * The local chain the contracts' dev script deploys to. `configureLocalChain` (called by Providers with the ids the
+ * /app layout reads from local.json on each request) replaces it before any wallet config is built; importers see
+ * the new value through the ES module live binding.
+ */
+export let anvil = makeLocalChain({ id: 31337, rpcUrl: LOCAL_RPC });
+let localIsLoopback = true;
+
+export function configureLocalChain(info: LocalChainInfo | null | undefined) {
+  if (!info || (info.id === anvil.id && info.rpcUrl === anvil.rpcUrls.default.http[0])) return;
+  anvil = makeLocalChain(info);
+  localIsLoopback = isLoopback(info.rpcUrl || LOCAL_RPC);
+}
 
 export { bscTestnet };
-export const CHAINS = [anvil, bscTestnet] as const;
+
+/** No explorer for the local node: a hash on a local fork of BNB Chain does not exist on BscScan. */
+const isLocal = (chainId: number) => chainId === anvil.id && localIsLoopback;
 
 export function explorerTx(chainId: number, hash: string): string | null {
+  if (isLocal(chainId)) return null;
   if (chainId === 97) return `https://testnet.bscscan.com/tx/${hash}`;
   if (chainId === 56) return `https://bscscan.com/tx/${hash}`;
   return null;
 }
 
 export function explorerAddress(chainId: number, a: string): string | null {
+  if (isLocal(chainId)) return null;
   if (chainId === 97) return `https://testnet.bscscan.com/address/${a}`;
   if (chainId === 56) return `https://bscscan.com/address/${a}`;
   return null;
 }
 
 export function chainName(id: number): string {
+  if (isLocal(id)) return id === 56 ? "BNB fork (local)" : id === 31337 ? "Anvil 31337" : `Local ${id}`;
   return id === 31337 ? "Anvil 31337" : id === 97 ? "BSC testnet" : id === 56 ? "BNB Chain" : `Chain ${id}`;
 }
 

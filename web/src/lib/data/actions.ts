@@ -92,7 +92,13 @@ export function useActions(view?: CovenantView) {
       let hash: Hash;
       switch (action) {
         case "commit": hash = await write(view.launcher, L, ["contribute", "commit"], [], wei(arg ?? 0)); break;
-        case "finalize": hash = await write(view.launcher, L, ["finalize"]); break;
+        // finalize() requires a 15M gas floor before the Flap launch (a starved launch must not fail a healthy raise)
+        case "finalize": {
+          const fn = pickFn(L, "finalize");
+          if (!view.launcher || !L || !fn) throw new Error("finalize is not in the loaded ABI");
+          hash = await writeContract(config, { address: view.launcher, abi: L, functionName: fn, args: [], chainId, gas: 20_000_000n } as Parameters<typeof writeContract>[1]);
+          break;
+        }
         case "claimRefund": hash = await write(view.launcher, L, ["claimRefund"]); break;
         case "claimTokens": hash = await write(view.vault, V, ["claimTokens"]); break;
         case "claimTap": hash = await write(view.vault, V, ["claimTap"]); break;
@@ -121,10 +127,17 @@ export function useActions(view?: CovenantView) {
           patchToast(id, { detail: "Approve the vault to take your tokens" });
           const ah = await writeContract(config, { address: view.token!, abi: erc20, functionName: "approve", args: [view.vault!, amount], chainId });
           await waitForTransactionReceipt(config, { hash: ah, chainId });
-          const b = bookValue(view.treasury, view.owedTeam, redeemableSupply(view.terms.totalSupply, view.deadTokens, view.lockedTeam));
-          const q = redeemQuote(arg ?? 0, b, view.terms.exitFeeBps, view.state === "WIND_DOWN");
+          // the vault's own quote when it has one (book read on-chain, fee applied), else the same formula off-chain
+          let expected: bigint | undefined;
+          if (src.client && hasFn(V, "previewRedeem")) {
+            expected = await src.client.readContract({ address: view.vault!, abi: V!, functionName: "previewRedeem", args: [amount] }).then((x) => x as bigint).catch(() => undefined);
+          }
+          if (expected === undefined) {
+            const b = bookValue(view.treasury, view.owedTeam, redeemableSupply(view.terms.totalSupply, view.deadTokens, view.lockedTeam));
+            expected = wei(redeemQuote(arg ?? 0, b, view.terms.exitFeeBps, view.state === "WIND_DOWN").out);
+          }
           patchToast(id, { detail: "Confirm the redemption" });
-          hash = await write(view.vault, V, ["redeem"], [amount, wei(q.out * 0.995)]);
+          hash = await write(view.vault, V, ["redeem"], [amount, (expected * 995n) / 1000n]);
           break;
         }
         case "poke": {
