@@ -90,6 +90,8 @@ contract CovenantOracle is PullOracleConsumerStandard {
 
     /// @notice Record one observation for `vault`. Anyone may call; at most once per the vault's poke gap.
     ///         A signed Atlas report may be appended to the calldata.
+    /// @param vault a covenant vault (its oracleConfig names the pair and seed)
+    /// @return o the observation sent to the vault (prices 1e18 BNB per token or USD per BNB, seconds)
     function poke(address vault) external returns (Observation memory o) {
         o = _observe(vault);
         emit Poked(vault, msg.sender, o.twapBnb, o.spotBnb, o.bnbUsd, o.elapsed, o.trusted, o.strict);
@@ -142,6 +144,8 @@ contract CovenantOracle is PullOracleConsumerStandard {
     }
 
     /// @notice The earliest time `vault` can be poked again (0 if never poked).
+    /// @param vault a covenant vault
+    /// @return unix seconds
     function nextPokeAt(address vault) external view returns (uint256) {
         Point memory pt = points[vault];
         if (!pt.initialized) return 0;
@@ -150,6 +154,12 @@ contract CovenantOracle is PullOracleConsumerStandard {
     }
 
     /// @notice What a poke would see right now, without an Atlas rate: TWAP since the last poke, spot, depth.
+    /// @param vault a covenant vault
+    /// @return twapBnb TWAP since the last poke, BNB per token 1e18
+    /// @return spotBnb spot price, BNB per token 1e18
+    /// @return elapsed seconds since the last poke
+    /// @return deep pool BNB reserve at least half the launch seed
+    /// @return quoteReserve pool BNB reserve in wei
     function preview(address vault)
         external
         view

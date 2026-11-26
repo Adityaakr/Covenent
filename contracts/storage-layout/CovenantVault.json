@@ -1,0 +1,440 @@
+[
+  {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "t_uint8"
+  },
+  {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "t_bool"
+  },
+  {
+    "label": "taxToken",
+    "slot": "0",
+    "offset": 2,
+    "type": "t_address"
+  },
+  {
+    "label": "launcher",
+    "slot": "1",
+    "offset": 0,
+    "type": "t_address"
+  },
+  {
+    "label": "teamWallet",
+    "slot": "2",
+    "offset": 0,
+    "type": "t_address"
+  },
+  {
+    "label": "reportRelayer",
+    "slot": "3",
+    "offset": 0,
+    "type": "t_address"
+  },
+  {
+    "label": "agentId",
+    "slot": "4",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "_env",
+    "slot": "5",
+    "offset": 0,
+    "type": "t_struct(VaultEnv)_storage"
+  },
+  {
+    "label": "saleAmount",
+    "slot": "11",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "teamAmount",
+    "slot": "12",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "poolSeedQuote",
+    "slot": "13",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "accepted",
+    "slot": "14",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "salePriceBnb",
+    "slot": "15",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "tapCapBps",
+    "slot": "16",
+    "offset": 0,
+    "type": "t_uint16"
+  },
+  {
+    "label": "exitFeeBps",
+    "slot": "16",
+    "offset": 2,
+    "type": "t_uint16"
+  },
+  {
+    "label": "cliff",
+    "slot": "16",
+    "offset": 4,
+    "type": "t_uint32"
+  },
+  {
+    "label": "unlockWindow",
+    "slot": "16",
+    "offset": 8,
+    "type": "t_uint32"
+  },
+  {
+    "label": "exitStreakNeeded",
+    "slot": "16",
+    "offset": 12,
+    "type": "t_uint32"
+  },
+  {
+    "label": "roundLength",
+    "slot": "16",
+    "offset": 16,
+    "type": "t_uint32"
+  },
+  {
+    "label": "cooldown",
+    "slot": "16",
+    "offset": 20,
+    "type": "t_uint32"
+  },
+  {
+    "label": "heartbeatWindow",
+    "slot": "16",
+    "offset": 24,
+    "type": "t_uint32"
+  },
+  {
+    "label": "minPokeGap",
+    "slot": "16",
+    "offset": 28,
+    "type": "t_uint32"
+  },
+  {
+    "label": "maxStep",
+    "slot": "17",
+    "offset": 0,
+    "type": "t_uint32"
+  },
+  {
+    "label": "staleAfter",
+    "slot": "17",
+    "offset": 4,
+    "type": "t_uint32"
+  },
+  {
+    "label": "tapUsdPer30d",
+    "slot": "18",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "_tranches",
+    "slot": "19",
+    "offset": 0,
+    "type": "t_array(t_struct(Tranche)_storage)dyn_storage"
+  },
+  {
+    "label": "_state",
+    "slot": "20",
+    "offset": 0,
+    "type": "t_enum(State)"
+  },
+  {
+    "label": "distributionInitialized",
+    "slot": "20",
+    "offset": 1,
+    "type": "t_bool"
+  },
+  {
+    "label": "funded",
+    "slot": "20",
+    "offset": 2,
+    "type": "t_bool"
+  },
+  {
+    "label": "disclosurePaused",
+    "slot": "20",
+    "offset": 3,
+    "type": "t_bool"
+  },
+  {
+    "label": "pair",
+    "slot": "20",
+    "offset": 4,
+    "type": "t_address"
+  },
+  {
+    "label": "launchedAt",
+    "slot": "20",
+    "offset": 24,
+    "type": "t_uint64"
+  },
+  {
+    "label": "lastHeartbeat",
+    "slot": "21",
+    "offset": 0,
+    "type": "t_uint64"
+  },
+  {
+    "label": "roundStart",
+    "slot": "21",
+    "offset": 8,
+    "type": "t_uint64"
+  },
+  {
+    "label": "roundEnd",
+    "slot": "21",
+    "offset": 16,
+    "type": "t_uint64"
+  },
+  {
+    "label": "cooldownEnd",
+    "slot": "21",
+    "offset": 24,
+    "type": "t_uint64"
+  },
+  {
+    "label": "lastTapAt",
+    "slot": "22",
+    "offset": 0,
+    "type": "t_uint64"
+  },
+  {
+    "label": "lastObservedAt",
+    "slot": "22",
+    "offset": 8,
+    "type": "t_uint64"
+  },
+  {
+    "label": "lastStrictAt",
+    "slot": "22",
+    "offset": 16,
+    "type": "t_uint64"
+  },
+  {
+    "label": "roundsOpened",
+    "slot": "22",
+    "offset": 24,
+    "type": "t_uint64"
+  },
+  {
+    "label": "exitStreak",
+    "slot": "23",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "owedTeam",
+    "slot": "24",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "tapPaid",
+    "slot": "25",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "accounted",
+    "slot": "26",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "totalRevenue",
+    "slot": "27",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "treasuryRaised",
+    "slot": "28",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "totalRedeemed",
+    "slot": "29",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "tokensBurned",
+    "slot": "30",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "lockedTeam",
+    "slot": "31",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "unlockedUnreleased",
+    "slot": "32",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "teamReleased",
+    "slot": "33",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "saleClaimed",
+    "slot": "34",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "tokensClaimed",
+    "slot": "35",
+    "offset": 0,
+    "type": "t_mapping(t_address,t_bool)"
+  },
+  {
+    "label": "usdSalePrice",
+    "slot": "36",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "lastBnbUsd",
+    "slot": "37",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "lastTwap",
+    "slot": "38",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "lastSpot",
+    "slot": "39",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "lastTrusted",
+    "slot": "40",
+    "offset": 0,
+    "type": "t_bool"
+  },
+  {
+    "label": "lastStrict",
+    "slot": "40",
+    "offset": 1,
+    "type": "t_bool"
+  },
+  {
+    "label": "lastAtlas",
+    "slot": "40",
+    "offset": 2,
+    "type": "t_bool"
+  },
+  {
+    "label": "lastDeep",
+    "slot": "40",
+    "offset": 3,
+    "type": "t_bool"
+  },
+  {
+    "label": "_reports",
+    "slot": "41",
+    "offset": 0,
+    "type": "t_mapping(t_uint256,t_struct(Report)_storage)"
+  },
+  {
+    "label": "reportsPosted",
+    "slot": "42",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "outcomesRecorded",
+    "slot": "43",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "windDownCause",
+    "slot": "44",
+    "offset": 0,
+    "type": "t_uint8"
+  },
+  {
+    "label": "windDownBy",
+    "slot": "44",
+    "offset": 1,
+    "type": "t_address"
+  },
+  {
+    "label": "usdSaleRefAt",
+    "slot": "44",
+    "offset": 21,
+    "type": "t_uint64"
+  },
+  {
+    "label": "verdictOf",
+    "slot": "45",
+    "offset": 0,
+    "type": "t_mapping(t_uint256,t_uint8)"
+  },
+  {
+    "label": "failedPeriods",
+    "slot": "46",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "reportPostedBy",
+    "slot": "47",
+    "offset": 0,
+    "type": "t_mapping(t_uint256,t_address)"
+  },
+  {
+    "label": "claimedCommitments",
+    "slot": "48",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "saleDustBurned",
+    "slot": "49",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "__gap",
+    "slot": "50",
+    "offset": 0,
+    "type": "t_array(t_uint256)_storage"
+  }
+]

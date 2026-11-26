@@ -73,7 +73,8 @@ abstract contract CovenantTestBase is Test, StackBuilder {
     // ── covenant lifecycle helpers ─────────────────────────────────────────
 
     function _terms(bytes32 seed) internal returns (Terms memory) {
-        return CovenantProfiles.defaultTerms("Covenant Test", "CVT", _mineSalt(chain.portal, chain.tokenImpl, seed), team);
+        return
+            CovenantProfiles.defaultTerms("Covenant Test", "CVT", _mineSalt(chain.portal, chain.tokenImpl, seed), team);
     }
 
     function _create(Pair memory p, Terms memory t) internal returns (CovenantLauncher l) {

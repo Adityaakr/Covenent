@@ -1,0 +1,164 @@
+[
+  {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "t_uint8"
+  },
+  {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "t_bool"
+  },
+  {
+    "label": "hub",
+    "slot": "0",
+    "offset": 2,
+    "type": "t_address"
+  },
+  {
+    "label": "creator",
+    "slot": "1",
+    "offset": 0,
+    "type": "t_address"
+  },
+  {
+    "label": "factory",
+    "slot": "2",
+    "offset": 0,
+    "type": "t_address"
+  },
+  {
+    "label": "vaultFactory",
+    "slot": "3",
+    "offset": 0,
+    "type": "t_address"
+  },
+  {
+    "label": "_terms",
+    "slot": "4",
+    "offset": 0,
+    "type": "t_struct(Terms)_storage"
+  },
+  {
+    "label": "_profile",
+    "slot": "19",
+    "offset": 0,
+    "type": "t_struct(Profile)_storage"
+  },
+  {
+    "label": "_state",
+    "slot": "21",
+    "offset": 0,
+    "type": "t_enum(State)"
+  },
+  {
+    "label": "saleDeadline",
+    "slot": "21",
+    "offset": 1,
+    "type": "t_uint64"
+  },
+  {
+    "label": "saleAmount",
+    "slot": "22",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "poolAmount",
+    "slot": "23",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "teamAmount",
+    "slot": "24",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "committed",
+    "slot": "25",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "contributorCount",
+    "slot": "26",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "contributions",
+    "slot": "27",
+    "offset": 0,
+    "type": "t_mapping(t_address,t_uint256)"
+  },
+  {
+    "label": "refunded",
+    "slot": "28",
+    "offset": 0,
+    "type": "t_mapping(t_address,t_bool)"
+  },
+  {
+    "label": "accepted",
+    "slot": "29",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "poolQuote",
+    "slot": "30",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "treasuryForwarded",
+    "slot": "31",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "launching",
+    "slot": "32",
+    "offset": 0,
+    "type": "t_bool"
+  },
+  {
+    "label": "token",
+    "slot": "32",
+    "offset": 1,
+    "type": "t_address"
+  },
+  {
+    "label": "pool",
+    "slot": "33",
+    "offset": 0,
+    "type": "t_address"
+  },
+  {
+    "label": "vault",
+    "slot": "34",
+    "offset": 0,
+    "type": "t_address"
+  },
+  {
+    "label": "refundsClaimed",
+    "slot": "35",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "dustSwept",
+    "slot": "36",
+    "offset": 0,
+    "type": "t_uint256"
+  },
+  {
+    "label": "__gap",
+    "slot": "37",
+    "offset": 0,
+    "type": "t_array(t_uint256)_storage"
+  }
+]

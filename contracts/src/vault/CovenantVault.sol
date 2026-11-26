@@ -13,7 +13,14 @@ import {ITokenDock} from "src/flap/ILaunchVaultSpec.sol";
 import {VaultUISchema} from "src/flap/IVaultSchemas.sol";
 
 import {
-    State, Terms, Profile, Observation, VaultEnv, ICovenantLauncher, ICovenantRateSource, CovenantMath
+    State,
+    Terms,
+    Profile,
+    Observation,
+    VaultEnv,
+    ICovenantLauncher,
+    ICovenantRateSource,
+    CovenantMath
 } from "src/vault/CovenantTypes.sol";
 import {CovenantVaultDisplay} from "src/vault/CovenantVaultDisplay.sol";
 import {IERC8004Reputation} from "src/agent/IERC8004.sol";
@@ -231,6 +238,9 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
 
     /// @notice Called by the vault factory inside `newVault`, while the launcher is mid-launch. Copies the terms
     ///         from the launcher, sets state ACTIVE and starts the heartbeat clock.
+    /// @param token_ the launched tax token
+    /// @param launcher_ the covenant's launcher
+    /// @param env_ addresses shared by the vault factory's vaults
     function initialize(address token_, address launcher_, VaultEnv calldata env_) external initializer {
         if (token_ == address(0) || launcher_ == address(0) || env_.oracle == address(0)) revert ZeroAddress();
         ICovenantLauncher l = ICovenantLauncher(launcher_);
@@ -312,6 +322,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     }
 
     /// @notice The launcher forwards the treasury share of the raise, once, in the launch transaction.
+    /// @param pool the PancakeSwap V2 pool the Portal seeded; `msg.value` is T0 in wei
     function fundTreasury(address pool) external payable {
         if (msg.sender != launcher) revert NotLauncher();
         if (funded) revert AlreadyFunded();
@@ -348,6 +359,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
 
     /// @notice Agent layer: the issuer (or anyone) forwards revenue it earned. It raises book value for every
     ///         holder. From the team wallet it also counts as a heartbeat.
+    /// @param tag a free label for the deposit (event only); `msg.value` in wei
     function depositRevenue(bytes32 tag) external payable {
         if (msg.value == 0) revert ZeroAmount();
         _sync();
@@ -387,6 +399,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     }
 
     /// @notice R = S - balanceOf(DEAD) - lockedTeam. Pool-held tokens count, so trading never moves book value.
+    /// @return R = S - balanceOf(DEAD) - lockedTeam, tokens with 18 decimals
     function redeemableSupply() public view returns (uint256) {
         if (!distributionInitialized) return 0;
         uint256 s = IERC20(taxToken).totalSupply();
@@ -395,6 +408,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     }
 
     /// @notice Treasury BNB the rules can still pay out to holders: balance less the tap owed to the team.
+    /// @return treasury balance less the unclaimed tap, BNB in wei
     function freeTreasury() public view returns (uint256) {
         uint256 bal = address(this).balance;
         uint256 owed = owedTeam;
@@ -402,6 +416,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     }
 
     /// @notice b = (T - owedTeam) / R in BNB per token, 1e18, rounded down (toward the vault).
+    /// @return b, BNB per token scaled 1e18
     function bookValue() public view returns (uint256) {
         uint256 r = redeemableSupply();
         if (r == 0) return 0;
@@ -417,6 +432,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         return freeTreasury() * tapCapBps / BPS;
     }
 
+    /// @return unix seconds after which anyone can declare abandonment
     function heartbeatDeadline() public view returns (uint256) {
         return uint256(lastHeartbeat) + heartbeatWindow;
     }
@@ -458,12 +474,16 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     }
 
     /// @notice Sale tokens `account` can still claim.
+    /// @param account a contributor
+    /// @return sale tokens (18 decimals) it can still claim
     function claimableTokens(address account) external view returns (uint256) {
         if (tokensClaimed[account] || !distributionInitialized) return 0;
         return ICovenantLauncher(launcher).allocationOf(account);
     }
 
     /// @notice What redeeming `tokens` pays now (0 outside a round or wind-down).
+    /// @param tokens tokens (18 decimals) to burn
+    /// @return out BNB in wei paid now (0 outside an exit round or wind-down)
     function previewRedeem(uint256 tokens) external view returns (uint256 out) {
         State s = state();
         if (s != State.EXIT_ROUND && s != State.WIND_DOWN) return 0;
@@ -519,6 +539,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
 
     /// @notice Called by CovenantOracle about once an hour. Recognizes revenue, accrues the tap, steps the exit
     ///         streak and the tranche counters, and opens a round when the streak is full.
+    /// @param o the oracle's observation (prices 1e18, seconds; see `Observation`)
     function onObservation(Observation calldata o) external nonReentrant {
         if (msg.sender != _env.oracle) revert NotOracle();
         if (!funded) revert NotLive();
@@ -702,6 +723,9 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     /// @notice Burn `amount` tokens for a pro rata share of the treasury. Only in an exit round (less the exit fee,
     ///         which stays in the treasury) or in wind-down (no fee). Pays on the tokens that actually reached the
     ///         burn address, at book value read before the burn.
+    /// @param amount tokens (18 decimals) to send to the dead address
+    /// @param minOut the least BNB in wei to accept
+    /// @return out BNB in wei paid
     function redeem(uint256 amount, uint256 minOut) external nonReentrant returns (uint256 out) {
         _tick();
         State s = _state;
@@ -782,6 +806,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     }
 
     /// @notice Pay the accrued tap to the team wallet fixed at creation. A heartbeat.
+    /// @return amt BNB in wei paid to the team wallet
     function claimTap() external onlyTeam nonReentrant returns (uint256 amt) {
         _tick();
         _sync();
@@ -796,6 +821,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     }
 
     /// @notice Lower the dollar budget. Only downwards. A heartbeat.
+    /// @param newUsdPer30d the new dollar budget per 30 days, USD 1e18; must be lower
     function lowerTap(uint256 newUsdPer30d) external onlyTeam {
         if (_state == State.WIND_DOWN) revert Ended();
         uint256 cur = tapUsdPer30d;
@@ -901,10 +927,10 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         address rep = _env.reputation;
         if (id == 0 || rep == address(0) || rep.code.length == 0) return;
         if (gasleft() < FEEDBACK_GAS + FEEDBACK_GAS / 63 + 30_000) revert InsufficientGas();
-        string memory uri = string.concat(
-            "covenant:", LibString.toString(block.chainid), ":", LibString.toHexString(address(this))
-        );
-        bytes32 h = keccak256(abi.encode(address(this), outcome, address(this).balance, redeemableSupply(), block.timestamp));
+        string memory uri =
+            string.concat("covenant:", LibString.toString(block.chainid), ":", LibString.toHexString(address(this)));
+        bytes32 h =
+            keccak256(abi.encode(address(this), outcome, address(this).balance, redeemableSupply(), block.timestamp));
         try IERC8004Reputation(rep).giveFeedback{gas: FEEDBACK_GAS}(id, value, 0, "covenant", outcome, "", uri, h) {
             ++outcomesRecorded;
             emit OutcomeRecorded(id, value, outcome, true);

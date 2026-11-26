@@ -196,9 +196,8 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         path[1] = E.wbnb;
         vm.startPrank(who);
         IERC20(token).approve(E.router, amount);
-        IRouterLike(E.router).swapExactTokensForETHSupportingFeeOnTransferTokens(
-            amount, 0, path, who, block.timestamp + 600
-        );
+        IRouterLike(E.router)
+            .swapExactTokensForETHSupportingFeeOnTransferTokens(amount, 0, path, who, block.timestamp + 600);
         vm.stopPrank();
     }
 
@@ -515,10 +514,13 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         portal.setLauncherFactoryMultiplier(address(demo.launcherFactory), 10_000, true);
         portal.setVaultFactoryMultiplier(address(demo.vaultFactory), 10_000, true);
         vm.stopPrank();
-        t = CovenantProfiles.demoTerms("Covenant Floor", "CVFL", _mineSalt(BSC_PORTAL, BSC_TOKEN_IMPL, "floor-demo"), team);
+        t = CovenantProfiles.demoTerms(
+            "Covenant Floor", "CVFL", _mineSalt(BSC_PORTAL, BSC_TOKEN_IMPL, "floor-demo"), team
+        );
         t.minRaise = 40 ether; // 10 BNB seed at 15%: over the launch floor
         demo.launcherFactory.checkTerms(t);
-        (uint256 demoMin,,, , bool demoGraduation) = demo.launcherFactory.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
+        (uint256 demoMin,,,, bool demoGraduation) =
+            demo.launcherFactory.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
         assertFalse(demoGraduation);
         t.minRaise = demoMin;
         t.cap = demoMin;
@@ -653,18 +655,19 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         address tokenStandIn = address(uint160(0xC0DE10A1));
         CovenantLiteVault template = new CovenantLiteVault(author);
         address fv = Clones.clone(E.forwardVaultImpl);
-        IForwardVaultLike(fv).initialize(
-            tokenStandIn,
-            E.wbnb,
-            team,
-            new address[](0),
-            // ForwardVault decodes a struct (address template, bytes initData): tuple-wrapped, not flat.
-            abi.encode(
-                ForwardVault.InitParams(
-                    address(template), abi.encode(uint16(400), uint32(30 days), uint32(45 days), uint16(100))
+        IForwardVaultLike(fv)
+            .initialize(
+                tokenStandIn,
+                E.wbnb,
+                team,
+                new address[](0),
+                // ForwardVault decodes a struct (address template, bytes initData): tuple-wrapped, not flat.
+                abi.encode(
+                    ForwardVault.InitParams(
+                        address(template), abi.encode(uint16(400), uint32(30 days), uint32(45 days), uint16(100))
+                    )
                 )
-            )
-        );
+            );
         CovenantLiteVault lite = CovenantLiteVault(payable(IForwardVaultLike(fv).clonedVault()));
         assertEq(lite.owner(), team);
         assertEq(lite.taxVaultToken(), tokenStandIn);
@@ -699,10 +702,13 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         portal.setVaultFactoryMultiplier(address(demo.vaultFactory), 10_000, true);
         vm.stopPrank();
 
-        Terms memory t = CovenantProfiles.demoTerms("Covenant Push", "CVPF", _mineSalt(BSC_PORTAL, BSC_TOKEN_IMPL, "push-feed"), team);
+        Terms memory t = CovenantProfiles.demoTerms(
+            "Covenant Push", "CVPF", _mineSalt(BSC_PORTAL, BSC_TOKEN_IMPL, "push-feed"), team
+        );
         uint256 fee = portal.SALT_LOCK_FEE();
         vm.prank(team);
-        CovenantLauncher l = CovenantLauncher(payable(portal.newLauncher{value: fee}(address(demo.launcherFactory), abi.encode(t))));
+        CovenantLauncher l =
+            CovenantLauncher(payable(portal.newLauncher{value: fee}(address(demo.launcherFactory), abi.encode(t))));
         vm.prank(alice);
         l.contribute{value: 300 ether}();
         vm.warp(l.saleDeadline());

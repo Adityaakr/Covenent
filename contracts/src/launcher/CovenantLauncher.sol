@@ -125,13 +125,16 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
 
     /// @notice Called once by the factory. Stores the terms and locks the salt from this address, because Flap
     ///         requires the locker to be the Launcher. `msg.value` must be exactly `SALT_LOCK_FEE`.
-    function initialize(
-        address hub_,
-        address creator_,
-        address vaultFactory_,
-        Terms calldata t,
-        Profile calldata p
-    ) external payable initializer {
+    /// @param hub_ Flap's Portal
+    /// @param creator_ the account that called `Portal.newLauncher`
+    /// @param vaultFactory_ the paired CovenantVaultFactory
+    /// @param t the covenant's terms (units in `Terms`)
+    /// @param p the factory's profile
+    function initialize(address hub_, address creator_, address vaultFactory_, Terms calldata t, Profile calldata p)
+        external
+        payable
+        initializer
+    {
         if (hub_ == address(0) || creator_ == address(0) || vaultFactory_ == address(0)) revert InvalidConfig();
         hub = hub_;
         creator = creator_;
@@ -178,18 +181,24 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     }
 
     /// @notice q_i: the part of `account`'s commitment the sale kept.
+    /// @param account the contributor
+    /// @return q_i, BNB in wei kept in the sale (0 unless launched)
     function acceptedOf(address account) public view returns (uint256) {
         if (_state != State.ACTIVE) return 0;
         return contributions[account] * accepted / committed;
     }
 
     /// @notice a_i: the sale tokens `account` can claim from the vault.
+    /// @param account the contributor
+    /// @return a_i, sale tokens (18 decimals) claimable from the vault (0 unless launched)
     function allocationOf(address account) public view returns (uint256) {
         if (_state != State.ACTIVE) return 0;
         return saleAmount * acceptedOf(account) / accepted;
     }
 
     /// @notice What `account` can take back right now (0 once taken).
+    /// @param account the contributor
+    /// @return BNB in wei `claimRefund` pays now (0 once taken or while RAISING)
     function refundOf(address account) public view returns (uint256) {
         uint256 c = contributions[account];
         if (c == 0 || refunded[account]) return 0;
@@ -199,6 +208,11 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     }
 
     /// @notice What a commitment of `amount` more from `account` would keep and receive if the sale closed now.
+    /// @param account the contributor
+    /// @param amount extra BNB in wei it would commit
+    /// @return keep BNB in wei it would keep if the sale closed now
+    /// @return tokens sale tokens (18 decimals) it would receive
+    /// @return refund BNB in wei it would get back
     function previewCommit(address account, uint256 amount)
         external
         view
@@ -218,6 +232,7 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Commit BNB while the sale is open. Commitments are not capped; the raise can be oversubscribed.
+    /// @dev `msg.value` is the commitment, in wei; at least 1 wei. Reverts after `saleDeadline`.
     function contribute() external payable {
         if (launching) revert LaunchInProgress();
         if (_state != State.RAISING || block.timestamp >= saleDeadline) revert SaleClosed();
@@ -289,11 +304,16 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     }
 
     /// @notice Until when a refused launch can be retried (sale deadline + the profile's retry window), seconds.
+    /// @return unix seconds
     function launchRetryUntil() external view returns (uint256) {
         return uint256(saleDeadline) + _profile.launchRetryWindow;
     }
 
     /// @dev External so `finalize` can wrap launch and funding in one try/catch: if either reverts, both unwind.
+    /// @param treasury BNB in wei forwarded to the vault after the launch
+    /// @return t the launched token
+    /// @return pl the PancakeSwap V2 pool
+    /// @return v the covenant vault
     function launchAndFund(uint256 treasury) external returns (address t, address pl, address v) {
         if (msg.sender != address(this)) revert NotSelf();
         IPortalTypes.CreateTaxTokenParams memory p = _buildParams();
@@ -325,6 +345,7 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     /// @notice What `sweepDust` would move now: the launcher's balance once nothing is owed to any contributor,
     ///         else 0. Nothing is owed when the raise was not oversubscribed (every refund is 0) or when every
     ///         contributor has claimed (oversubscribed, every refund is at least 1 wei, so every contributor claims).
+    /// @return BNB in wei `sweepDust` would move now
     function sweepable() public view returns (uint256) {
         if (_state != State.ACTIVE) return 0;
         if (committed > accepted && refundsClaimed < contributorCount) return 0;

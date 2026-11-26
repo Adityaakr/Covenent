@@ -284,7 +284,9 @@ contract PreAuditRegressionTest is CovenantTestBase {
     function test_L4_aLapsedTeam_windingDown_forfeitsTheTap() public {
         (, CovenantVault v,) = _live("lapse");
         _poke(v, BNB_USD);
-        for (uint256 i; i < 4 * 10; ++i) _step(v, 6 hours, BNB_USD);
+        for (uint256 i; i < 4 * 10; ++i) {
+            _step(v, 6 hours, BNB_USD);
+        }
         vm.warp(v.heartbeatDeadline() + 1 days);
         assertTrue(v.abandonable());
         uint256 owed = v.owedTeam();
@@ -337,7 +339,11 @@ contract PreAuditRegressionTest is CovenantTestBase {
         assertEq(tok.balanceOf(DEAD_ADDR) - dead0, dust + stray - burned0);
         assertEq(tok.balanceOf(address(v)), 0);
         assertLt(v.redeemableSupply(), r0, "they leave R");
-        assertEq(ITokenDock(chain.dockRouter).balanceOf(address(tok), address(v)), v.lockedTeam(), "dock holds only team tokens");
+        assertEq(
+            ITokenDock(chain.dockRouter).balanceOf(address(tok), address(v)),
+            v.lockedTeam(),
+            "dock holds only team tokens"
+        );
 
         // The BNB side: the launcher's buffer goes to the treasury once every refund is out.
         address[4] memory who = [alice, bob, carol, whale];

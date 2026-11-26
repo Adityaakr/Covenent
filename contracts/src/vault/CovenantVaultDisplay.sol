@@ -2,9 +2,7 @@
 pragma solidity 0.8.26;
 
 import {LibString} from "solady/utils/LibString.sol";
-import {
-    VaultUISchema, VaultMethodSchema, FieldDescriptor, ApproveAction
-} from "src/flap/IVaultSchemas.sol";
+import {VaultUISchema, VaultMethodSchema, FieldDescriptor, ApproveAction} from "src/flap/IVaultSchemas.sol";
 import {State} from "src/vault/CovenantTypes.sol";
 
 /// @notice Flap's two mandatory vault surfaces, kept out of the vault's own code: the disclosure string
@@ -129,8 +127,10 @@ library CovenantVaultDisplay {
         s.description =
             "Treasury of a Covenant raise. Claim your sale tokens, redeem at book value during an exit round or after wind-down, release unlocked team tokens, or declare abandonment once the team or agent has been silent past its heartbeat.";
         s.methods = new VaultMethodSchema[](10);
-        s.methods[0] = _view("bookValue", "Treasury BNB per redeemable token (after tap owed to the team)", "bookValue", 18);
-        s.methods[1] = _view("state", "0 RAISING, 1 FAILED, 2 ACTIVE, 3 EXIT_ROUND, 4 COOLDOWN, 5 WIND_DOWN", "state", 0);
+        s.methods[0] =
+            _view("bookValue", "Treasury BNB per redeemable token (after tap owed to the team)", "bookValue", 18);
+        s.methods[1] =
+            _view("state", "0 RAISING, 1 FAILED, 2 ACTIVE, 3 EXIT_ROUND, 4 COOLDOWN, 5 WIND_DOWN", "state", 0);
         s.methods[2] = _view("redeemableSupply", "Supply less burned and locked team tokens", "supply", 18);
         s.methods[3] = _view("tapAccrued", "Tap accrued to the team and not yet claimed", "bnb", 18);
         s.methods[4] = _view("exitStreak", "Seconds below book counted toward the next exit round", "seconds", 0);
@@ -138,7 +138,8 @@ library CovenantVaultDisplay {
 
         VaultMethodSchema memory r;
         r.name = "redeem";
-        r.description = "Burn tokens for their share of the treasury. Exit rounds (less the exit fee) and wind-down only.";
+        r.description =
+        "Burn tokens for their share of the treasury. Exit rounds (less the exit fee) and wind-down only.";
         r.inputs = new FieldDescriptor[](2);
         r.inputs[0] = FieldDescriptor("amount", "uint256", "Tokens to burn", 18);
         r.inputs[1] = FieldDescriptor("minOut", "uint256", "Least BNB to accept", 18);
@@ -148,7 +149,9 @@ library CovenantVaultDisplay {
         s.methods[6] = r;
 
         s.methods[7] = _write("releaseTeam", "Send unlocked team tranches to the team wallet.");
-        s.methods[8] = _write("declareAbandoned", "Open the treasury to holders once the team or agent has stopped (heartbeat lapsed).");
+        s.methods[8] = _write(
+            "declareAbandoned", "Open the treasury to holders once the team or agent has stopped (heartbeat lapsed)."
+        );
         s.methods[9] = _write("sync", "Recognize revenue that arrived without a call.");
     }
 

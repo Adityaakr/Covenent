@@ -81,7 +81,9 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
         Profile memory profile_,
         string memory profileName_
     ) {
-        if (hub_ == address(0) || guardian_ == address(0) || vaultFactory_ == address(0)) revert ZeroAddress();
+        if (hub_ == address(0) || guardian_ == address(0) || vaultFactory_ == address(0)) {
+            revert ZeroAddress();
+        }
         if (IPairedVaultFactory(vaultFactory_).launcherFactory() != address(this)) revert NotPaired(vaultFactory_);
         if (nameScreen_ != address(0) && nameScreen_.code.length == 0) revert NoCode(nameScreen_);
         hub = hub_;
@@ -110,6 +112,8 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
         return _launchers.length;
     }
 
+    /// @param i index into the creation order
+    /// @return the launcher
     function launcherAt(uint256 i) external view returns (address) {
         return _launchers[i];
     }
@@ -120,6 +124,7 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
 
     /// @notice Reverts with the reason the terms would be refused, or returns quietly. For forms and agents. Runs
     ///         every check `newLauncher` runs, including Flap's name screen and liquidity floor.
+    /// @param t the terms to check (units in `Terms`); reverts with the factory's reason if refused
     function checkTerms(Terms calldata t) external view {
         _check(t);
     }
@@ -127,6 +132,14 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
     /// @notice The smallest minimum raise this factory accepts for a split, from Flap's live floor: the pool seed
     ///         `minRaise * poolBps / saleBps` must reach `minSeed`, the BNB worth `floorUsd` at Flap's
     ///         `quotePriceUsd`. `graduation` says which floor this factory's profile applies.
+    /// @param totalSupply S, tokens with 18 decimals
+    /// @param saleBps A / S in bps
+    /// @param poolBps P / S in bps
+    /// @return minRaise the smallest accepted minimum raise, BNB in wei
+    /// @return minSeed the pool seed that takes, BNB in wei
+    /// @return floorUsd Flap's floor for this split, USD 1e18
+    /// @return quotePriceUsd the Portal's BNB price, USD 1e18
+    /// @return graduation true when this profile needs the graduation floor
     function minRaiseFor(uint256 totalSupply, uint16 saleBps, uint16 poolBps)
         external
         view

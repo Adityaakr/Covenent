@@ -99,9 +99,10 @@ contract CovenantVaultFactory is DirectLaunchVaultFactoryBase {
 
     /// @notice The vault address `token` gets (deterministic, keyed by the token).
     function predictVault(address token) external view returns (address) {
-        return LibClone.predictDeterministicAddressERC1967BeaconProxy(
-            beacon, bytes32(uint256(uint160(token))), address(this)
-        );
+        return
+            LibClone.predictDeterministicAddressERC1967BeaconProxy(
+                beacon, bytes32(uint256(uint160(token))), address(this)
+            );
     }
 
     /// @inheritdoc DirectLaunchVaultFactoryBase

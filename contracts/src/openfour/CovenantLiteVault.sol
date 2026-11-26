@@ -204,8 +204,10 @@ contract CovenantLiteVault is BaseTaxVault, ReentrancyGuardUpgradeable {
 
     function _rollPeriod() internal {
         uint256 p = currentPeriod();
-        if (p != periodIndex || (periodBaseNative == 0 && periodBaseQuote == 0 && periodSpentNative == 0
-            && periodSpentQuote == 0)) {
+        if (
+            p != periodIndex
+                || (periodBaseNative == 0 && periodBaseQuote == 0 && periodSpentNative == 0 && periodSpentQuote == 0)
+        ) {
             (uint256 n, uint256 q) = balances();
             periodIndex = p;
             periodBaseNative = n;

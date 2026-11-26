@@ -134,7 +134,7 @@ contract LauncherTest is CovenantTestBase {
         vm.warp(l.launchRetryUntil());
         vm.recordLogs();
         l.finalize();
-        assertEq(uint8(l.state()), uint8(State.FAILED), "a refused launch fails the raise"); 
+        assertEq(uint8(l.state()), uint8(State.FAILED), "a refused launch fails the raise");
         assertEq(l.accepted(), 0);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bool sawFailure;
@@ -227,7 +227,7 @@ contract LauncherTest is CovenantTestBase {
         bool found;
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].emitter != address(portal) || logs[i].topics[0] != topic) continue;
-            (, , address creator_,,) = abi.decode(logs[i].data, (address, uint8, address, bytes32, bytes));
+            (,, address creator_,,) = abi.decode(logs[i].data, (address, uint8, address, bytes32, bytes));
             assertEq(creator_, team, "the launch event shows the team, not the launcher");
             found = true;
         }
