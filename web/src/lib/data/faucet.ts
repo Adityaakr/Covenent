@@ -1,9 +1,10 @@
 "use client";
 
 /*
- * Local test funds: the server's faucet (test BNB from an anvil account plus Demo USDC) and the connected wallet's
- * balances, plus a dUSDC -> BNB swap on the local PancakeSwap pool scripts/dev-funds.sh seeds. Dev chain only: the
- * server refuses on anything but a loopback node, and the app shows its reason instead of a button.
+ * Test funds from the server's faucet. On the local dev chain: test BNB from an anvil account plus Demo USDC, and a
+ * dUSDC -> BNB swap on the local PancakeSwap pool scripts/dev-funds.sh seeds. On BNB testnet (chain 97): a small tBNB
+ * drip for gas and a first commitment, once per wallet a day, with BNB Chain's public faucets as the fallback. Anywhere
+ * else the server refuses and the app shows its reason instead of a button.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatEther, formatUnits, parseUnits, type Abi, type Address, type Hash } from "viem";
@@ -13,9 +14,28 @@ import { API_BASE } from "@/lib/api/server";
 import { useWallet } from "@/components/providers";
 import { useSource } from "./hooks";
 
+export interface PublicFaucet { name: string; url: string }
+
+export interface TestnetDrip {
+  drip: string;
+  dailyCap: string;
+  dailyLeft: string;
+  cooldownHours: number;
+  /** a wallet holding this much tBNB already has enough */
+  enough: string;
+  faucetAddress: Address | null;
+  faucetBalance: string | null;
+  dry: boolean;
+  /** for the address asked about: can it be paid right now */
+  eligible: { ok: boolean; reason: string | null; retryAt: number | null } | null;
+}
+
 export interface FaucetStatus {
   enabled: boolean;
   reason: string | null;
+  mode?: "local" | "testnet" | "off";
+  publicFaucets?: PublicFaucet[];
+  testnet?: TestnetDrip | null;
   bnb: string;
   usdc: string | null;
   demoUsdc: Address | null;
@@ -38,11 +58,11 @@ const ROUTER: Abi = [
   },
 ];
 
-export function useFaucetStatus() {
+export function useFaucetStatus(address?: Address | null) {
   return useQuery({
-    queryKey: ["faucet-status"],
+    queryKey: ["faucet-status", address ?? null],
     queryFn: async (): Promise<FaucetStatus> => {
-      const res = await fetch(`${API_BASE}/api/faucet`, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/api/faucet${address ? `?address=${address}` : ""}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`server answered ${res.status}`);
       return res.json();
     },
@@ -66,11 +86,35 @@ export function useBalances(usdc: Address | null | undefined) {
   });
 }
 
+/** A refusal from the faucet, with BNB Chain's public faucets and when this wallet can ask again. */
+export class FaucetRefusal extends Error {
+  constructor(message: string, readonly status: number, readonly publicFaucets: PublicFaucet[] = [], readonly retryAt: number | null = null) {
+    super(message);
+  }
+}
+
 export async function requestFunds(address: Address): Promise<{ bnbTx: Hash; usdcTx: Hash | null; bnbWei: string; usdc: string | null }> {
-  const res = await fetch(`${API_BASE}/api/faucet`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address }) });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/faucet`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address }) });
+  } catch {
+    throw new FaucetRefusal("The Covenant server did not answer. Try again in a moment, or use a public faucet.", 0);
+  }
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? `server answered ${res.status}`);
+  if (!res.ok) throw new FaucetRefusal(body.error ?? `server answered ${res.status}`, res.status, body.publicFaucets ?? [], body.retryAt ?? null);
   return body;
+}
+
+/** The connected wallet's native balance on the source chain, in BNB (tBNB on chain 97). */
+export function useNativeBalance() {
+  const src = useSource();
+  const { address } = useWallet();
+  return useQuery({
+    queryKey: ["native-balance", src.chainId, address],
+    enabled: src.mode === "live" && Boolean(address && src.client),
+    refetchInterval: 6_000,
+    queryFn: async () => Number(formatEther(await src.client!.getBalance({ address: address! }))),
+  });
 }
 
 export function useSwap(status?: FaucetStatus) {

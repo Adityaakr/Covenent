@@ -180,10 +180,10 @@ say "ready: chain $CHAIN_ID ($MODE), web http://localhost:$WEB_PORT (app at /app
 status
 cat <<EOF
 
-  Wallets: Privy on :$WEB_PORT, or "Browser wallet" -> "Local test account #n" (anvil's public accounts, unlocked).
+  Wallets: Connect opens Privy on :$WEB_PORT. anvil's public test accounts: NEXT_PUBLIC_DEV_WALLET=1, then Settings.
   Seeded covenants (real transactions; launcher / vault):
 $(jq -r '.seeded // {} | to_entries[] | "    \(.key | ascii_downcase): \(.value.name)  \(.value.launcher)  \(.value.vault)"' "$DEPLOY")
-  Test funds:              http://localhost:$WEB_PORT/app/faucet (test BNB + Demo USDC, local chain only)
+  Test funds:              http://localhost:$WEB_PORT/app/settings/funds (test BNB + Demo USDC, local chain only)
   Scenes:                  scripts/dev-demo.sh use <launcher>, then slide | poke | redeem | abandon | advance <s>
   Stop the agent:          scripts/dev-all.sh stop-issuer      Stop all: scripts/dev-all.sh stop
 EOF

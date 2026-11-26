@@ -10,12 +10,14 @@
 #   scripts/testnet-up.sh status     what is running, with log paths
 #   scripts/testnet-up.sh stop       stop every process
 #
-# Keys: the first run reads TESTNET_WALLETS (a KEY=value file with KEEPER_PRIVATE_KEY and ISSUER_AGENT_PRIVATE_KEY) and,
-# when set, TESTNET_SECRETS_FROM (a server .env holding CMC_API_KEY / ANTHROPIC_API_KEY), and writes them to
-# .dev/testnet/keys.env (mode 600, git-ignored). Later runs reuse that file. No key is printed or committed.
+# Keys: the first run reads TESTNET_WALLETS (a KEY=value file with KEEPER_PRIVATE_KEY and ISSUER_AGENT_PRIVATE_KEY, and
+# optionally TESTNET_FAUCET_PRIVATE_KEY) and, when set, TESTNET_SECRETS_FROM (a server .env holding CMC_API_KEY /
+# ANTHROPIC_API_KEY), and writes them to .dev/testnet/keys.env (mode 600, git-ignored). Later runs reuse that file;
+# append TESTNET_FAUCET_PRIVATE_KEY=... to it to turn the drip on later. No key is printed or committed.
 #
 # This mode signs real transactions on BNB testnet: COVENANT_ALLOW_PUBLIC_NETWORK=1 is set here and nowhere else.
-# There is no faucet and no seeded data: the app shows only what is on chain 97. Test BNB: the BNB Chain faucet.
+# No seeded data: the app shows only what is on chain 97. Test BNB: the server's drip (0.003 tBNB per wallet a day, from
+# the TESTNET_FAUCET_PRIVATE_KEY wallet; off without it) and BNB Chain's public faucets.
 # RPC_URL overrides the public RPC (default https://bsc-testnet-rpc.publicnode.com). WEB_PORT and API_PORT move the web
 # app and the server (8081-8083 and 8085 are also origins the Privy app allows).
 set -euo pipefail
@@ -79,17 +81,18 @@ val() { sed -n "s/^$2=//p" "$1" | tail -1 | tr -d '"'"'"'\r'; }
 write_keys() {
   [ -n "${TESTNET_WALLETS:-}" ] || { echo "first run: set TESTNET_WALLETS to the testnet wallets file (KEEPER_PRIVATE_KEY, ISSUER_AGENT_PRIVATE_KEY)" >&2; exit 2; }
   [ -r "$TESTNET_WALLETS" ] || { echo "cannot read TESTNET_WALLETS=$TESTNET_WALLETS" >&2; exit 2; }
-  local keeper issuer cmc="" anthropic=""
+  local keeper issuer cmc="" anthropic="" faucet=""
   keeper="$(val "$TESTNET_WALLETS" KEEPER_PRIVATE_KEY)"
   issuer="$(val "$TESTNET_WALLETS" ISSUER_AGENT_PRIVATE_KEY)"
+  faucet="$(val "$TESTNET_WALLETS" TESTNET_FAUCET_PRIVATE_KEY)"
   [ -n "$keeper" ] && [ -n "$issuer" ] || { echo "TESTNET_WALLETS lacks KEEPER_PRIVATE_KEY or ISSUER_AGENT_PRIVATE_KEY" >&2; exit 2; }
   if [ -n "${TESTNET_SECRETS_FROM:-}" ] && [ -r "$TESTNET_SECRETS_FROM" ]; then
     cmc="$(val "$TESTNET_SECRETS_FROM" CMC_API_KEY)"
     anthropic="$(val "$TESTNET_SECRETS_FROM" ANTHROPIC_API_KEY)"
   fi
-  ( umask 077; printf 'KEEPER_PRIVATE_KEY=%s\nISSUER_PRIVATE_KEY=%s\nCMC_API_KEY=%s\nANTHROPIC_API_KEY=%s\n' \
-      "$keeper" "$issuer" "$cmc" "$anthropic" >"$KEYS" )
-  say "wrote $KEYS (mode 600): keeper and issuer keys$([ -n "$cmc" ] && echo ", CMC key")$([ -n "$anthropic" ] && echo ", Anthropic key")"
+  ( umask 077; printf 'KEEPER_PRIVATE_KEY=%s\nISSUER_PRIVATE_KEY=%s\nCMC_API_KEY=%s\nANTHROPIC_API_KEY=%s\nTESTNET_FAUCET_PRIVATE_KEY=%s\n' \
+      "$keeper" "$issuer" "$cmc" "$anthropic" "$faucet" >"$KEYS" )
+  say "wrote $KEYS (mode 600): keeper and issuer keys$([ -n "$faucet" ] && echo ", faucet key")$([ -n "$cmc" ] && echo ", CMC key")$([ -n "$anthropic" ] && echo ", Anthropic key")"
 }
 
 # deployments/97.json is Deploy.s.sol's flat record; the server and the web read {chainId, rpcUrl, addresses{...}}.
@@ -121,7 +124,7 @@ server_env() {
   export ERC8004_IDENTITY="$(jq -r .addresses.identityRegistry "$DEPLOY")" ERC8004_REPUTATION="$(jq -r .addresses.reputationRegistry "$DEPLOY")"
   export COVENANT_DATA_DIR="$RUN/server-data"   # kept between runs: report files and keeper state are real history
   export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:$WEB_PORT,http://127.0.0.1:$WEB_PORT}"
-  export FAUCET_PRIVATE_KEY=""                  # no faucet on a public network
+  export FAUCET_PRIVATE_KEY=""                  # the local anvil faucet never runs here; the drip uses TESTNET_FAUCET_PRIVATE_KEY
   mkdir -p "$COVENANT_DATA_DIR"
 }
 
@@ -186,7 +189,7 @@ say "installing packages (no-op when up to date)"
 pnpm --dir "$ROOT/server" install --frozen-lockfile --silent
 pnpm --dir "$ROOT/web" install --frozen-lockfile --silent
 
-say "server API on :$API_PORT (no faucet)"
+say "server API on :$API_PORT (tBNB drip $([ -n "${TESTNET_FAUCET_PRIVATE_KEY:-}" ] && echo "from $(cast wallet address "$TESTNET_FAUCET_PRIVATE_KEY")" || echo "off: no TESTNET_FAUCET_PRIVATE_KEY"))"
 start api "$ROOT/server" pnpm api
 wait_http "http://127.0.0.1:$API_PORT/health" api
 
@@ -215,7 +218,7 @@ status
 cat <<EOF
 
   Contracts:   $RECORD (verified on Sourcify), explorer https://testnet.bscscan.com
-  Test BNB:    https://www.bnbchain.org/en/testnet-faucet
+  Test BNB:    http://localhost:$WEB_PORT/app/settings/funds (drip), https://www.bnbchain.org/en/testnet-faucet
   Create:      http://localhost:$WEB_PORT/app/create (demo factory: minutes instead of days)
   Stop:        scripts/testnet-up.sh stop
 EOF

@@ -132,6 +132,11 @@ export const erc20Abi = parseAbi([
 export const taxTokenAbi = parseAbi([
   'function taxProcessor() view returns (address)',
   'function dispatch()',
+  // Flap's tax processor: balances it keeps for itself (not dispatched to the vault)
+  'function feeQuoteBalance() view returns (uint256)',
+  'function marketQuoteBalance() view returns (uint256)',
+  'function lpQuoteBalance() view returns (uint256)',
+  'function pendingDividendQuoteTokenBalance() view returns (uint256)',
 ]);
 
 /** ERC-8004 registries (docs/DESIGN.md "Optional contract changes"). */

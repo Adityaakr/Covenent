@@ -27,7 +27,7 @@ const DAY = 86_400;
 const STATE: Record<LiteView["state"], { label: string; tone: "good" | "bad" }> = { ACTIVE: { label: "Active", tone: "good" }, ABANDONED: { label: "Abandoned", tone: "bad" }, WOUND_DOWN: { label: "Wound down", tone: "bad" } };
 
 function LiteState({ s }: { s: LiteView["state"] }) {
-  return <span className={cx("badge", STATE[s].tone)}><span className="dot" />{STATE[s].label}</span>;
+  return <span className={cx("badge", STATE[s].tone)}>{STATE[s].label}</span>;
 }
 
 /* ---------- List ---------- */
@@ -141,7 +141,7 @@ export function LitePage({ vault }: { vault: string }) {
 
         <div className="grid-side" style={{ columnGap: 36 }}>
           <div className="card">
-            <div className="card-head ruled"><h2 className="h-card">{l.state === "ACTIVE" ? "Actions" : "Redeem pro rata"}</h2>{!wallet.address ? <span className="t-xs muted w5">Connect a wallet to act</span> : isFounder ? <span className="badge good"><span className="dot" />Founder connected</span> : null}</div>
+            <div className="card-head ruled"><h2 className="h-card">{l.state === "ACTIVE" ? "Actions" : "Redeem pro rata"}</h2>{!wallet.address ? <span className="t-xs muted w5">Connect a wallet to act</span> : isFounder ? <span className="badge good">Founder connected</span> : null}</div>
             <div className="card-body ruled stack">
               {l.pendingTax > 0 ? <button className="btn btn-secondary btn-block" disabled={busy !== null} onClick={() => void go("dispatch")}>{busy === "dispatch" ? <ThinkingMark size={15} /> : <Icon name="down" size={15} />}Dispatch pending tax to the vault</button> : null}
               {l.state === "ACTIVE" ? (

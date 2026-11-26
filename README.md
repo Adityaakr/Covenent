@@ -98,7 +98,7 @@ Terms are fixed at creation. Only the tap can change later, and only downwards.
 | Split | 60% sale, 15% pool, 25% team | Exit round, cooldown | 7 days, 14 days |
 | Team tranches | 5% at 2x, 10% at 4x, 10% at 8x | Exit fee | 1% (0 at wind-down) |
 | Raise | min 200 BNB, cap 500 BNB, 4-day sale | Heartbeat window | 45 days |
-| Trading tax | 1% buy, 1% sell, 30 days, all to the vault | Poke spacing | at least 1 hour |
+| Trading tax | 1% buy, 1% sell, 30 days, net of Flap's ~10% fee to the vault | Poke spacing | at least 1 hour |
 | Tap | $30,000 per 30 days, capped at 4% of the treasury | Most time one poke adds | 6 hours |
 | Cliff, unlock window | 6 months, 30 trusted days | Production pool-seed floor | 10 BNB |
 
@@ -171,6 +171,10 @@ flowchart LR
 
 The vault counts incoming BNB by balance delta. Tax and revenue raise book value. Tap claims and unlocks lower it.
 Redemptions leave it unchanged, or raise it slightly when the exit fee applies.
+
+Tax does not arrive per trade. Flap's tax processor accumulates it and forwards it in chunks once a threshold
+(about $500 worth) is reached, after Flap's protocol fee of about 10%. On BNB testnet, trading volume has not yet
+crossed that threshold, so no tax has reached a vault there.
 
 ## Architecture
 
@@ -264,6 +268,17 @@ claude mcp add covenant -- pnpm --dir /absolute/path/to/Covenent/server mcp
 }
 ```
 
+One command starts anvil (a BNB Chain fork with chain id 56 when a BNB RPC that serves older state answers, else the
+offline mock stack on 31337; `--fork` / `--mock` force one; a block every second), deploys every contract, deploys the
+local test funds (Demo USDC and a dUSDC/WBNB pool on the local PancakeSwap), and seeds a covenant at every stage by real
+transactions: abandoned by its agent, wound down by its team, ACTIVE with tax and tap, an exit round open, and a raise
+under way (recorded under `.seeded` in `contracts/deployments/local.json`). It then starts the server API on `:8787`,
+the keeper (pokes every 20 s with the local Atlas test signer), an issuer agent on each live covenant and the web app
+on http://localhost:8080 (`WEB_PORT` moves it; 8081-8083 and 8085 are also Privy origins; `--prod` serves a build).
+Every screen reads the chain or the server; there is no stand-in data. Settings, Test funds (`/app/settings/funds`)
+sends a connected wallet test BNB and Demo USDC on the dev chain (and swaps dUSDC to BNB on the local pool), or a
+0.003 tBNB drip on BNB testnet, once per wallet a day.
+
 For BNB testnet, set `COVENANT_DEPLOYMENTS` to `contracts/deployments/97.local.json`, which `scripts/testnet-up.sh`
 writes. Agents that read skills can use [server/mcp/SKILL.md](server/mcp/SKILL.md). The site serves
 [`/llms.txt`](web/public/llms.txt).
@@ -341,7 +356,7 @@ table is in [server/README.md](server/README.md#api-8787).
 
 | Integration | What Covenant uses it for | Status |
 |---|---|---|
-| **Flap Pool Launch** | Flap deploys the tax token, seeds the PancakeSwap pool at the sale price and asks our factory for the vault. Trading tax goes to the vault | Full run on BNB testnet, and on a BNB Chain fork |
+| **Flap Pool Launch** | Flap deploys the tax token, seeds the PancakeSwap pool at the sale price and asks our factory for the vault. Flap's tax processor forwards trading tax to the vault in ~$500 chunks, less a ~10% protocol fee | Full run on BNB testnet, and on a BNB Chain fork |
 | **PancakeSwap V2** | The price. `PairTwap` reads the pair's cumulative price, so a flash loan cannot move it | BNB testnet and fork |
 | **Atlas** | BNB/USD prices the dollar tap and the dollar unlock. Signed pull reports, or the testnet push feed | Live on BNB testnet (push feed) |
 | **CoinMarketCap** | DEX pair quotes, liquidity and candles for the covenant sheet, `get_market` and the simulator | Live, server-side key |
