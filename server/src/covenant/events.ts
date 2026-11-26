@@ -55,6 +55,7 @@ interface Cursor {
  */
 export class EventIndex {
   private cursors = new Map<string, Cursor>();
+  private inflight = new Map<string, Promise<void>>();
   private blockTimes = new Map<bigint, number>();
   constructor(
     private client: PublicClient,
@@ -64,12 +65,24 @@ export class EventIndex {
   ) {}
 
   async sync(sources: Source[]): Promise<void> {
-    const head = (await this.client.getBlockNumber()) - this.confirmations;
+    const head = (await this.client.getBlockNumber({ cacheTime: 0 })) - this.confirmations;
     await Promise.all(sources.map((s) => this.syncOne(s, head)));
   }
 
-  private async syncOne(s: Source, head: bigint) {
+  /** One sync per contract at a time, so overlapping requests never fetch a range twice. */
+  private async syncOne(s: Source, head: bigint): Promise<void> {
     const key = `${s.contract}:${s.address.toLowerCase()}`;
+    const prev = this.inflight.get(key) ?? Promise.resolve();
+    const run = prev.catch(() => undefined).then(() => this.syncRange(s, key, head));
+    this.inflight.set(key, run);
+    try {
+      await run;
+    } finally {
+      if (this.inflight.get(key) === run) this.inflight.delete(key);
+    }
+  }
+
+  private async syncRange(s: Source, key: string, head: bigint) {
     const cur = this.cursors.get(key) ?? { next: this.startBlock, events: [] };
     this.cursors.set(key, cur);
     while (cur.next <= head) {
