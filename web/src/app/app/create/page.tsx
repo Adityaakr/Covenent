@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "wagmi";
+import { FourLite } from "@/components/app/four-lite";
 import { Icon, type IconName } from "@/components/app/icons";
 import { BnbUnit, Meter, Note, Segmented, TokenAvatar, cx } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
@@ -17,6 +18,8 @@ import type { Address, Terms } from "@/lib/covenant/types";
 import { useSource } from "@/lib/data/hooks";
 import { bnb, bps, multiple, pct, price, tokens, usd } from "@/lib/format";
 import { ThinkingMark } from "@/components/app/mark";
+
+const subscribeHash = (cb: () => void) => { window.addEventListener("hashchange", cb); return () => window.removeEventListener("hashchange", cb); };
 
 type Mine = { state: "idle" | "mining" | "found"; tries: number; rate: number; salt?: `0x${string}`; address?: Address; ms?: number };
 
@@ -66,6 +69,11 @@ export default function CreatePage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const worker = useRef<Worker | null>(null);
+  // The venue: Flap (default) or Four.meme; /app/create#four opens the Four.meme path directly.
+  const hashFour = useSyncExternalStore(subscribeHash, () => window.location.hash === "#four", () => false);
+  const [venuePick, setVenuePick] = useState<"flap" | "four" | null>(null);
+  const venue = venuePick ?? (hashFour ? "four" : "flap");
+  const setVenue = (v: "flap" | "four") => { setVenuePick(v); try { history.replaceState(null, "", v === "four" ? "#four" : window.location.pathname); } catch { /* no history */ } };
   const [step, setStep] = useState(0);
   const [tried, setTried] = useState<number[]>([]);
   const set = <K extends keyof Terms>(k: K, val: Terms[K]) => setT((x) => ({ ...x, [k]: val }));
@@ -176,9 +184,16 @@ export default function CreatePage() {
           <h1 className="h-page">Write the covenant</h1>
           <p className="lede">Nothing can be edited later except lowering the tap.</p>
         </div>
-        <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}><span className="dot" />{src.mode === "live" ? "Creates on the local chain" : src.mode === "checking" ? "Checking the local chain" : "Offline: connect to create"}</span>
+        {venue === "flap" ? <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}><span className="dot" />{src.mode === "live" ? "Creates on the local chain" : src.mode === "checking" ? "Checking the local chain" : "Offline: connect to create"}</span> : null}
       </div>
 
+      <div className="choice venue" role="group" aria-label="Where to launch">
+        <button type="button" aria-pressed={venue === "flap"} onClick={() => setVenue("flap")}><span className="icon-tile accent"><Icon name="vault" size={17} /></span><span><b className="t-s ink" style={{ display: "block" }}>Flap Pool Launch</b><span className="t-xs muted w5">The full five rules: raise with refunds, vault, exit at book, unlocks, disclosure</span></span><span className="radio" /></button>
+        <button type="button" aria-pressed={venue === "four"} onClick={() => setVenue("four")}><span className="icon-tile"><Icon name="coins" size={17} /></span><span><b className="t-s ink" style={{ display: "block" }}>Four.meme tax token</b><span className="t-xs muted w5">Covenant Lite: a budget cap and the abandonment switch on the founder&apos;s tax</span></span><span className="radio" /></button>
+      </div>
+
+      {venue === "four" ? <FourLite /> : (
+        <>
       <nav className="steps" aria-label="Steps">
         {STEPS.map((s, k) => (
           <button key={s.title} type="button" className="step" data-state={k < step ? "done" : k === step ? "current" : "todo"} data-bad={k !== step && k < step && stepIssues(k).length > 0} aria-current={k === step ? "step" : undefined} onClick={() => setStep(k)}>
@@ -347,6 +362,8 @@ export default function CreatePage() {
           </div>
         </aside>
       </div>
+        </>
+      )}
     </main>
   );
 }

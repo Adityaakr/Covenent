@@ -18,10 +18,10 @@ export function useLive(): { live: boolean; checking: boolean; source: SourceSta
   return { live: source.mode === "live", checking: source.mode === "checking", source };
 }
 
-export function CopyCode({ text }: { text: string }) {
+export function CopyCode({ text, wrap }: { text: string; wrap?: boolean }) {
   const [done, setDone] = useState(false);
   return (
-    <span className="code">
+    <span className={wrap ? "code wrap" : "code"}>
       <span>{text}</span>
       <button type="button" aria-label={done ? "Copied" : "Copy command"} title={done ? "Copied" : "Copy"} onClick={() => { void navigator.clipboard?.writeText(text).then(() => { setDone(true); setTimeout(() => setDone(false), 1200); }); }}>
         <Icon name={done ? "check" : "copy"} size={13} />
