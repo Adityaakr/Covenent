@@ -122,7 +122,13 @@ fourmeme() {
   local B2; B2="$(cast wallet address --private-key "$buyer2")"
   local ROUTER WBNB TEMPLATE; ROUTER="$(jq -r .addresses.router "$C/deployments/local.json")"
   WBNB="$(jq -r .addresses.wbnb "$C/deployments/local.json")"; TEMPLATE="$(jq -r .addresses.liteVaultTemplate "$C/deployments/local.json")"
-  snd() { local k="$1"; shift; cast send --rpc-url "$RPC" --private-key "$k" "$@" >/dev/null; }
+  # cast send exits 0 even when the transaction reverts, so check the receipt. Gas is set, not estimated: the chain
+  # mines every second, and an estimate taken a block early falls short on the tax swap and the ForwardVault hop.
+  snd() {
+    local k="$1" st; shift
+    st="$(cast send --rpc-url "$RPC" --private-key "$k" --gas-limit 3000000 --json "$@" | jq -r .status)"
+    [ "$st" = "0x1" ] || { echo "transaction failed ($*)" >&2; exit 1; }
+  }
   # tap 4% per day-long period, 7-day heartbeat, 1% redeem fee: the template's own bounds allow nothing shorter
   vd="$(cast call --rpc-url "$RPC" "$L" 'encodeVaultData(address,uint16,uint32,uint32,uint16)(bytes)' "$TEMPLATE" 400 86400 604800 100)"
   say "Four.meme path: $name launches (tax 5%, founder tax to the Lite vault through ForwardVault)"

@@ -142,7 +142,8 @@ export function useLiteActions() {
     const chainId = src.chainId!;
     let hash: Hash;
     if (action === "dispatch") {
-      hash = await writeContract(config, { address: l.token, abi: TOKEN, functionName: "dispatch", chainId } as Parameters<typeof writeContract>[1]);
+      // explicit gas: the swap plus the ForwardVault hop can need more than an estimate taken a block earlier
+      hash = await writeContract(config, { address: l.token, abi: TOKEN, functionName: "dispatch", chainId, gas: 2_000_000n } as Parameters<typeof writeContract>[1]);
     } else if (action === "redeem") {
       const amount = parseEther(String(tokens ?? 0));
       const ah = await writeContract(config, { address: l.token, abi: TOKEN, functionName: "approve", args: [l.vault, amount], chainId } as Parameters<typeof writeContract>[1]);
