@@ -92,18 +92,20 @@ Covers are live HTML (`sections/usecases/Cover.tsx`), not images: the template's
 
 ## How it's built (integrations)
 
-Each line is checked against the code in this repository.
+Data: `web/src/landing/content/integrations.ts`, shown on the home diagram and the /features tiles. Checked against
+the integration branch (`fm/covenant-integrate`) on 26 Nov 2026. Nothing is deployed to a public network yet
+(`docs/DEPLOY.md`), so each status says how far the piece is proven.
 
-| Integration | What the page says | Where it is in the build |
+| Integration | What the page says | Where it is checked |
 | --- | --- | --- |
-| Flap Pool Launch | Flap creates the token, seeds the PancakeSwap pool at the sale price, hands reserved tokens to the vault through its Token Dock, routes trading tax to the vault | `contracts/src/launcher`, `contracts/src/flap` (Pool Launch bases, `ITokenDock` in `ILaunchVaultSpec.sol`); DESIGN.md "Launch sequence", "Tax flow" |
-| PancakeSwap | The pool, liquidity locked at launch; its time-weighted price is what the exit reads on-chain | DESIGN.md "Launch sequence" (the Portal seeds the V2 pool and locks the liquidity); `CovenantVault.sol` header: the exit reads the pool TWAP only |
-| Atlas | Signed BNB/USD for the dollar tap and unlocks, a trust gate for unlock counting, never needed for the exit. Status: local test signer until production keys | `contracts/src/oracle/CovenantOracle.sol`; README "Contracts": on the dev chain the signer is anvil account 9 |
-| CoinMarketCap | Live pair data on covenant sheets and the simulator | `server/` and `web/src/lib/api/server.ts` ("CoinMarketCap DEX API") |
-| Four.meme / OpenFour | The Covenant Lite tax-vault template | `contracts/src/openfour/CovenantLiteVault.sol` |
-| ERC-8004 | Identity bound to the team wallet; outcomes written to the reputation record | `contracts/src/agent/IERC8004.sol`; `CovenantVault.sol` calls `giveFeedback` inside try/catch |
-| Cournot | Planned: a market checks each report; the vault's verdict hook is built, the relayer is not wired | `CovenantVault.recordVerdict` (relayer fixed at creation); no Cournot relayer in the repo |
-| BNB Chain | Everything runs there; local fork today, testnet and mainnet next | README "Contracts", `docs/DEPLOY.md` |
+| Flap Pool Launch | `Portal.newLauncher` with our launcher factory; the launcher calls `Portal.launchTaxTokenV2` at finalize; the vault deposits reserved tokens through the TokenDockRouter; tax to the vault. Portal `0x000042108465206185A077Edc3F3fd2b49060000` and TokenDockRouter `0x000048E888aBf09f690a952E1b386b2D031a0000` (same on testnet and mainnet). Status: proven on a BNB Chain mainnet fork, waiting for Flap to enable our launcher on testnet | `contracts/src/launcher/CovenantLauncher.sol` (`finalize`, `launchTaxTokenV2`), `CovenantLauncherFactory.sol`, `CovenantVault.sol` (`ITokenDock.deposit`), `docs/DEPLOY.md` address table, `contracts/test/fork/Covenant.BSC.fork.t.sol` ("Nothing of theirs is mocked") |
+| PancakeSwap V2 | Each poke reads the pair's `price0CumulativeLast` / `price1CumulativeLast` and turns it into the time-weighted price since the vault's last poke; the exit reads only that and book value | `contracts/src/oracle/PairTwap.sol`, `CovenantOracle.sol` header ("trusted = the pool TWAP is valid. That is all the exit streak needs") |
+| Atlas | BNB/USD push feed on BNB testnet `0x3957d289ee9C38272377786787ea34F9dd29788D`: read on-chain on 26 Nov 2026, `decimals()` = 18, `description()` = "SingleFeed BNB/USD", `latestRoundData()` about $559.29, updated seconds before the call. CovenantOracle reads a Chainlink-compatible push feed passed at deployment (`ATLAS_PUSH_FEED`); signed pull reports are tried first when present; only strict observations (verified fresh BNB/USD and a pool at least half its seed) move the dollar rules; the exit never depends on it | `CovenantOracle.sol` (fallback ladder, strict gate), `contracts/script/Deploy.s.sol` (`ATLAS_PUSH_FEED`), BNB testnet RPC |
+| CoinMarketCap | `/v4/dex/pairs/quotes/latest` (quote, holders, security scan on the sheet), `/v1/k-line/candles` (price against book, simulator), `/v1/dex/liquidity-change/list` and `/v1/dex/tokens/transactions` (depth alerts, sellers in a round) | `server/src/api/cmc.ts` (`CMC_ROUTES`), `server/src/sim/main.ts` |
+| ERC-8004 | `IdentityRegistry.ownerOf(agentId)` must be the team wallet; `ReputationRegistry.giveFeedback` inside try/catch. Testnet identity `0x8004A818BFB912233c491871b3d84c89A494BD9e`, reputation `0x8004B663056A597Dffe9eCcC1965A193B7388713`; mainnet identity `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, reputation `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`. Proven on a mainnet fork against the live registries | DESIGN.md "Optional contract changes", `docs/DEPLOY.md`, `CovenantVault.sol`, the fork test |
+| Four.meme / OpenFour | ForwardVault (`0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4`, BNB Chain) clones CovenantLiteVault per token; settings fixed at creation; creation itself happens on Four.meme's site. Proven on a mainnet fork (the fork clones the live ForwardVault) | `contracts/src/openfour/CovenantLiteVault.sol`, `docs/DEPLOY.md`, integration commit "the Four.meme path end to end on the fork" |
+| Cournot | Planned: `recordVerdict` from the relayer fixed at creation exists; no Cournot relayer is wired | `CovenantVault.sol` |
+| BNB Chain | `Deploy.s.sol` targets 97 and 56 and refuses other chains; proven on a mainnet fork, testnet deployment next | `contracts/script/Deploy.s.sol`, `docs/DEPLOY.md` |
 
 ## Launch on Four.meme
 

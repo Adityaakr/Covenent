@@ -48,8 +48,10 @@ Six Feature Cards: Create, Raise, Settle and launch, Operate, Exit round, Unlock
 One covenant as a diagram on a white plate: the Covenant vault in the middle, each integration a pill node wired to
 it, the whole inside a dashed BNB Chain frame. The active node lights its wire (with a moving pulse and a label for
 what flows), and the card beside it says what the piece does in Covenant, what breaks without it, and its status
-(built on it, local test signer, planned). Hover, focus, click or the slow autoplay. Cournot is marked planned;
-Atlas runs on a local test signer until production keys.
+(Live API, Live on testnet, Proven on mainnet fork, Planned), with exactly how we use it (functions, endpoints)
+and its contract addresses as short BscScan links with a copy button. Hover, focus, click or the slow autoplay. The
+facts live in `content/integrations.ts` and also feed the /features integrations tiles. Atlas: the BNB/USD push
+feed on BNB testnet, which CovenantOracle takes at deployment; Cournot is planned.
 
 ## Use cases
 

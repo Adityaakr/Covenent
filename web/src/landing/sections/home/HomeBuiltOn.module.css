@@ -109,22 +109,29 @@
   background: var(--c-bg);
   box-shadow: inset 0 0 0 1px var(--c-border);
 }
-.detailInner { display: flex; flex-direction: column; gap: 22px; }
+.detailInner { display: flex; flex-direction: column; gap: 18px; }
 .detailHead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--c-border); }
 .detailLogo { height: 22px; width: auto; max-width: none; }
-.status {
-  flex-basis: 100%;
+.chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  margin-left: auto;
+  padding: 4px 9px;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--c-text-2);
+  white-space: nowrap;
 }
-.statusDot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-.status_live .statusDot { background: rgb(31, 157, 85); }
-.status_test .statusDot { background: #f0b90b; }
-.status_planned .statusDot { background: var(--c-text-2); }
+.statusDot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
+.chip_live { background: rgba(31, 157, 85, 0.1); color: rgb(24, 128, 69); }
+.chip_testnet { background: rgba(31, 157, 85, 0.1); color: rgb(24, 128, 69); }
+.chip_fork { background: rgba(43, 89, 255, 0.1); color: var(--c-accent); }
+.chip_planned { background: var(--c-surface); color: var(--c-text-2); }
+.statusText { flex-basis: 100%; }
+.how { display: flex; flex-direction: column; gap: 6px; }
+.how > li { position: relative; padding-left: 14px; color: var(--c-text); }
+.how > li::before { content: ""; position: absolute; left: 2px; top: 0.6em; width: 5px; height: 5px; border-radius: 50%; background: var(--c-border); }
 .block { display: flex; flex-direction: column; gap: 6px; }
 .dots { display: flex; gap: 6px; }
 .dot { width: 22px; height: 4px; border-radius: 2px; background: var(--c-border); transition: background-color 0.2s var(--ease-framer); }
