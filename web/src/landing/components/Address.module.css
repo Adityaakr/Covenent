@@ -26,3 +26,7 @@
   transition: background-color 0.2s var(--ease-framer), color 0.2s var(--ease-framer);
 }
 .copy:hover { background: var(--c-surface); color: var(--c-text); }
+/* Phone width: every label on its own line, so the rows read alike instead of wrapping one by one. */
+@media (max-width: 520px) {
+  .row { flex-direction: column; align-items: flex-start; gap: 4px; }
+}

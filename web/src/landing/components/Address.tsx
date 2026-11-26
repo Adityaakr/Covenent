@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
+import { short as shortAddress } from "@/lib/format";
 import { explorerUrl, type ChainAddress } from "../content/integrations";
 import s from "./Address.module.css";
 
 /** A contract address as a short BscScan link (testnet or mainnet) with a copy button. */
 export function Address({ a }: { a: ChainAddress }) {
   const [copied, setCopied] = useState(false);
-  const short = `${a.address.slice(0, 6)}…${a.address.slice(-4)}`;
+  const short = shortAddress(a.address);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(a.address);

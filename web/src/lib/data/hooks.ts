@@ -1,13 +1,13 @@
 "use client";
 
 /*
- * One source for every screen: the contracts named by contracts/deployments/local.json, read from the chain they
- * name. There is no stand-in data. When the deployment or the chain is not there, screens show an empty state and
+ * One source for every screen: the contracts named by the deployment file (contracts/deployments/local.json, or
+ * COVENANT_DEPLOYMENTS such as the BNB testnet record), read from the chain they name. There is no stand-in data. When the deployment or the chain is not there, screens show an empty state and
  * the app's status chip says why ("offline").
  */
 import { useQuery } from "@tanstack/react-query";
 import { createPublicClient, http, type PublicClient } from "viem";
-import { anvil, bscTestnet, LOCAL_RPC, makeLocalChain } from "@/lib/chain/chains";
+import { anvil, bscTestnet, chainName, LOCAL_RPC, makeLocalChain } from "@/lib/chain/chains";
 import { abiFor, addressOf, hasFn, launchersOf, type DeploymentPayload } from "@/lib/chain/deployment";
 import { readCovenant } from "@/lib/chain/reader";
 import type { Address, CovenantView } from "@/lib/covenant/types";
@@ -56,18 +56,24 @@ async function probe(): Promise<SourceStatus> {
     const id = await client.getChainId();
     if (id !== d.chainId) return { mode: "offline", reason: `RPC answers chain ${id}, deployment is for ${d.chainId}`, payload };
     const launchers = await discover(client, payload);
-    if (launchers.length === 0) return { mode: "offline", reason: "Deployment names no launcher yet", payload };
+    if (launchers.length === 0) {
+      // A real deployment with no covenant yet (BNB testnet before the first create) is live and empty.
+      const factory = addressOf(d, "demoLauncherFactory") ?? addressOf(d, "launcherFactory");
+      const fcode = factory ? await client.getCode({ address: factory }) : undefined;
+      if (fcode && fcode !== "0x") return { mode: "live", reason: `No covenant yet on chain ${id}`, payload, client, chainId: id, launchers };
+      return { mode: "offline", reason: "Deployment names no launcher yet", payload };
+    }
     const code = await client.getCode({ address: launchers[0]! });
-    if (!code || code === "0x") return { mode: "offline", reason: "Launcher has no code: the local chain was reset", payload };
+    if (!code || code === "0x") return { mode: "offline", reason: `Launcher has no code on ${chainName(d.chainId)}${d.chainId === 31337 || d.mode === "fork" ? ": the local chain was reset" : ""}`, payload };
     return { mode: "live", reason: `${launchers.length} covenant${launchers.length > 1 ? "s" : ""} on chain ${id}`, payload, client, chainId: id, launchers };
   } catch {
-    return { mode: "offline", reason: `Local chain not reachable at ${d.rpcUrl || LOCAL_RPC}`, payload };
+    return { mode: "offline", reason: `${chainName(d.chainId)} not reachable at ${d.rpcUrl || LOCAL_RPC}`, payload };
   }
 }
 
 export function useSource(): SourceStatus {
   const q = useQuery({ queryKey: ["source"], queryFn: probe, refetchInterval: 15_000, staleTime: 10_000 });
-  return q.data ?? { mode: "checking", reason: "Checking for a local deployment" };
+  return q.data ?? { mode: "checking", reason: "Checking for the deployment" };
 }
 
 function useLiveCovenants(src: SourceStatus, account?: Address) {

@@ -8,7 +8,6 @@ import { HomeBuiltOn } from "../sections/home/HomeBuiltOn";
 import { HomeAgentLayer } from "../sections/home/HomeAgentLayer";
 import { HomeUseCases } from "../sections/home/HomeUseCases";
 import { HomeFourMeme } from "../sections/home/HomeFourMeme";
-import { HomeQuote } from "../sections/home/HomeQuote";
 import { HomePriorArt } from "../sections/home/HomePriorArt";
 import { HomeClosingCTA } from "../sections/home/HomeClosingCTA";
 
@@ -27,7 +26,6 @@ export function Landing() {
       <HomeAgentLayer />
       <HomeUseCases />
       <HomeFourMeme />
-      <HomeQuote />
       <HomePriorArt />
       <HomeClosingCTA />
     </SiteLayout>

@@ -9,7 +9,7 @@ import { settleRaise } from "@/lib/covenant/math";
 import { DAY, date, dateTime, duration, relative, span } from "@/lib/covenant/time";
 import type { CovenantView, FeedEvent, LedgerKind } from "@/lib/covenant/types";
 import { useActions } from "@/lib/data/actions";
-import { bnb, bps, multiple, pct, price, signedPct, tokens, usd } from "@/lib/format";
+import { bnb, bps, multiple, pct, price, short, signedPct, tokens, usd } from "@/lib/format";
 import { BookTrend, PriceBookChart, Sparkline } from "./chart";
 import { ConfirmAction } from "./confirm";
 import { Icon, type IconName } from "./icons";
@@ -750,7 +750,7 @@ const EVT: Record<string, { tone: string; icon: IconName }> = {
 };
 export function eventStyle(name: string) { return EVT[name] ?? { tone: "", icon: "activity" as IconName }; }
 /** Event details with full addresses and hashes shortened, so a line reads at a glance. */
-export function tidyDetail(s: string) { return s.replace(/0x[0-9a-fA-F]{40,64}/g, (a) => `${a.slice(0, 6)}…${a.slice(-4)}`); }
+export function tidyDetail(s: string) { return s.replace(/0x[0-9a-fA-F]{40,64}/g, (a) => short(a)); }
 
 export function EventFeed({ v, limit = 10 }: { v: CovenantView; limit?: number }) {
   const shown: FeedEvent[] = [];

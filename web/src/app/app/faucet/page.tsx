@@ -6,7 +6,7 @@ import { Icon } from "@/components/app/icons";
 import { ConnectChain, CopyCode } from "@/components/app/live";
 import { Addr, Note, Skeleton, Ticker, TokenAvatar, cx } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
-import { chainName } from "@/lib/chain/chains";
+import { TESTNET_FAUCET, chainName } from "@/lib/chain/chains";
 import { useSource } from "@/lib/data/hooks";
 import { requestFunds, useBalances, useFaucetStatus, useSwap } from "@/lib/data/faucet";
 import { short } from "@/lib/format";
@@ -19,6 +19,7 @@ import { ThinkingMark } from "@/components/app/mark";
  */
 export default function FaucetPage() {
   const src = useSource();
+  if (src.chainId === 97) return <TestnetFunds />;
   return (
     <main className="page">
       <div className="sec-head">
@@ -29,6 +30,44 @@ export default function FaucetPage() {
         </div>
       </div>
       {src.mode === "live" ? <Funds /> : <ConnectChain source={src} />}
+    </main>
+  );
+}
+
+/** BNB testnet: no dev faucet and no Demo USDC. Test BNB comes from BNB Chain's own faucet. */
+function TestnetFunds() {
+  const src = useSource();
+  const wallet = useWallet();
+  const bal = useQuery({
+    queryKey: ["testnet-balance", wallet.address],
+    enabled: Boolean(src.client && wallet.address),
+    refetchInterval: 6_000,
+    queryFn: async () => Number(await src.client!.getBalance({ address: wallet.address! })) / 1e18,
+  });
+  return (
+    <main className="page">
+      <div className="sec-head">
+        <div className="stack-sm" style={{ display: "grid", maxWidth: 700 }}>
+          <span className="eyebrow">BNB testnet · test BNB</span>
+          <h1 className="h-page">Get test BNB</h1>
+          <p className="lede">This app is on BNB Smart Chain Testnet (chain 97), so test BNB comes from BNB Chain&apos;s own faucet, not from Covenant. Paste your wallet address there, then come back to commit to a raise.</p>
+        </div>
+      </div>
+      <div className="card" style={{ maxWidth: 700 }}>
+        <div className="card-head"><h2 className="h-card">Your wallet on BNB testnet</h2></div>
+        <div style={{ display: "grid", gap: 14, padding: "0 var(--pad, 20px) var(--pad, 20px)" }}>
+          {wallet.address ? (
+            <div className="row between wrap-ok" style={{ gap: 12 }}>
+              <Addr a={wallet.address} chainId={97} />
+              <span className="mono ink">{bal.data === undefined ? "–" : `${bal.data.toLocaleString("en-US", { maximumFractionDigits: 4 })} tBNB`}</span>
+            </div>
+          ) : (
+            <button className="btn btn-secondary" onClick={() => wallet.connect()}><Icon name="wallet" size={15} />Connect a wallet</button>
+          )}
+          <a className="btn btn-primary" href={TESTNET_FAUCET} target="_blank" rel="noreferrer"><Icon name="drop" size={15} />Open the BNB testnet faucet</a>
+          <p className="t-xs muted w5">{withBnb(chainName(97))} · faucet at bnbchain.org</p>
+        </div>
+      </div>
     </main>
   );
 }

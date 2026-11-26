@@ -45,9 +45,18 @@ export function bps(n: number): string {
   return `${(n / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
 }
 
+/**
+ * An address or hash cut to its ends. A vanity run at either end (Flap's 0x00004210…49060000) is kept whole plus four
+ * more characters, so the part that tells two addresses apart is never cut away and 0x0000…0000 never shows.
+ */
 export function short(a?: string, left = 6, right = 4): string {
   if (!a) return "–";
-  return a.length > left + right + 1 ? `${a.slice(0, left)}…${a.slice(-right)}` : a;
+  const pre = a.startsWith("0x") ? 2 : 0;
+  const lead = /^(.)\1{2,}/.exec(a.slice(pre))?.[0].length ?? 0;
+  const trail = /(.)\1{2,}$/.exec(a)?.[0].length ?? 0;
+  const l = lead ? Math.max(left, pre + lead + 4) : left;
+  const r = trail ? Math.max(right, trail + 4) : right;
+  return a.length > l + r + 1 ? `${a.slice(0, l)}…${a.slice(-r)}` : a;
 }
 
 export function multiple(m100: number): string {

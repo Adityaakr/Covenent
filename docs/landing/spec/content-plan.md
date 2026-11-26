@@ -75,8 +75,6 @@ and do not say thin pools freeze it.
   is a covenant term from DESIGN.md (4% tap cap, 60% starting floor, 3 trusted days, 45 days heartbeat, 7 day round,
   ~6% OpenFour royalty), and a quote that is a "Jobs to be done" line or a pitch line from DESIGN.md, attributed to
   the role ("Job to be done · Team"), never to a person.
-- Quote section: "ClawPump lets an agent launch a token. Covenant lets an agent raise a budget it can be held to."
-  attribution "Covenant · Agent layer".
 - Pricing preview -> "How it is paid for" (DESIGN.md "Business model"): Buyers $0, Teams $0 (no raise fee in v1),
   Flap commission (paid from Flap's protocol fee, rate to confirm), OpenFour royalty about 6% of founder tax receipts.
 - FAQ: six "Hard questions" from DESIGN.md (MetaDAO, why accept limits, draining the treasury, floor worth, whale
