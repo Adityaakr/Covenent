@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config as loadDotenv } from 'dotenv';
 import { getAddress, isAddress, type Address, type Hex } from 'viem';
+import { isLoopbackRpc } from './chain.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** server/ */
@@ -170,6 +171,8 @@ export interface ServerConfig {
   identityRegistry?: Address;
   reputationRegistry?: Address;
   covenantVaultFactory?: Address;
+  /** every vault factory of the deployment (production and demo): the provenance check for a vault address */
+  vaultFactories: Address[];
   /** CovenantLens, when deployed */
   lens?: Address;
   /** launcher factories whose launchers are covenants (discovered on every list) */
@@ -264,6 +267,13 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
       ),
     ],
     covenantVaultFactory: addrEnv('COVENANT_VAULT_FACTORY') ?? deploymentAddress(deployments, 'vaultFactory', 'CovenantVaultFactory'),
+    vaultFactories: [
+      ...new Set(
+        [addrEnv('COVENANT_VAULT_FACTORY'), deploymentAddress(deployments, 'vaultFactory', 'CovenantVaultFactory'), deploymentAddress(deployments, 'demoVaultFactory')].filter(
+          (a): a is Address => !!a,
+        ),
+      ),
+    ],
     startBlock: BigInt(env('START_BLOCK') ?? deployments?.startBlock ?? firstLocalBlock(deployments)),
     apiPort,
     apiBaseUrl: env('API_BASE_URL') ?? `http://127.0.0.1:${apiPort}`,
@@ -276,7 +286,9 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
       // BNB testnet has an Atlas BNB/USD push feed (contracts/config/atlas-97.json); there the oracle reads it and
       // the local test signer, which no real oracle accepts, is never used.
       pushFeed: addrEnv('ATLAS_PUSH_FEED') ?? (chainIdFor(deployments) === 97 ? TESTNET_ATLAS_PUSH_BNB_USD : undefined),
-      localSignerAllowed: chainIdFor(deployments) !== 97,
+      // The anvil test signer is only ever trusted by a local chain's oracle: never on BNB testnet, and never through a
+      // non-loopback RPC (BNB Chain mainnet's oracle trusts Atlas's signer only).
+      localSignerAllowed: chainIdFor(deployments) !== 97 && isLoopbackRpc(env('RPC_URL') ?? deployments?.rpcUrl ?? 'http://127.0.0.1:8545'),
     },
     cmc: { apiKey: env('CMC_API_KEY'), baseUrl: env('CMC_BASE_URL') ?? 'https://pro-api.coinmarketcap.com' },
     anthropic: { apiKey: env('ANTHROPIC_API_KEY'), model: env('ANTHROPIC_MODEL') ?? 'claude-opus-5-5' },

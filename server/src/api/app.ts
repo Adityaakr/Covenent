@@ -6,10 +6,10 @@ import { getAddress, isAddress, parseEther, type Address } from 'viem';
 import { fetchBnbUsdReport, NoPullReport } from '../atlas/report.js';
 import type { ServerConfig } from '../config.js';
 import { downside } from '../covenant/downside.js';
-import { CovenantService } from '../covenant/read.js';
+import { CovenantService, UnverifiedCovenantError } from '../covenant/read.js';
 import { TxBuilder } from '../covenant/tx.js';
 import { readAlerts } from '../keeper/alerts.js';
-import { assertValueWithinCap, RateLimiter, redactUrl } from '../safety.js';
+import { assertValueWithinCap, boundedSet, callerAddress, RateLimiter, redactSecrets, redactUrl } from '../safety.js';
 import type { CovenantSheet, Health, PokeReport, SimulatorResult } from '../schema.js';
 import { CMC_ROUTES, CmcClient } from './cmc.js';
 import { Faucet, FaucetError } from './faucet.js';
@@ -51,12 +51,9 @@ function bigintQuery(c: Context, name: string, opts: { ether?: boolean } = {}): 
  * behind a proxy that sets it (FAUCET_TRUST_PROXY=1; otherwise the header is ignored, since anyone can send it).
  */
 function clientIp(c: Context): string | undefined {
-  if (process.env.FAUCET_TRUST_PROXY === '1') {
-    const fwd = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
-    if (fwd) return fwd;
-  }
   const env = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;
-  return env?.incoming?.socket?.remoteAddress ?? undefined;
+  const ip = callerAddress(c.req.header('x-forwarded-for'), env?.incoming?.socket?.remoteAddress, process.env.FAUCET_TRUST_PROXY === '1');
+  return ip === 'unknown' ? undefined : ip;
 }
 
 export function createApp(deps: AppDeps) {
@@ -69,7 +66,7 @@ export function createApp(deps: AppDeps) {
     const hit = sheetCache.get(vault);
     if (!fresh && hit && Date.now() - hit.at < 2_000) return hit.value;
     const value = svc.sheet(vault);
-    sheetCache.set(vault, { at: Date.now(), value });
+    boundedSet(sheetCache, vault, { at: Date.now(), value }, 500);
     value.catch(() => sheetCache.delete(vault));
     return value;
   };
@@ -90,10 +87,15 @@ export function createApp(deps: AppDeps) {
   const fourmeme = new FourMeme(cfg, svc.client);
   const app = new Hono();
   app.use('*', cors({ origin: (o) => (cfg.corsOrigins.includes('*') || cfg.corsOrigins.includes(o) ? o : null) }));
+  let errorSeq = 0;
   app.onError((err, c) => {
     if (err instanceof HttpError) return c.json({ error: err.message }, err.status as 400);
     if (err instanceof FaucetError) return c.json({ error: err.message, ...err.extra }, err.status as 400);
-    return c.json({ error: 'internal error', detail: err.message }, 500);
+    if (err instanceof UnverifiedCovenantError) return c.json({ error: err.message }, 404);
+    // Upstream messages carry RPC URLs (API keys included) and request bodies: log them here, redacted, never return them.
+    const id = `${Date.now().toString(36)}-${(++errorSeq).toString(36)}`;
+    console.error(`[api] ${id} ${c.req.method} ${c.req.path}: ${redactSecrets(err.message).split('\n')[0]}`);
+    return c.json({ error: 'internal error', id }, 500);
   });
 
   app.get('/health', async (c) => {
@@ -141,14 +143,31 @@ export function createApp(deps: AppDeps) {
   });
 
   /** Unsigned transactions for the web (or any wallet). Nothing is signed server-side. */
+  // Every API route: a general per-IP limit (API_RATE_PER_MIN, default 300/min); the tx and report routes get a tighter one.
+  const apiLimiter = new RateLimiter(Number(process.env.API_RATE_PER_MIN ?? 300));
+  app.use('/api/*', async (c, next) => {
+    const r = apiLimiter.take(clientIp(c) ?? 'unknown');
+    if (!r.ok) {
+      c.header('retry-after', String(r.retryAfterSeconds));
+      return c.json({ error: `rate limited: retry in ${r.retryAfterSeconds} s` }, 429);
+    }
+    await next();
+  });
   app.use('/api/covenants/:vault/tx/*', limitTx);
   app.use('/api/poke-report', limitTx);
   app.use('/poke-report', limitTx);
   app.get('/api/covenants/:vault/tx/:action', async (c) => {
-    const vault = vaultParam(c);
+    // Any covenant address (vault, token, launcher, pool), provenance-checked: no transaction is built for a contract
+    // the deployment's factories did not create. A raise that has not launched has only its launcher.
+    const r = await svc.resolve(vaultParam(c));
     const action = c.req.param('action');
     const holder = c.req.query('from');
     const from = holder && isAddress(holder) ? getAddress(holder) : undefined;
+    const raiseActions = ['commit', 'claim-refund', 'finalize'];
+    if (!raiseActions.includes(action) && !r.vault) throw new HttpError(409, `${action}: this raise has not launched, so there is no vault yet`);
+    if (raiseActions.includes(action) && !r.launcher) throw new HttpError(409, `${action}: no launcher is known for this covenant`);
+    const vault = r.vault as Address;
+    const launcher = { launcher: r.launcher ?? undefined };
     switch (action) {
       case 'commit': {
         const amount = bigintQuery(c, 'amount', { ether: true });
@@ -158,12 +177,12 @@ export function createApp(deps: AppDeps) {
         } catch (e) {
           throw new HttpError(400, (e as Error).message);
         }
-        return c.json(await txb.commit({ vault }, amount));
+        return c.json(await txb.commit(launcher, amount));
       }
       case 'claim-refund':
-        return c.json(await txb.claimRefund({ vault }));
+        return c.json(await txb.claimRefund(launcher));
       case 'finalize':
-        return c.json(await txb.finalize({ vault }));
+        return c.json(await txb.finalize(launcher));
       case 'release-team':
         return c.json(txb.releaseTeam(vault));
       case 'claim-tokens':
@@ -189,13 +208,20 @@ export function createApp(deps: AppDeps) {
     }
   });
 
+  let reportCache: { at: number; value: ReturnType<typeof fetchBnbUsdReport> } | null = null;
   /** Signed BNB/USD report for the web's poke button; with ?vault= it also returns the full poke tx. */
   const pokeReport = async (c: Context) => {
     const v = c.req.query('vault');
     if (v && !isAddress(v)) throw new HttpError(400, 'vault must be a 0x address');
     let rep;
     try {
-      rep = await fetchBnbUsdReport(cfg.atlas, svc.client);
+      // A signed report is valid for about 180 s: reuse one for 60 s instead of spending the Atlas key per request.
+      if (!reportCache || Date.now() - reportCache.at > 60_000) {
+        const value = fetchBnbUsdReport(cfg.atlas, svc.client);
+        reportCache = { at: Date.now(), value };
+        value.catch(() => (reportCache = null));
+      }
+      rep = await reportCache.value;
     } catch (e) {
       // No pull report to attach (BNB testnet without an Atlas key): a plain poke reads the oracle's push feed.
       if (e instanceof NoPullReport) return c.json({ error: e.message, mode: 'push-feed', pushFeed: cfg.atlas.pushFeed ?? null }, 409);

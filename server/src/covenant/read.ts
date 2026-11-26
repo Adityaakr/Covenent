@@ -18,6 +18,26 @@ import { sanitizeText } from '../safety.js';
 
 const LAUNCHER_STATES = ['RAISING', 'FAILED', 'LAUNCHED'] as const;
 
+const VAULT_FACTORY_ABI = [
+  { type: 'function', name: 'launcherOf', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'allVaults', stateMutability: 'view', inputs: [], outputs: [{ type: 'address[]' }] },
+] as const;
+const LAUNCHER_FACTORY_ABI = [
+  { type: 'function', name: 'isLauncher', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'bool' }] },
+] as const;
+
+/** An address no deployment record, factory discovery or factory check vouches for. */
+export class UnverifiedCovenantError extends Error {
+  constructor(
+    readonly address: Address,
+    chainId: number,
+  ) {
+    super(
+      `${address} is not a Covenant vault, token, launcher or pool on chain ${chainId}: no Covenant factory of this deployment created it (it may be a contract posing as one)`,
+    );
+  }
+}
+
 /** A covenant found from any of its addresses. `vault` is null while the raise has not launched. */
 export interface ResolvedCovenant {
   vault: Address | null;
@@ -181,6 +201,68 @@ export class CovenantService {
     return hit ?? { vault: getAddress(vault) };
   }
 
+  /**
+   * The covenant for a vault address, only when its provenance checks out: listed in the deployment record (or
+   * COVENANT_VAULTS), found by factory discovery, or confirmed on chain by one of the deployment's vault factories
+   * (`launcherOf(vault) != 0`). Anything else is refused, so a contract posing as a vault never gets a sheet, a
+   * transaction builder or a place in the reputation filter.
+   */
+  async known(vault: string): Promise<CovenantRef> {
+    if (!isAddress(vault)) throw new Error(`not an address: ${vault}`);
+    const a = getAddress(vault);
+    const hit = this.refs.get(a.toLowerCase());
+    if (hit) return hit;
+    const launcher = await this.factoryLauncherOf(a);
+    if (launcher) {
+      this.addCovenant({ vault: a, launcher });
+      return this.refs.get(a.toLowerCase())!;
+    }
+    await this.discover().catch(() => undefined);
+    const found = this.refs.get(a.toLowerCase());
+    if (found) return found;
+    throw new UnverifiedCovenantError(a, this.cfg.chainId);
+  }
+
+  private provenance = new Map<string, Promise<Address | null>>();
+
+  /** CovenantVaultFactory.launcherOf(vault) across the deployment's vault factories (cached, bounded). */
+  private factoryLauncherOf(vault: Address): Promise<Address | null> {
+    const k = vault.toLowerCase();
+    const cached = this.provenance.get(k);
+    if (cached) return cached;
+    const p = (async () => {
+      for (const f of this.cfg.vaultFactories ?? []) {
+        const l = await this.client.readContract({ address: f, abi: VAULT_FACTORY_ABI, functionName: 'launcherOf', args: [vault] }).catch(() => null);
+        if (l && l !== zeroAddress) return getAddress(l);
+      }
+      return null;
+    })();
+    if (this.provenance.size >= 1000) this.provenance.delete(this.provenance.keys().next().value!);
+    this.provenance.set(k, p);
+    p.catch(() => this.provenance.delete(k));
+    return p;
+  }
+
+  /** CovenantLauncherFactory.isLauncher(address) across the deployment's launcher factories. */
+  async isFactoryLauncher(a: Address): Promise<boolean> {
+    for (const f of this.cfg.launcherFactories ?? []) {
+      const ok = await this.client.readContract({ address: f, abi: LAUNCHER_FACTORY_ABI, functionName: 'isLauncher', args: [a] }).catch(() => false);
+      if (ok) return true;
+    }
+    return false;
+  }
+
+  /** Vaults the reputation summary counts: every vault our factories created, else the verified registry. */
+  async reputationClients(): Promise<Address[]> {
+    const out = new Set<Address>();
+    for (const f of this.cfg.vaultFactories ?? []) {
+      const all = await this.client.readContract({ address: f, abi: VAULT_FACTORY_ABI, functionName: 'allVaults' }).catch(() => [] as readonly Address[]);
+      for (const v of all) out.add(getAddress(v));
+    }
+    if (!out.size) for (const c of this.covenants()) out.add(c.vault);
+    return [...out];
+  }
+
   async chainNow(): Promise<{ timestamp: number; blockNumber: bigint }> {
     const b = await this.client.getBlock({ blockTag: 'latest' });
     return { timestamp: Number(b.timestamp), blockNumber: b.number! };
@@ -202,7 +284,7 @@ export class CovenantService {
 
   /** Read everything the covenant sheet shows. */
   async sheet(vaultAddr: string): Promise<CovenantSheet> {
-    const ref = this.ref(vaultAddr);
+    const ref = await this.known(vaultAddr);
     const v = new Reader(this.client, ref.vault, this.abis.vault, 'vault');
     const [now, , treasury] = await Promise.all([
       this.chainNow(),
@@ -234,7 +316,8 @@ export class CovenantService {
 
     const token = (r.token as Address | null) ?? ref.token ?? null;
     const launcher = (r.launcher as Address | null) ?? ref.launcher ?? null;
-    if (launcher && launcher !== zeroAddress && !ref.launcher) this.addCovenant({ vault: ref.vault, launcher });
+    // only an already verified entry is completed here; reads never add covenants (provenance: discover/verify)
+    if (launcher && launcher !== zeroAddress && !ref.launcher && this.refs.has(ref.vault.toLowerCase())) this.addCovenant({ vault: ref.vault, launcher });
     const pair = (r.pair as Address | null) ?? ref.pair ?? null;
 
     // token and pool
@@ -422,7 +505,7 @@ export class CovenantService {
   }
 
   async history(vault: string): Promise<History> {
-    const ref = this.ref(vault);
+    const ref = await this.known(vault);
     await this.syncEvents(ref);
     const ev = this.index.events(ref.vault, 'vault');
     const points = ev
@@ -488,7 +571,7 @@ export class CovenantService {
     }
     if (this.cfg.reputationRegistry) {
       // Count only feedback written by covenant vaults we know (ERC-8004 warns unfiltered summaries invite spam).
-      const clients = this.covenants().map((c) => c.vault);
+      const clients = await this.reputationClients();
       try {
         const [count, value, decimals] = await this.client.readContract({
           address: this.cfg.reputationRegistry,
@@ -534,26 +617,20 @@ export class CovenantService {
       hit = this.findRef(a);
     }
     if (hit) return { vault: hit.vault, launcher: hit.launcher ?? null, token: hit.token ?? null, pair: hit.pair ?? null, matchedAs: matchedAs(hit, a) };
-    // not discovered: ask the address itself what it is
-    const vaultOfLauncher = await this.tryRead<Address>(a, this.abis.launcher, 'vault');
-    const launcherState = await this.tryRead<number | bigint>(a, this.abis.launcher, 'state');
-    const saleDeadline = await this.tryRead(a, this.abis.launcher, hasFunction(this.abis.launcher, 'saleDeadline') ? 'saleDeadline' : 'deadline');
-    if (launcherState !== null && saleDeadline !== null) {
-      const vault = vaultOfLauncher && vaultOfLauncher !== zeroAddress ? getAddress(vaultOfLauncher) : null;
-      if (vault) this.addCovenant({ vault, launcher: a });
+    // not discovered: only our factories can vouch for it
+    const launcherOf = await this.factoryLauncherOf(a);
+    if (launcherOf) {
+      this.addCovenant({ vault: a, launcher: launcherOf });
+      return { vault: a, launcher: launcherOf, token: null, pair: null, matchedAs: 'vault' };
+    }
+    if (await this.isFactoryLauncher(a)) {
+      const vault = await this.tryRead<Address>(a, this.abis.launcher, 'vault');
       const token = await this.tryRead<Address>(a, this.abis.launcher, 'token');
-      return { vault, launcher: a, token: token && token !== zeroAddress ? getAddress(token) : null, pair: null, matchedAs: 'launcher' };
+      const v = vault && vault !== zeroAddress ? getAddress(vault) : null;
+      if (v) this.addCovenant({ vault: v, launcher: a });
+      return { vault: v, launcher: a, token: token && token !== zeroAddress ? getAddress(token) : null, pair: null, matchedAs: 'launcher' };
     }
-    const launcherOfVault = await this.tryRead<Address>(a, this.abis.vault, 'launcher');
-    const team = await this.tryRead<Address>(a, this.abis.vault, 'teamWallet');
-    if (launcherOfVault !== null && team !== null) {
-      const launcher = launcherOfVault !== zeroAddress ? getAddress(launcherOfVault) : null;
-      this.addCovenant({ vault: a, launcher: launcher ?? undefined });
-      return { vault: a, launcher, token: null, pair: null, matchedAs: 'vault' };
-    }
-    throw new Error(
-      `${a} is not a Covenant vault, token, launcher or pool on chain ${this.cfg.chainId} (checked the deployment's launcher factories and the address itself)`,
-    );
+    throw new UnverifiedCovenantError(a, this.cfg.chainId);
   }
 
   /** Launchers from the deployment's factories that have not launched: open raises, and failed ones with refunds. */

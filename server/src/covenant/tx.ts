@@ -1,4 +1,4 @@
-import { encodeFunctionData, formatEther, getAddress, maxUint256, type Abi, type Address, type Hex } from 'viem';
+import { encodeFunctionData, formatEther, getAddress, type Abi, type Address, type Hex } from 'viem';
 import { erc20Abi } from '../abi/index.js';
 import { pokeCalldata, type AtlasReport } from '../atlas/report.js';
 import type { UnsignedTx } from '../schema.js';
@@ -91,11 +91,12 @@ export class TxBuilder {
         prerequisites.push({
           chainId: this.svc.cfg.chainId,
           to: s.token,
-          data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [s.vault, maxUint256] }),
+          // exactly the amount: never an unlimited allowance to a (beacon-upgradeable) vault
+          data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [s.vault, amount] }),
           value: '0',
           from: holder,
           functionName: 'approve',
-          description: 'Approve the vault to take the tokens you redeem (they are sent to the burn address).',
+          description: `Approve the vault to take exactly the ${formatEther(amount)} tokens you redeem (they are sent to the burn address).`,
         });
       }
     }
