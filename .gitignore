@@ -7,3 +7,4 @@ broadcast/
 .next/
 dist/
 .dev/
+contracts/foundry.lock
