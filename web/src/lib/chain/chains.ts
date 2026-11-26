@@ -16,10 +16,10 @@ export function makeLocalChain(info: LocalChainInfo) {
   const rpc = info.rpcUrl || LOCAL_RPC;
   return defineChain({
     id: info.id,
-    name: info.id === 97 ? "BNB Smart Chain Testnet" : info.id === 56 ? "BNB Chain fork (local)" : info.id === 31337 ? "Anvil (local)" : `Local chain ${info.id}`,
+    name: info.id === 97 ? "BNB Smart Chain Testnet" : info.id === 56 ? (isLoopback(rpc) ? "BNB Chain fork (local)" : "BNB Smart Chain") : info.id === 31337 ? "Anvil (local)" : `Local chain ${info.id}`,
     nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
     rpcUrls: { default: { http: [rpc] }, privyWalletOverride: { http: [rpc] } },
-    testnet: true,
+    testnet: info.id !== 56 || isLoopback(rpc),
   });
 }
 
@@ -60,8 +60,34 @@ export function explorerAddress(chainId: number, a: string): string | null {
 }
 
 export function chainName(id: number): string {
-  if (isLocal(id)) return id === 56 ? "BNB fork (local)" : id === 31337 ? "Anvil 31337" : `Local ${id}`;
-  return id === 31337 ? "Anvil 31337" : id === 97 ? "BSC testnet" : id === 56 ? "BNB Chain" : `Chain ${id}`;
+  if (isLocal(id)) return id === 56 ? "BNB fork (local)" : id === 31337 ? "Anvil (local)" : `Local chain ${id}`;
+  return id === 31337 ? "Anvil (local)" : id === 97 ? "BNB testnet" : id === 56 ? "BNB Chain" : `Chain ${id}`;
+}
+
+export type NetworkKind = "local" | "testnet" | "mainnet" | "other";
+
+/** What the configured chain is: a node on this machine (anvil, a BNB fork), BNB testnet or BNB Chain. */
+export function networkKind(id: number | undefined): NetworkKind {
+  if (id === undefined || isLocal(id)) return "local";
+  return id === 97 ? "testnet" : id === 56 ? "mainnet" : "other";
+}
+
+/** Where test BNB comes from: the dev stack's faucet page locally, BNB Chain's faucet on testnet, none on mainnet. */
+export function faucetFor(id: number | undefined): { href: string; label: string; external: boolean } | null {
+  const k = networkKind(id);
+  if (k === "local") return { href: "/app/faucet", label: "Get test funds", external: false };
+  if (k === "testnet") return { href: TESTNET_FAUCET, label: "BNB testnet faucet", external: true };
+  return null;
+}
+
+/** anvil's public test accounts are offered only when the configured chain is a node on this machine. */
+export function localAccountsAllowed(): boolean {
+  return localIsLoopback && (anvil.id === 31337 || anvil.id === 56);
+}
+
+/** The command that starts the stack for the configured chain. */
+export function stackCommand(id: number | undefined): string {
+  return networkKind(id) === "testnet" ? "scripts/testnet-up.sh" : "scripts/dev-all.sh";
 }
 
 /** anvil's well-known, publicly documented unlocked test accounts (not secrets). #1 is the doc's 14 BNB buyer. */

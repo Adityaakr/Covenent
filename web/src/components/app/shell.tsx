@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useSwitchChain } from "wagmi";
 import { privyOriginAllowed, useWallet } from "@/components/providers";
-import { ANVIL_ACCOUNTS, ANVIL_ROLES, TESTNET_FAUCET, anvil, chainName, explorerTx } from "@/lib/chain/chains";
+import { ANVIL_ACCOUNTS, ANVIL_ROLES, anvil, chainName, explorerTx, faucetFor } from "@/lib/chain/chains";
 import { useCovenants, useSource } from "@/lib/data/hooks";
 import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
@@ -98,10 +98,10 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
         );
       })}
       <div className="sb-label">Tools</div>
-      {TOOLS.map((n) => n.href === "/app/faucet" && source.chainId === 97 ? (
-        // BNB testnet: test BNB comes from BNB Chain's faucet, not from the dev stack
-        <a key={n.href} href={TESTNET_FAUCET} target="_blank" rel="noreferrer" className="sb-item" title="BNB testnet faucet (bnbchain.org)">
-          <Icon name={n.icon} size={18} /><span className="lab">BNB testnet faucet</span>
+      {TOOLS.filter((n) => n.href !== "/app/faucet" || !online || faucetFor(source.chainId)).map((n) => n.href === "/app/faucet" && online && faucetFor(source.chainId)?.external ? (
+        // BNB testnet: test BNB comes from BNB Chain's faucet, not from the dev stack (no faucet entry on mainnet)
+        <a key={n.href} href={faucetFor(source.chainId)!.href} target="_blank" rel="noreferrer" className="sb-item" title={`${faucetFor(source.chainId)!.label} (bnbchain.org)`}>
+          <Icon name={n.icon} size={18} /><span className="lab">{faucetFor(source.chainId)!.label}</span>
         </a>
       ) : (
         <Link key={n.href} href={n.href} className="sb-item" aria-current={path.startsWith(n.href) ? "page" : undefined} title={n.label}>
@@ -121,7 +121,7 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
           );
         })}
         {!online ? (
-          <Link href="/app" className="sb-offline" title={source.reason}><span className="dot" /><span>{source.mode === "checking" ? "Checking the chain" : "Not connected to the chain"}</span></Link>
+          <Link href="/app" className="sb-offline" title={source.reason}><span className="dot" /><span>{source.mode === "checking" ? "Checking the chain" : `Not connected to ${source.payload?.deployment ? chainName(source.payload.deployment.chainId) : "the chain"}`}</span></Link>
         ) : loading ? [0, 1, 2].map((k) => <span key={k} className="sb-cov" aria-hidden><Skeleton h={22} w={22} r={22} /><Skeleton h={12} w={`${60 - k * 12}%`} /></span>)
           : live.length === 0 ? <p className="sb-empty">No covenants yet</p> : null}
       </div>
@@ -169,10 +169,11 @@ function Crumbs() {
   return <nav className="crumbs" aria-label="Breadcrumb"><b>{parts[0] ? top[parts[0]] ?? "Covenant" : "Discover"}</b></nav>;
 }
 
+/** The chain the app reads, named the way the rest of the site names it, with the BNB mark before it. */
 export function SourcePill() {
   const s = useSource();
   const cls = s.mode === "live" ? "live" : s.mode === "checking" ? "" : "mock";
-  return <span className={cx("srcpill hide-sm", cls)} title={s.reason}><span className="dot" />{s.mode === "live" ? <>Live · {s.chainId ? withBnb(chainName(s.chainId)) : "local chain"}</> : s.mode === "checking" ? "Checking" : "Not connected"}</span>;
+  return <span className={cx("srcpill hide-sm", cls)} title={`${s.mode === "live" ? "Live" : s.mode === "checking" ? "Checking" : "Not connected"}: ${s.reason}`}>{s.mode === "live" && s.chainId ? withBnb(chainName(s.chainId)) : s.mode === "checking" ? "Checking" : "Not connected"}</span>;
 }
 
 function NetworkChip() {
@@ -183,7 +184,7 @@ function NetworkChip() {
   const wrong = src.chainId ? w.chainId !== src.chainId : w.chainId !== anvil.id && w.chainId !== 97;
   return (
     <button className={cx("netpill hide-sm", wrong && "warn")} onClick={() => switchChain?.({ chainId: src.chainId ?? anvil.id })} title={wrong ? `Wrong network: switch to ${chainName(src.chainId ?? anvil.id)}` : "Connected network"}>
-      <span className="dot" style={wrong ? { background: "var(--warn)" } : undefined} />{withBnb(chainName(w.chainId))}
+      {wrong ? <Icon name="alert" size={14} /> : null}{withBnb(chainName(w.chainId))}
     </button>
   );
 }
@@ -240,7 +241,9 @@ function WalletMenu() {
           <TokenAvatar seed={w.address} size={26} /><span className="lab mono">{short(w.address, 6, 4)}</span><Icon name="chevronDown" size={14} style={{ color: "var(--muted)" }} />
         </button>
       ) : (
-        <button className="btn btn-primary btn-sm" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu"><Icon name="wallet" size={15} />Connect</button>
+        w.mode === "privy"
+          ? <button className="btn btn-primary btn-sm connectbtn" onClick={() => w.connect()} disabled={!w.ready}><Icon name="wallet" size={15} />Connect</button>
+          : <button className="btn btn-primary btn-sm connectbtn" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu"><Icon name="wallet" size={15} />Connect</button>
       )}
       {open ? (
         <div className="pop" role="menu">
@@ -256,10 +259,15 @@ function WalletMenu() {
               <div className="pop-sep" />
               <button className="pop-item" role="menuitem" onClick={() => { void navigator.clipboard?.writeText(w.address!); setCopied(true); setTimeout(() => setCopied(false), 1200); }}><Icon name={copied ? "check" : "copy"} size={16} />{copied ? "Copied" : "Copy address"}</button>
               <Link className="pop-item" role="menuitem" href="/app/portfolio" onClick={() => setOpen(false)}><Icon name="pie" size={16} />Portfolio</Link>
-              {src.chainId === 97
-                ? <a className="pop-item" role="menuitem" href={TESTNET_FAUCET} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}><Icon name="drop" size={16} />BNB testnet faucet</a>
-                : <Link className="pop-item" role="menuitem" href="/app/faucet" onClick={() => setOpen(false)}><Icon name="drop" size={16} />Get test funds</Link>}
-              <button className="pop-item" role="menuitem" onClick={() => { w.disconnect(); setOpen(false); }}><Icon name="exit" size={16} />Disconnect</button>
+              {(() => {
+                const fc = faucetFor(src.chainId);
+                if (!fc) return null;
+                return fc.external
+                  ? <a className="pop-item" role="menuitem" href={fc.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}><Icon name="drop" size={16} />{fc.label}</a>
+                  : <Link className="pop-item" role="menuitem" href={fc.href} onClick={() => setOpen(false)}><Icon name="drop" size={16} />{fc.label}</Link>;
+              })()}
+              {w.switchAccount ? <button className="pop-item" role="menuitem" onClick={() => { w.switchAccount!(); setOpen(false); }}><Icon name="users" size={16} />Switch account</button> : null}
+              <button className="pop-item" role="menuitem" onClick={() => { w.disconnect(); setOpen(false); }}><Icon name="exit" size={16} />{w.mode === "privy" ? "Log out" : "Disconnect"}</button>
             </>
           ) : (
             <>

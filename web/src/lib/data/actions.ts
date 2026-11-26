@@ -17,6 +17,12 @@ import type { Address, CovenantView, Hash } from "@/lib/covenant/types";
 import { useWallet } from "@/components/providers";
 import { useSource } from "./hooks";
 
+/**
+ * finalize() refuses less than 15M gas (CovenantLauncher.LAUNCH_GAS_FLOOR). BNB testnet refuses any transaction above
+ * 16,777,216 gas (2^24, "-32003: gas limit too high", seen on chain 97 on 26 Nov 2026), so 20M never reaches a node.
+ */
+const FINALIZE_GAS = 16_700_000n;
+
 export type ActionName =
   | "commit" | "finalize" | "claimTokens" | "claimRefund" | "poke" | "redeem"
   | "claimTap" | "heartbeat" | "lowerTap" | "postReport" | "revenue" | "windDown" | "declareAbandoned" | "releaseTeam";
@@ -81,7 +87,7 @@ export function useActions(view?: CovenantView) {
         case "finalize": {
           const fn = pickFn(L, "finalize");
           if (!view.launcher || !L || !fn) throw new Error("finalize is not in the loaded ABI");
-          hash = await writeContract(config, { address: view.launcher, abi: L, functionName: fn, args: [], chainId, gas: 20_000_000n } as Parameters<typeof writeContract>[1]);
+          hash = await writeContract(config, { address: view.launcher, abi: L, functionName: fn, args: [], chainId, gas: FINALIZE_GAS } as Parameters<typeof writeContract>[1]);
           break;
         }
         case "claimRefund": hash = await write(view.launcher, L, ["claimRefund"]); break;
