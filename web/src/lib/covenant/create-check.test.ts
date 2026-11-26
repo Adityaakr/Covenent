@@ -85,7 +85,7 @@ describe("helpers", () => {
     expect(rescaleTranches([500, 1000, 1000], 0)).toEqual([]);
   });
 
-  it("asks Ask AI with the form's own state and its open problems", () => {
+  it("asks Covenant AI with the form's own state and its open problems", () => {
     const q = askToFill({ ...ok, name: "", symbol: "" }, { issuer: "agent", agentId: "12", factory: "demo", unit: 60, problems: ["Name the token"] });
     expect(q).toContain("draft_covenant");
     expect(q).toContain("not chosen yet");

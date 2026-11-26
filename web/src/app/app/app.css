@@ -240,7 +240,7 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 .raise-in .seg button[aria-checked="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px var(--line); }
 .raise-in .seg button:disabled { cursor: not-allowed; color: var(--faint); }
 .raise-in .seg button:disabled > [role="img"] { filter: grayscale(0.6); opacity: 0.6; }
-.soon-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 10.5px; font-weight: 600; color: var(--accent); background: var(--accent-bg); }
+.soon-tag { flex: none; white-space: nowrap; display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 10.5px; font-weight: 600; color: var(--accent); background: var(--accent-bg); }
 .raise-in-note { min-width: 0; }
 .seg.sm button { height: 26px; padding: 0 10px; font-size: 12.5px; }
 .ptabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }

@@ -172,7 +172,7 @@ export function issueFor(list: Issue[], field: Field): Issue | undefined {
 }
 
 /**
- * The question "Ask AI to fill this" sends: the form as it stands, in words, and what is still wrong. Ask AI answers
+ * The question "Fill with Covenant AI" sends: the form as it stands, in words, and what is still wrong. Ask AI answers
  * with draft_covenant (the factory's checkTerms, Flap's floor) and a create card whose Edit link opens this page
  * pre-filled with its draft.
  */

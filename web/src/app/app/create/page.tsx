@@ -272,13 +272,13 @@ function CovenantCreate() {
         </div>
         <div className="row wrap-ok" style={{ gap: 10 }}>
           <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}>{src.mode === "live" ? <>Creates on {src.chainId && networkKind(src.chainId) !== "local" ? withBnb(chainName(src.chainId)) : "the local chain"}</> : src.mode === "checking" ? "Checking the chain" : "Offline: connect to create"}</span>
-          <Link className="btn btn-secondary btn-sm" href={askHref} title="Opens Ask AI with this form's terms and what is left to fix"><Icon name="sparkle" size={14} />Ask AI to fill this</Link>
+          <Link className="btn btn-secondary btn-sm" href={askHref} title="Opens Covenant AI with this form's terms and what is left to fix"><Icon name="sparkle" size={14} />Fill with Covenant AI</Link>
         </div>
       </div>
 
       <div className="choice venue" role="group" aria-label="Where to launch">
         <button type="button" aria-pressed="true"><span className="icon-tile accent"><Icon name="vault" size={17} /></span><span><b className="t-s ink" style={{ display: "block" }}>Flap Pool Launch</b><span className="t-xs muted w5">The full five rules: raise with refunds, vault, exit at book, unlocks, disclosure</span></span><span className="radio" /></button>
-        <button type="button" disabled aria-disabled="true" aria-describedby="lite-note"><span className="icon-tile"><Icon name="coins" size={17} /></span><span><span className="row" style={{ gap: 8 }}><b className="t-s ink">Four.meme tax token</b><span className="soon-tag">Mainnet · coming soon</span></span><span className="t-xs muted w5">Covenant Lite: a budget cap and the abandonment switch on the founder&apos;s tax</span></span><span /></button>
+        <button type="button" disabled aria-disabled="true" aria-describedby="lite-note"><span className="icon-tile"><Icon name="coins" size={17} /></span><span><span className="row" style={{ gap: 8, rowGap: 4, flexWrap: "wrap" }}><b className="t-s ink">Four.meme tax token</b><span className="soon-tag">Mainnet · coming soon</span></span><span className="t-xs muted w5">Covenant Lite: a budget cap and the abandonment switch on the founder&apos;s tax</span></span><span /></button>
       </div>
       <p id="lite-note" className={cx("t-xs w5 lite-note", askedFour ? "ink" : "muted")}>
         Covenant Lite plugs into Four.meme tax tokens through OpenFour. Token creation runs on Four.meme&apos;s mainnet backend, so it is not available on testnet yet.{" "}
@@ -312,8 +312,8 @@ function CovenantCreate() {
               <>
                 <div className="cr-ask">
                   <span className="icon-tile accent sm"><Icon name="sparkle" size={14} /></span>
-                  <span className="t-s muted w5">Not sure where to start? Ask AI drafts terms from a sentence and checks them against the factory; you edit the draft here.</span>
-                  <Link className="btn btn-ghost btn-sm" href={askHref}>Ask AI to fill this<Icon name="arrow" size={14} /></Link>
+                  <span className="t-s muted w5">Not sure where to start? Covenant AI drafts terms from a sentence and checks them against the factory; you edit the draft here.</span>
+                  <Link className="btn btn-ghost btn-sm" href={askHref}>Fill with Covenant AI<Icon name="arrow" size={14} /></Link>
                 </div>
                 <div className="grid2">
                   <Field label="Name" hint={screen && !screen.name && t.name.trim() && dName === t.name ? "clear on Flap's name screen" : undefined} {...fieldProps("name")}><input className="field" value={t.name} placeholder="Lumen" maxLength={64} onChange={(e) => set("name", e.target.value)} /></Field>
