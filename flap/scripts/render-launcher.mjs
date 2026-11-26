@@ -2,7 +2,8 @@
 // Renders flap/launcher-ui/Component.tsx the way Flap's Launcher host does (props { context, messages, host }) into one
 // static HTML page per locale, for a visual check: Flap's template has no local preview for launcher-detail/v1.
 //
-//   node flap/scripts/render-launcher.mjs <out-dir> [--rpc <url>] [--launcher 0x…]...
+//   node flap/scripts/render-launcher.mjs <out-dir> [--rpc <url>] [--manifest flap/demo/launcher-ui.manifest.json]
+//                                         [--launcher 0x…]...
 //
 // Every value on the page comes from a real Launcher: for each --launcher it reads the manifest's getters on chain,
 // exactly as the host does (a failing getter or a zero address becomes null), and renders that snapshot with and
@@ -22,7 +23,7 @@ const React = webRequire("react");
 const { renderToStaticMarkup } = webRequire("react-dom/server");
 
 const args = process.argv.slice(2);
-const outDir = args.find(a => !a.startsWith("--") && !/^0x|^https?:/.test(a));
+const outDir = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
 const flag = name => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 if (!outDir) {
   console.error("usage: render-launcher.mjs <out-dir> [--launcher 0x… --rpc <url>]");
@@ -30,7 +31,8 @@ if (!outDir) {
 }
 
 const dir = path.join(root, "flap/launcher-ui");
-const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
+const manifestPath = flag("--manifest") ? path.resolve(flag("--manifest")) : path.join(dir, "manifest.json");
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 const i18n = JSON.parse(fs.readFileSync(path.join(dir, "i18n.json"), "utf8"));
 const source = fs.readFileSync(path.join(dir, "Component.tsx"), "utf8");
 

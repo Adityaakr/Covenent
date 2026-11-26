@@ -103,18 +103,36 @@ test("translations: same keys in en, zh and ko, and every key the components use
   }
 });
 
+test("the demo set differs from production only in artifact id, name and factory", () => {
+  const demoLauncher = readJson(flap("demo/launcher-ui.manifest.json"));
+  const demoVault = readJson(flap("demo/vault-ui.manifest.json"));
+  const strip = ({ artifactId, name, factoryAddress, ...rest }) => rest;
+  assert.deepEqual(strip(demoLauncher), strip(launcherManifest));
+  assert.notEqual(demoLauncher.artifactId, launcherManifest.artifactId);
+  assert.notEqual(demoLauncher.factoryAddress, launcherManifest.factoryAddress);
+  assert.match(demoVault.artifactId, /^vaultui_covenant-vault-demo_[0-9A-Z]{26}$/);
+  assert.notEqual(demoVault.match.bindings[0].factoryAddress, vaultManifest.match.bindings[0].factoryAddress);
+  assert.deepEqual(demoVault.i18n, vaultManifest.i18n);
+});
+
 test("committed packages match SHA256SUMS and the sources in this folder", () => {
   const sums = fs.readFileSync(flap("packages/SHA256SUMS"), "utf8").trim().split("\n").map(l => l.split(/\s+/));
-  assert.equal(sums.length, 2);
+  assert.deepEqual(sums.map(([, f]) => f).sort(),
+    ["covenant-launcher-ui-demo.zip", "covenant-launcher-ui.zip", "covenant-vault-ui-demo.zip", "covenant-vault-ui.zip"]);
   for (const [sha, file] of sums) {
     const bytes = fs.readFileSync(flap("packages", file));
     assert.equal(crypto.createHash("sha256").update(bytes).digest("hex"), sha, file);
   }
   const unzip = (zip, entry) => execFileSync("unzip", ["-p", flap("packages", zip), entry]);
-  for (const f of ["Component.tsx", "manifest.json", "i18n.json"]) {
-    assert.ok(unzip("covenant-launcher-ui.zip", f).equals(fs.readFileSync(flap("launcher-ui", f))), `launcher zip ${f} is stale`);
+  const same = (zip, entry, file) => assert.ok(unzip(zip, entry).equals(fs.readFileSync(file)), `${zip} ${entry} is stale`);
+  for (const [zip, manifest] of [["covenant-launcher-ui.zip", flap("launcher-ui/manifest.json")],
+    ["covenant-launcher-ui-demo.zip", flap("demo/launcher-ui.manifest.json")]]) {
+    for (const f of ["Component.tsx", "i18n.json"]) same(zip, f, flap("launcher-ui", f));
+    same(zip, "manifest.json", manifest);
   }
-  for (const f of ["Component.tsx", "VaultABI.ts", "i18n.json", "manifest.json"]) {
-    assert.ok(unzip("covenant-vault-ui.zip", `src/vaults/covenant-vault/${f}`).equals(fs.readFileSync(flap("vault-ui", f))), `vault zip ${f} is stale`);
+  for (const [zip, folder, manifest] of [["covenant-vault-ui.zip", "covenant-vault", flap("vault-ui/manifest.json")],
+    ["covenant-vault-ui-demo.zip", "covenant-vault-demo", flap("demo/vault-ui.manifest.json")]]) {
+    for (const f of ["Component.tsx", "VaultABI.ts", "i18n.json"]) same(zip, `src/vaults/${folder}/${f}`, flap("vault-ui", f));
+    same(zip, `src/vaults/${folder}/manifest.json`, manifest);
   }
 });
