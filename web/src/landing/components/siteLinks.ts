@@ -3,7 +3,6 @@ export const navLinks = [
   { label: "Rules", href: "/features" },
   { label: "Use cases", href: "/use-cases" },
   { label: "Why we built it", href: "/#prior-art" },
-  { label: "Contact", href: "/contact" },
 ] as const;
 
 export const navSecondary = { label: "Connect wallet", href: "/app" } as const;
@@ -27,7 +26,6 @@ export const footerColumns = [
     links: [
       { label: "Why we built it", href: "/#prior-art" },
       { label: "Who named the problem", href: "/#research" },
-      { label: "Contact", href: "/contact" },
     ],
   },
   {

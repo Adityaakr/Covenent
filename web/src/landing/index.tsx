@@ -1,7 +1,7 @@
 /*
  * Covenant landing: a code copy of the Framer template "Ondrel" with Covenant content (docs/landing/).
  * Default export renders "/". Every other page has a default export in ./pages for the app router:
- *   /features            ./pages/features          /contact             ./pages/contact
+ *   /features            ./pages/features
  *   /use-cases           ./pages/use-cases         /use-cases/[slug]    ./pages/use-case        (+ generateStaticParams)
  *   not-found.tsx        ./pages/not-found
  * Retired, kept only because routes re-export them: ./pages/pricing, ./pages/changelog and ./pages/changelog-entry
@@ -17,5 +17,4 @@ export { Landing };
 export { FeaturesPage } from "./pages/FeaturesPage";
 export { UseCasesPage } from "./pages/UseCasesPage";
 export { UseCasePage, useCaseSlugs } from "./pages/UseCasePage";
-export { ContactPage } from "./pages/ContactPage";
 export { NotFoundPage } from "./pages/NotFoundPage";

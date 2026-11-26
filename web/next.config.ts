@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
       { source: "/app/faucet", destination: "/app/settings/funds", permanent: false },
       { source: "/app/simulator", destination: "/app/settings/simulator", permanent: false },
       { source: "/app/demo", destination: "/app/settings/demo", permanent: false },
+      // the contact page was removed; old links land on the home page
+      { source: "/contact", destination: "/", permanent: false },
     ];
   },
   turbopack: {

@@ -13,8 +13,8 @@ export function FeaturesHero() {
         Covenant writes investor protections into the launch, and they bind a human team or an AI agent the same way.
       </p>
       <div className={s.actions}>
-        <Button variant="secondary" href="/contact">
-          Talk to the team
+        <Button variant="secondary" href="/use-cases">
+          See use cases
         </Button>
         <Button variant="primary" href="/app">
           Launch app

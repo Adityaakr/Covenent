@@ -9,7 +9,7 @@ import { Icon, type IconName } from "@/components/app/icons";
 import { BnbUnit, Meter, Note, Segmented, TokenAvatar, cx } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
 import { agentOwner, checkTerms, createCovenantLive, createTargets, registerAgent, type FactoryKind } from "@/lib/chain/create";
-import { chainName, networkKind, stackCommand } from "@/lib/chain/chains";
+import { chainName, networkKind } from "@/lib/chain/chains";
 import { withBnb } from "@/components/app/bnb";
 import { addressOf } from "@/lib/chain/deployment";
 import type { MineMessage } from "@/lib/chain/salt";

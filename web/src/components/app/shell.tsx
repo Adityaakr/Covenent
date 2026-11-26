@@ -151,7 +151,6 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
       </Link>
       <div className="sb-foot">
         <Link href="/features" title="Docs"><Icon name="book" size={16} /><span className="lab">Docs</span></Link>
-        <Link href="/contact" title="Community"><Icon name="send" size={16} /><span className="lab">Community</span></Link>
         <ThemeSwitch />
       </div>
     </aside>

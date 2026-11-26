@@ -20,7 +20,7 @@ export function FeaturesPage() {
       <PageCTA
         heading="Raise under rules. Exit at book."
         body="Five rules hold the treasury. Nobody has to trust the team."
-        secondary={{ label: "Talk to the team", href: "/contact" }}
+        secondary={{ label: "See use cases", href: "/use-cases" }}
         primary={{ label: "Launch app", href: "/app" }}
       />
     </SiteLayout>

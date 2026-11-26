@@ -1,7 +1,7 @@
 export type FAQ = { q: string; a: string };
 
 /**
- * Owner: home-b agent. Shared by the home, pricing and contact FAQ lists.
+ * Owner: home-b agent. Shared by the home and pricing FAQ lists.
  * Source: docs/DESIGN.md "Demo script and pitch" > "Hard questions", "Hard questions on the agent layer" and
  * "Where Covenant is weaker" (answers shortened). The exit answers follow the rule as built
  * (contracts/src/vault/CovenantVault.sol): on-chain numbers only, and the streak decays instead of resetting.
