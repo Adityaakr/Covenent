@@ -26,8 +26,9 @@ Object.assign(addresses, {
   atlasPushBnbUsd: atlas.pushFeeds["BNB/USD"],
 });
 
-// Only contracts that exist on BNB testnet: no mocks, no dev-chain stand-ins.
-const LOCAL_ONLY = /^(Mock|DemoUSDC|FourLiteLauncher|FourStyleTaxToken)/;
+// Only contracts that exist on BNB testnet: no mocks, no dev-chain stand-ins. DemoUSDC is deployed on testnet too
+// (script/DemoUSDC.s.sol, test funds for the agent economy demo), so its ABI ships when 97.json names it.
+const LOCAL_ONLY = r.demoUsdc ? /^(Mock|FourLiteLauncher|FourStyleTaxToken)/ : /^(Mock|DemoUSDC|FourLiteLauncher|FourStyleTaxToken)/;
 const abiDir = path.join(contracts, "abi");
 const abis = {};
 for (const f of readdirSync(abiDir).sort()) {
