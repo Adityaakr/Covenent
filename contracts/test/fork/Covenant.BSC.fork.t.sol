@@ -49,14 +49,28 @@ interface IForwardVaultLike {
     function clonedVault() external view returns (address);
 }
 
-/// @notice The covenant journey on a BNB Chain fork against Flap's live Pool Launch Portal, PancakeSwap V2, the
-///         Token Dock router, the tax processor and the ERC-8004 registries. Nothing of theirs is mocked. Flap
-///         opens our factory the way its own fork tests do, as the Portal admin. Atlas reports are signed by a
-///         dev key the oracle is deployed with (production uses Atlas's signer).
-///         Needs BSC_RPC_URL; skipped without it.
-contract CovenantBSCForkTest is Test, StackBuilder {
+/// @notice The covenant journey on a fork against Flap's live Pool Launch Portal, PancakeSwap V2, the Token Dock
+///         router, the tax processor and the ERC-8004 registries. Nothing of theirs is mocked. Flap opens our factory
+///         the way its own fork tests do, as the Portal admin. Atlas reports are signed by a dev key the oracle is
+///         deployed with (production uses Atlas's signer). One thin subclass per chain, as in Flap's example repo;
+///         each is skipped when its RPC variable is unset.
+abstract contract CovenantForkBase is Test, StackBuilder {
+    struct ForkEnv {
+        string rpcEnv;
+        uint256 chainId;
+        address guardian;
+        address wbnb;
+        address router;
+        address identity;
+        address reputation;
+        address forwardVaultImpl; // 0 when unknown on this chain
+    }
+
+    function _env() internal pure virtual returns (ForkEnv memory);
+
+    ForkEnv internal E;
+
     address internal constant DEAD = 0x000000000000000000000000000000000000dEaD;
-    address internal constant FORWARD_VAULT_IMPL = 0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4;
     bytes4 internal constant CREATION_PAUSED = bytes4(keccak256("CreationPaused()"));
 
     // Plain accounts with no code on BNB Chain (Flap's fork notes: makeAddr can collide with live accounts).
@@ -79,19 +93,30 @@ contract CovenantBSCForkTest is Test, StackBuilder {
     CovenantLens internal lens;
 
     function setUp() public {
-        string memory rpc = vm.envOr("BSC_RPC_URL", string(""));
+        E = _env();
+        string memory rpc = vm.envOr(E.rpcEnv, string(""));
         if (bytes(rpc).length == 0) {
             vm.skip(true);
             return;
         }
         vm.createSelectFork(rpc);
-        require(block.chainid == 56, "BSC_RPC_URL is not BNB Chain");
+        require(block.chainid == E.chainId, "the RPC is not the chain this test expects");
         admin = IProxyAdminLike(BSC_PORTAL_PROXY_ADMIN).owner();
         net = _bscChain(admin);
+        net.guardian = E.guardian;
+        net.wbnb = E.wbnb;
+        net.router = E.router;
+        net.identity = E.identity;
+        net.reputation = E.reputation;
         portal = IPortal(BSC_PORTAL);
         oracle = _deployOracle(vm.addr(atlasKey));
         pairF = _deployPair(address(this), net, address(oracle), CovenantProfiles.production(), "production");
         lens = _deployLens();
+
+        // Start every chain from the same gate, as Flap's ForkBase does: creation paused (BNB Chain is paused
+        // already, the testnet is open). An enabled launcher factory is what lets a launch through.
+        vm.prank(admin);
+        portal.setCreationPaused(true);
 
         address[7] memory who = [team, alice, bob, carol, whale, keeper, trader];
         for (uint256 i; i < who.length; ++i) {
@@ -133,10 +158,10 @@ contract CovenantBSCForkTest is Test, StackBuilder {
 
     function _buy(address who, address token, uint256 bnb) internal {
         address[] memory path = new address[](2);
-        path[0] = BSC_WBNB;
+        path[0] = E.wbnb;
         path[1] = token;
         vm.startPrank(who);
-        IRouterLike(BSC_V2_ROUTER).swapExactETHForTokensSupportingFeeOnTransferTokens{value: bnb}(
+        IRouterLike(E.router).swapExactETHForTokensSupportingFeeOnTransferTokens{value: bnb}(
             0, path, who, block.timestamp + 600
         );
         vm.stopPrank();
@@ -145,10 +170,10 @@ contract CovenantBSCForkTest is Test, StackBuilder {
     function _sell(address who, address token, uint256 amount) internal {
         address[] memory path = new address[](2);
         path[0] = token;
-        path[1] = BSC_WBNB;
+        path[1] = E.wbnb;
         vm.startPrank(who);
-        IERC20(token).approve(BSC_V2_ROUTER, amount);
-        IRouterLike(BSC_V2_ROUTER).swapExactTokensForETHSupportingFeeOnTransferTokens(
+        IERC20(token).approve(E.router, amount);
+        IRouterLike(E.router).swapExactTokensForETHSupportingFeeOnTransferTokens(
             amount, 0, path, who, block.timestamp + 600
         );
         vm.stopPrank();
@@ -200,8 +225,8 @@ contract CovenantBSCForkTest is Test, StackBuilder {
     function _phaseRaiseAndLaunch() internal returns (Journey memory j) {
         // Agent identity on the real ERC-8004 IdentityRegistry, owned by the team wallet.
         vm.prank(team);
-        j.agentId = IERC8004Identity(BSC_IDENTITY).register("ipfs://covenant-issuer-agent.json");
-        assertEq(IERC8004Identity(BSC_IDENTITY).ownerOf(j.agentId), team);
+        j.agentId = IERC8004Identity(E.identity).register("ipfs://covenant-issuer-agent.json");
+        assertEq(IERC8004Identity(E.identity).ownerOf(j.agentId), team);
 
         vm.recordLogs();
         j.l = _create(_terms("fork-journey", j.agentId));
@@ -303,7 +328,7 @@ contract CovenantBSCForkTest is Test, StackBuilder {
         assertGe(IERC20(j.token).balanceOf(DEAD), 250_000_000 ether, "locked team tokens burned");
 
         // The outcome is in the agent's public record on the real ReputationRegistry.
-        IERC8004Reputation rep = IERC8004Reputation(BSC_REPUTATION);
+        IERC8004Reputation rep = IERC8004Reputation(E.reputation);
         assertEq(rep.getLastIndex(j.agentId, address(j.v)), 1);
         (int128 value,, string memory tag1, string memory tag2,) = rep.readFeedback(j.agentId, address(j.v), 1);
         assertEq(value, -100);
@@ -324,13 +349,34 @@ contract CovenantBSCForkTest is Test, StackBuilder {
         assertEq(out2, bal * b2 / 1e18, "no exit fee at wind-down");
     }
 
-    /// @dev Flap gate: a disabled launcher factory cannot create launchers on the live Portal.
+    /// @dev Flap gate. On BNB Chain a factory Flap has not opened cannot create a launcher. On the testnet Portal
+    ///      (v1.2.0, Nov 26 2026) the gate is open: an unopened factory's covenant launched even with creation
+    ///      paused, so a testnet demo may not need Flap to enable the factory. Either way the raise is safe: a
+    ///      refused launch ends FAILED and refunds in full, and a launch that goes through is a normal covenant.
     function test_fork_unopenedFactory_isRefused() public {
         Terms memory t = _terms("fork-closed", 0);
         uint256 fee = portal.SALT_LOCK_FEE();
         vm.prank(team);
-        vm.expectRevert();
-        portal.newLauncher{value: fee}(address(pairF.launcherFactory), abi.encode(t));
+        try portal.newLauncher{value: fee}(address(pairF.launcherFactory), abi.encode(t)) returns (address la) {
+            assertTrue(E.chainId != 56, "BNB Chain must refuse an unopened factory");
+            CovenantLauncher l = CovenantLauncher(payable(la));
+            vm.prank(alice);
+            l.contribute{value: 300 ether}();
+            vm.warp(l.saleDeadline());
+            l.finalize();
+            if (l.state() == State.FAILED) {
+                uint256 before = alice.balance;
+                vm.prank(alice);
+                l.claimRefund();
+                assertEq(alice.balance - before, 300 ether, "full refund");
+            } else {
+                assertEq(uint8(l.state()), uint8(State.ACTIVE));
+                assertTrue(l.vault() != address(0));
+                emit log("testnet Portal launched a covenant from an unopened launcher factory");
+            }
+        } catch {
+            // refused up front (BNB Chain)
+        }
     }
 
     /// @dev The vault factory refuses a launch from a caller the Portal never recorded as our launcher.
@@ -373,7 +419,7 @@ contract CovenantBSCForkTest is Test, StackBuilder {
     function test_fork_agentIdMustBeOwnedByTheTeamWallet() public {
         _open();
         vm.prank(trader);
-        uint256 otherAgent = IERC8004Identity(BSC_IDENTITY).register("ipfs://someone-else.json");
+        uint256 otherAgent = IERC8004Identity(E.identity).register("ipfs://someone-else.json");
         Terms memory t = _terms("fork-agent-other", otherAgent);
         uint256 fee = portal.SALT_LOCK_FEE();
         vm.prank(team);
@@ -383,13 +429,14 @@ contract CovenantBSCForkTest is Test, StackBuilder {
 
     /// @dev CovenantLiteVault behind Four.meme's live ForwardVault implementation on BNB Chain.
     function test_fork_liteVault_behindTheLiveForwardVault() public {
+        if (E.forwardVaultImpl == address(0)) vm.skip(true);
         address author = address(uint160(0xC0DE10A0));
         address tokenStandIn = address(uint160(0xC0DE10A1));
         CovenantLiteVault template = new CovenantLiteVault(author);
-        address fv = Clones.clone(FORWARD_VAULT_IMPL);
+        address fv = Clones.clone(E.forwardVaultImpl);
         IForwardVaultLike(fv).initialize(
             tokenStandIn,
-            BSC_WBNB,
+            E.wbnb,
             team,
             new address[](0),
             // ForwardVault decodes a struct (address template, bytes initData): tuple-wrapped, not flat.
@@ -407,7 +454,7 @@ contract CovenantBSCForkTest is Test, StackBuilder {
         vm.prank(tokenStandIn);
         (bool ok,) = fv.call{value: 10 ether}("");
         assertTrue(ok);
-        assertEq(IERC20(BSC_WBNB).balanceOf(author), 0.6 ether, "6% royalty to the template author as WBNB");
+        assertEq(IERC20(E.wbnb).balanceOf(author), 0.6 ether, "6% royalty to the template author as WBNB");
         assertEq(address(lite).balance, 9.4 ether);
     }
 
@@ -422,5 +469,32 @@ contract CovenantBSCForkTest is Test, StackBuilder {
             return;
         }
         revert("FlapNewLauncherCreated not found");
+    }
+}
+
+/// @notice BNB Chain mainnet. Needs BSC_RPC_URL.
+contract CovenantBSCForkTest is CovenantForkBase {
+    function _env() internal pure override returns (ForkEnv memory e) {
+        e.rpcEnv = "BSC_RPC_URL";
+        e.chainId = 56;
+        e.guardian = BSC_GUARDIAN;
+        e.wbnb = BSC_WBNB;
+        e.router = BSC_V2_ROUTER;
+        e.identity = BSC_IDENTITY;
+        e.reputation = BSC_REPUTATION;
+        e.forwardVaultImpl = 0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4;
+    }
+}
+
+/// @notice BNB testnet, where the first public deployment goes. Needs BSC_TESTNET_RPC_URL.
+contract CovenantBSCTestnetForkTest is CovenantForkBase {
+    function _env() internal pure override returns (ForkEnv memory e) {
+        e.rpcEnv = "BSC_TESTNET_RPC_URL";
+        e.chainId = 97;
+        e.guardian = BSC_TESTNET_GUARDIAN;
+        e.wbnb = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd;
+        e.router = 0xc9D63ddCB9549578057EAB6A83a543DdFEE2b8c3;
+        e.identity = BSC_TESTNET_IDENTITY;
+        e.reputation = BSC_TESTNET_REPUTATION;
     }
 }

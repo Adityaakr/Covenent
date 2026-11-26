@@ -74,9 +74,12 @@ set -a && . ./.env && set +a
    ```
 5. **Ask Flap to enable the launcher factories.** Send Flap the `launcherFactory` (and `demoLauncherFactory`)
    addresses from `deployments/97.json`. Flap calls `Portal.setLauncherFactoryMultiplier(factory, multiplier,
-   true)`; until then `Portal.newLauncher` reverts. Since Portal v1.1.2 the launcher factory alone covers the
-   launch; also ask Flap to set the vault factory's multiplier, which lowers the liquidity floor. Factories must
-   pass Flap's audit before mainnet launches open; until then vaults show as unverified on Flap.sh.
+   true)`; until then `Portal.newLauncher` reverts on BNB Chain. Since Portal v1.1.2 the launcher factory alone
+   covers the launch; also ask Flap to set the vault factory's multiplier, which lowers the liquidity floor.
+   Factories must pass Flap's audit before mainnet launches open; until then vaults show as unverified on Flap.sh.
+   Observed on a testnet fork (Portal v1.2.0, Nov 26 2026): the testnet Portal created and launched a covenant
+   from a factory Flap had not opened, even with creation paused, so a testnet demo may work before Flap enables
+   us. Confirm on testnet itself before relying on it (`test_fork_unopenedFactory_isRefused` records it).
 6. **Smoke test on testnet:** create a covenant on the demo factory through `Portal.newLauncher` (the app mines
    the 0x7777 salt), commit, finalize after two minutes, claim, poke with a real Atlas report through the keeper,
    and read `CovenantLens.status(launcher)`.

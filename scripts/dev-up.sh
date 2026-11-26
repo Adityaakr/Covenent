@@ -2,7 +2,7 @@
 # Start a local chain, deploy the whole Covenant stack, export ABIs and seed the demo story.
 #
 #   scripts/dev-up.sh              BNB Chain fork if the RPC answers, otherwise the offline mock stack
-#   scripts/dev-up.sh --fork       require the fork (fails if BSC_RPC_URL is unreachable)
+#   scripts/dev-up.sh --fork       require the fork (fails if no BNB Chain RPC is reachable)
 #   scripts/dev-up.sh --mock       offline: local stand-ins for Flap, PancakeSwap and ERC-8004
 #   scripts/dev-up.sh --no-demo    deploy only, do not seed the demo story
 #
