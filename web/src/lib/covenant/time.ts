@@ -18,6 +18,23 @@ export function duration(seconds: number, parts = 2): string {
   return out.join(" ") || "0s";
 }
 
+/**
+ * A term's length in words, in the largest unit that reads well: "3 days", "36 hours", "5 minutes". The demo factory
+ * runs the same rules in minutes, so a term is never assumed to be whole days.
+ */
+export function span(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  if (s === 0) return "0 seconds";
+  const pick: [string, number][] = [["day", DAY], ["hour", HOUR], ["minute", MINUTE], ["second", 1]];
+  for (const [u, n] of pick) {
+    if (s >= n && (s % n === 0 || s / n >= 10 || u === "second")) {
+      const v = s % n === 0 ? s / n : Math.round((s / n) * 10) / 10;
+      return `${v} ${u}${v === 1 ? "" : "s"}`;
+    }
+  }
+  return `${s} seconds`;
+}
+
 /** Days with one decimal: "11.4". */
 export function days(seconds: number, digits = 1): string {
   return (Math.max(0, seconds) / DAY).toFixed(digits);

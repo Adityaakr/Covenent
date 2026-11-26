@@ -9,7 +9,7 @@ import { Meter, Note } from "@/components/app/ui";
 import { useActions } from "@/lib/data/actions";
 import type { Derived } from "@/lib/covenant/derive";
 import { buyerOutcome, settleRaise, startingFloorRatio } from "@/lib/covenant/math";
-import { DAY, date, duration } from "@/lib/covenant/time";
+import { date, duration, span } from "@/lib/covenant/time";
 import type { CovenantView } from "@/lib/covenant/types";
 import { bnb, bps, multiple, pct, price, tokens, usd } from "@/lib/format";
 
@@ -63,9 +63,9 @@ function Raise({ v, d }: { v: CovenantView; d: Derived }) {
               ["coins", `${pct(t.saleBps / 10_000, 0)} of the supply is sold to buyers at one price. ${pct(t.poolBps / 10_000, 0)} seeds the pool at that same price, so ${pct(d.raise.qPool / Math.max(d.raise.Q, 1e-18) || t.poolBps / t.saleBps, 0)} of the raise goes to liquidity and the rest stays in the vault.`],
               ["shield", `From day one, each token is backed by ${pct(floor, 0)} of its sale price in treasury BNB. That floor falls as the ${v.issuer.kind === "agent" ? "agent" : "team"} spends and rises with trading tax and revenue.`],
               ["wallet", `The ${v.issuer.kind === "agent" ? "agent" : "team"} draws at most ${usd(t.tapUsdPer30d)} a month, capped at ${bps(t.tapCapBps)} of the treasury. It can lower that, never raise it.`],
-              ["unlock", `Team tokens (${pct(d.teamBps / 10_000, 0)}) unlock only at ${t.trancheMultiple.map(multiple).join(", ")} the sale price held for ${Math.round(t.unlockWindow / DAY)} days.`],
-              ["exit", `If the price sits under book value for ${Math.round(t.exitStreak / DAY)} days, any holder can redeem at book. No vote.`],
-              ["heart", `If the ${v.issuer.kind === "agent" ? "agent" : "team"} stops for ${Math.round(t.heartbeat / DAY)} days, anyone can open the treasury to holders.`],
+              ["unlock", `Team tokens (${pct(d.teamBps / 10_000, 0)}) unlock only at ${t.trancheMultiple.map(multiple).join(", ")} the sale price held for ${span(t.unlockWindow)}.`],
+              ["exit", `If the price sits under book value for ${span(t.exitStreak)}, any holder can redeem at book. No vote.`],
+              ["heart", `If the ${v.issuer.kind === "agent" ? "agent" : "team"} stops for ${span(t.heartbeat)}, anyone can open the treasury to holders.`],
             ].map(([icon, line]) => (
               <div key={line} style={{ display: "grid", gridTemplateColumns: "22px minmax(0,1fr)", gap: 10 }}>
                 <Icon name={icon as "coins"} size={18} style={{ color: "var(--accent)", marginTop: 1 }} /><span className="small ink-2" style={{ color: "var(--ink-2)" }}>{line}</span>

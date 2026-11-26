@@ -7,7 +7,7 @@ import { Meter, Note } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
 import { useActions } from "@/lib/data/actions";
 import type { Derived } from "@/lib/covenant/derive";
-import { DAY, days, duration, relative } from "@/lib/covenant/time";
+import { duration, relative } from "@/lib/covenant/time";
 import type { CovenantView } from "@/lib/covenant/types";
 import { bnb, bps, multiple, usd } from "@/lib/format";
 
@@ -70,7 +70,7 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
             <div className="card-body stack">
               {v.tranches.map((t) => (
                 <div key={t.multiple} style={{ display: "grid", gap: 6 }}>
-                  <div className="row between small"><span className="ink">{bps(t.bps)} of supply at {multiple(t.multiple)}</span><span className="mono muted">{t.unlocked ? "unlocked" : `${days(t.progress)} / ${Math.round(v.terms.unlockWindow / DAY)} days`}</span></div>
+                  <div className="row between small"><span className="ink">{bps(t.bps)} of supply at {multiple(t.multiple)}</span><span className="mono muted">{t.unlocked ? "unlocked" : `${duration(t.progress)} / ${duration(v.terms.unlockWindow)}`}</span></div>
                   <Meter value={t.unlocked ? 1 : t.progress} max={t.unlocked ? 1 : v.terms.unlockWindow} tone={t.unlocked ? "good" : "agent"} label={`${multiple(t.multiple)} tranche`} />
                 </div>
               ))}
@@ -99,7 +99,7 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
             <div className="card-head"><h3 className="d4">Stay present</h3><span className="tiny muted">Rule 4</span></div>
             <div className="card-body stack">
               <Meter value={hbUsed} max={v.terms.heartbeat} tone={d.hbLeft <= 0 ? "bad" : undefined} label="Heartbeat window used" />
-              <p className="tiny muted" style={{ margin: 0 }}><span className="mono">{days(hbUsed)}</span> of <span className="mono">{Math.round(v.terms.heartbeat / DAY)}</span> days since the last team action. Claiming, lowering the tap and posting a report all count.</p>
+              <p className="tiny muted" style={{ margin: 0 }}><span className="mono">{duration(hbUsed)}</span> of <span className="mono">{duration(v.terms.heartbeat)}</span> since the last team action. Claiming, lowering the tap and posting a report all count.</p>
               <button className="btn btn-ghost" disabled={!isTeam || ended} onClick={() => void run("heartbeat")}><Icon name="heart" size={16} />Send heartbeat</button>
             </div>
           </div>

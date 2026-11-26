@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useSwitchChain } from "wagmi";
 import { privyOriginAllowed, useWallet } from "@/components/providers";
-import { anvil, chainName, explorerTx } from "@/lib/chain/chains";
+import { ANVIL_ROLES, anvil, chainName, explorerTx } from "@/lib/chain/chains";
 import { useCovenants, useSource } from "@/lib/data/hooks";
 import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
@@ -194,8 +194,8 @@ function WalletMenu() {
               {w.mode === "browser" && w.devWallet ? (
                 <>
                   <div className="pop-label">Local chain (anvil test accounts)</div>
-                  {[1, 2, 3, 0].map((i) => (
-                    <button key={i} className="pop-item" onClick={() => { w.connectLocal(i); setOpen(false); }}><Icon name="user" size={16} /><span>Account #{i}<span className="tiny muted" style={{ display: "block" }}>{i === 1 ? "Demo buyer (14 BNB)" : i === 2 ? "Team wallet / issuer agent" : i === 3 ? "Second buyer" : "Deployer"}</span></span></button>
+                  {ANVIL_ROLES.map((role, i) => (
+                    <button key={i} className="pop-item" onClick={() => { w.connectLocal(i); setOpen(false); }}><Icon name="user" size={16} /><span>Account #{i}<span className="tiny muted" style={{ display: "block" }}>{role}</span></span></button>
                   ))}
                 </>
               ) : null}

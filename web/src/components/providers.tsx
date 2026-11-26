@@ -9,7 +9,7 @@
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { WagmiProvider as PrivyWagmiProvider, createConfig as createPrivyConfig } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createContext, useContext, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { http, type Address } from "viem";
 import { WagmiProvider, createConfig, useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected, mock } from "wagmi/connectors";
@@ -62,10 +62,26 @@ function setMode(m: WalletMode) {
 }
 
 
+const LOCAL_KEY = "covenant-local-account";
+const remember = (i: number | null) => {
+  try { if (i === null) localStorage.removeItem(LOCAL_KEY); else localStorage.setItem(LOCAL_KEY, String(i)); } catch { /* this page only */ }
+};
+
 function BrowserBridge({ children }: { children: ReactNode }) {
   const { address, chainId, connector, status } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+  // wagmi's mock connector cannot reconnect after a page load (it keeps no session), so the chosen local test
+  // account is remembered here and connected again once on mount.
+  const tried = useRef(false);
+  useEffect(() => {
+    if (tried.current || !DEV_WALLET || status !== "disconnected") return;
+    tried.current = true;
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(LOCAL_KEY); } catch { /* storage blocked */ }
+    const c = saved === null ? undefined : connectors.find((x) => x.id === `local-${saved}`);
+    if (c) connect({ connector: c, chainId: anvil.id });
+  }, [status, connectors, connect]);
   const value: WalletUi = {
     mode: "browser",
     privyAvailable: Boolean(APP_ID),
@@ -74,8 +90,8 @@ function BrowserBridge({ children }: { children: ReactNode }) {
     chainId,
     label: connector?.id.startsWith("local-") ? connector.name : connector?.name,
     connect: () => { const c = connectors.find((x) => x.type === "injected"); if (c) connect({ connector: c }); },
-    connectLocal: (i) => { const c = connectors.find((x) => x.id === `local-${i}`); if (c) connect({ connector: c, chainId: anvil.id }); },
-    disconnect: () => disconnect(),
+    connectLocal: (i) => { const c = connectors.find((x) => x.id === `local-${i}`); if (c) { remember(i); connect({ connector: c, chainId: anvil.id }); } },
+    disconnect: () => { remember(null); disconnect(); },
     setMode,
     devWallet: DEV_WALLET,
   };
@@ -103,7 +119,7 @@ function PrivyBridge({ children }: { children: ReactNode }) {
 
 function localConnectors() {
   if (!DEV_WALLET) return [];
-  return ANVIL_ACCOUNTS.slice(0, 4).map((a, i) =>
+  return ANVIL_ACCOUNTS.map((a, i) =>
     (config: Parameters<ReturnType<typeof mock>>[0]) => {
       const c = mock({ accounts: [a], features: { reconnect: true } })(config);
       return { ...c, id: `local-${i}`, name: `Local test account #${i}` };

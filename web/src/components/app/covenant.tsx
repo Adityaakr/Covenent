@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { explorerAddress } from "@/lib/chain/chains";
 import { derive, type Derived } from "@/lib/covenant/derive";
-import { DAY, HOUR, date, dateTime, days, duration, relative } from "@/lib/covenant/time";
+import { HOUR, date, dateTime, days, duration, relative, span } from "@/lib/covenant/time";
 import type { CovenantView, FeedEvent, LedgerKind } from "@/lib/covenant/types";
 import { bnb, bps, multiple, pct, price, signedPct, tokens, usd } from "@/lib/format";
 import { Icon, type IconName } from "./icons";
@@ -117,11 +117,11 @@ export function RuleCards({ v, d }: { v: CovenantView; d: Derived }) {
 
       <article className="card rule">
         <RuleHead n={2} icon="unlock" title="Performance unlock" />
-        <p className="line">Team tokens unlock only after the dollar price holds each multiple for {Math.round(t.unlockWindow / DAY)} trusted days, after a {Math.round(t.cliff / DAY)}-day cliff.</p>
+        <p className="line">Team tokens unlock only after the dollar price holds each multiple for {span(t.unlockWindow)} of trusted observations{t.cliff > 0 ? `, after a ${span(t.cliff)} cliff` : ", with no cliff"}.</p>
         <div style={{ display: "grid", gap: 8 }}>
           {v.tranches.map((tr) => (
             <div key={tr.multiple} style={{ display: "grid", gap: 4 }}>
-              <div className="row between tiny"><span className="ink">{multiple(tr.multiple)} · {bps(tr.bps)}</span><span className="mono muted">{tr.unlocked ? "unlocked" : `${days(tr.progress)} of ${Math.round(t.unlockWindow / DAY)}d`}</span></div>
+              <div className="row between tiny"><span className="ink">{multiple(tr.multiple)} · {bps(tr.bps)}</span><span className="mono muted">{tr.unlocked ? "unlocked" : `${duration(tr.progress)} of ${duration(t.unlockWindow)}`}</span></div>
               <Meter small value={tr.unlocked ? 1 : tr.progress} max={tr.unlocked ? 1 : t.unlockWindow} tone={tr.unlocked ? "good" : "agent"} label={`${multiple(tr.multiple)} tranche`} />
             </div>
           ))}
@@ -131,11 +131,11 @@ export function RuleCards({ v, d }: { v: CovenantView; d: Derived }) {
 
       <article className={`card rule ${v.state === "ACTIVE" && v.exit.streak > 0 ? "alarm" : inRound ? "alarm" : ""}`}>
         <RuleHead n={3} icon="exit" title="Book-value exit" />
-        <p className="line">If the pool trades under book for {Math.round(t.exitStreak / DAY)} days, a {Math.round(t.roundLength / DAY)}-day round opens and any holder can redeem at book.</p>
+        <p className="line">If the pool trades under book for {span(t.exitStreak)}, a {span(t.roundLength)} round opens and any holder can redeem at book.</p>
         {inRound ? (
           <div className="big">Open <span className="small muted">ends {relative(v.exit.roundEndsAt!, v.now)}</span></div>
         ) : (
-          <div className="big">{duration(v.exit.streak)} <span className="small muted">of {Math.round(t.exitStreak / DAY)}d under book</span></div>
+          <div className="big">{duration(v.exit.streak)} <span className="small muted">of {duration(t.exitStreak)} under book</span></div>
         )}
         <Meter value={inRound ? 1 : v.exit.streak} max={inRound ? 1 : t.exitStreak} tone="warn" label="Exit streak" />
         <div className="row wrap" style={{ gap: 4 }}>
@@ -147,10 +147,10 @@ export function RuleCards({ v, d }: { v: CovenantView; d: Derived }) {
 
       <article className={`card rule ${due && !ended ? "alarm" : ""}`}>
         <RuleHead n={4} icon="heart" title="Abandonment switch" />
-        <p className="line">If the {who} stops for {Math.round(t.heartbeat / DAY)} days, anyone can open the treasury to holders for good.</p>
+        <p className="line">If the {who} stops for {span(t.heartbeat)}, anyone can open the treasury to holders for good.</p>
         <div className="big">{ended ? "Switched" : relative(v.lastHeartbeat, v.now).replace(" ago", "")} <span className="small muted">{ended ? "" : "since last heartbeat"}</span></div>
         <Meter value={ended ? t.heartbeat : hbUsed} max={t.heartbeat} tone={due || ended ? "bad" : undefined} label="Days since last heartbeat" />
-        <p className="tiny muted" style={{ margin: 0 }}><span className="mono">{days(hbUsed)}</span> of <span className="mono">{Math.round(t.heartbeat / DAY)}</span> days{v.issuer.lastAction ? ` · ${v.issuer.lastAction.what}` : ""}</p>
+        <p className="tiny muted" style={{ margin: 0 }}><span className="mono">{duration(hbUsed)}</span> of <span className="mono">{duration(t.heartbeat)}</span>{v.issuer.lastAction ? ` · ${v.issuer.lastAction.what}` : ""}</p>
         <p className="next">{ended ? "Wound down. Redemption is open with no fee and no deadline." : due ? "Due now: anyone can declare it abandoned." : `Anyone can flip it in ${duration(d.hbLeft)} if the ${who} stops.`}</p>
       </article>
 
