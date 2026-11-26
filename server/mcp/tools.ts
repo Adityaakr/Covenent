@@ -87,6 +87,8 @@ export const WRITE_TOOLS = [
 ] as const;
 export const TOOL_NAMES = [...READ_TOOLS, ...WRITE_TOOLS] as const;
 
+const networkChecks = new WeakMap<CovenantService, Map<string, Promise<number>>>();
+
 export interface McpDeps {
   cfg: ServerConfig;
   svc?: CovenantService;
@@ -128,15 +130,22 @@ export function createMcpServer(deps: McpDeps): McpServer {
     },
   );
 
-  // The RPC must serve the chain the deployment record names: an unsigned transaction carries that chain id.
-  let networkCheck: Promise<number> | null = null;
+  // The RPC must serve the chain the deployment record names: an unsigned transaction carries that chain id. Checked
+  // once per chain reader (the HTTP mode builds a server per request but shares the reader), retried after a failure.
   const ensureNetwork = () => {
-    networkCheck ??= svc.client.getChainId().then((id) => {
-      if (id !== cfg.chainId) throw new Error(`RPC reports chain ${id} but the deployment is for chain ${cfg.chainId}`);
-      return id;
-    });
-    networkCheck.catch(() => (networkCheck = null));
-    return networkCheck;
+    const key = `${cfg.chainId}`;
+    let checks = networkChecks.get(svc);
+    if (!checks) networkChecks.set(svc, (checks = new Map()));
+    let p = checks.get(key);
+    if (!p) {
+      p = svc.client.getChainId().then((id) => {
+        if (id !== cfg.chainId) throw new Error(`RPC reports chain ${id} but the deployment is for chain ${cfg.chainId}`);
+        return id;
+      });
+      checks.set(key, p);
+      p.catch(() => checks!.delete(key));
+    }
+    return p;
   };
 
   const resolve = async (covenant: string): Promise<ResolvedCovenant> => {
