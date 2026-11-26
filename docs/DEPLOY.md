@@ -5,32 +5,41 @@ Chain mainnet. Run the steps below with the owner, testnet first.
 
 ## Redeploy with the audit fixes (26 Nov 2026)
 
-The factories, launcher and vault changed after Flap's audit review (name screen and Flap's live liquidity floor at
-creation, tax duration bounds, the BNB-terms unlock guard, wind-down attribution, the launcher dust sweep, an explicit
-finalize gas limit), so the stack was redeployed with `script/Deploy.s.sol` after a clean dry run. Deployer
-`0x6A23244b34bFAFB9594d34c723b886bE89E0cC02`, blocks 144984556 to 144984596, 7 transactions, 37,057,117 gas at 0.1 gwei
-(0.0037 tBNB). The `CovenantVaultDisplay` library is unchanged and stays linked at
-`0x29765E2633bE5656a8E8eB558EA42df7fBfe9122`. All 15 contracts (the seven below, the four implementations and the four
-beacons) are source-verified on Sourcify. `contracts/deployments/97.json` holds the record; it also lists the first
-covenant (`legacyCovenantLauncher`, `legacyCovenantVault`) and the previous factories and oracle (`previous*`), so the
-app and the server keep reading that covenant's history.
+The factories, launcher, vault, oracle and Lite template changed after Flap's audit review and the independent
+pre-audit (name screen and Flap's live liquidity floor at creation, tax rules, the BNB-terms unlock guard, H-1/M-1/M-2,
+write-once reports, wind-down attribution and L-4, the launch retry window, both dust sweeps, an explicit finalize gas
+limit), so the stack was redeployed with `script/Deploy.s.sol` after a clean dry run. Deployer
+`0x6A23244b34bFAFB9594d34c723b886bE89E0cC02`, blocks 144991479 to 144991551, 8 transactions (the updated
+`CovenantVaultDisplay` library first, at `0xD75b45c051dbC92fcE605Aab541Bc8bF07E26597`), 39,716,528 gas at 0.1 gwei
+(0.0033 tBNB). All 16 contracts (the library, the seven below, the four implementations and the four beacons) are
+source-verified on Sourcify. Everything is compiled with the `size` profile (optimizer runs 1), which `foundry.toml`
+requires for `CovenantVault` to stay under the EIP-170 limit (24,207 of 24,576 bytes).
+
+`contracts/deployments/97.json` holds the record; it also lists the first covenant (`legacyCovenantLauncher`,
+`legacyCovenantVault`) and the first deployment's factories and oracle (`previous*`), so the app and the server keep
+reading that covenant's history. Re-add those keys after a redeploy: `Deploy.s.sol` rewrites the file.
 
 | Contract | Address |
 |---|---|
-| CovenantOracle | [`0x749ec94844Bf50DDfd4CfAFD9167305213CcC11D`](https://testnet.bscscan.com/address/0x749ec94844Bf50DDfd4CfAFD9167305213CcC11D) |
-| CovenantLauncherFactory (production, graduation floor; ask Flap to enable) | [`0xA3884139b002AaCEd9Dd77d8fd89e4E65c1D10Da`](https://testnet.bscscan.com/address/0xA3884139b002AaCEd9Dd77d8fd89e4E65c1D10Da) |
-| CovenantVaultFactory (production) | [`0x1c1819Ff2EbF723047C55E23a799b4dB9Ba7AA05`](https://testnet.bscscan.com/address/0x1c1819Ff2EbF723047C55E23a799b4dB9Ba7AA05) |
-| CovenantLauncherFactory (demo, launch floor; ask Flap to enable) | [`0xFC0a5dc742D21C4e36947762dbb4e36296BD1138`](https://testnet.bscscan.com/address/0xFC0a5dc742D21C4e36947762dbb4e36296BD1138) |
-| CovenantVaultFactory (demo) | [`0x35945180475B74e1C1CA37d71e5b721bD4b26843`](https://testnet.bscscan.com/address/0x35945180475B74e1C1CA37d71e5b721bD4b26843) |
-| CovenantLens | [`0x499BD0638C8299e1b5Bec10AfBc13dC6c617724f`](https://testnet.bscscan.com/address/0x499BD0638C8299e1b5Bec10AfBc13dC6c617724f) |
-| CovenantLiteVault template | [`0x68acB0d7d0736Fd410032898bC56C6A2827714af`](https://testnet.bscscan.com/address/0x68acB0d7d0736Fd410032898bC56C6A2827714af) |
+| CovenantOracle | [`0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d`](https://testnet.bscscan.com/address/0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d) |
+| CovenantLauncherFactory (production, graduation floor; ask Flap to enable) | [`0x270dE514C8cbE98E574D842e42c724335E742Fd1`](https://testnet.bscscan.com/address/0x270dE514C8cbE98E574D842e42c724335E742Fd1) |
+| CovenantVaultFactory (production) | [`0xCD43CDEc6d587110510c9946BF0791a8eA07D58E`](https://testnet.bscscan.com/address/0xCD43CDEc6d587110510c9946BF0791a8eA07D58E) |
+| CovenantLauncherFactory (demo, launch floor; ask Flap to enable) | [`0x502d78a835e68DeB940191Da83AF0Cb838ef8693`](https://testnet.bscscan.com/address/0x502d78a835e68DeB940191Da83AF0Cb838ef8693) |
+| CovenantVaultFactory (demo) | [`0xA981585c8D26C1169Fb73F25764A5b18c006D075`](https://testnet.bscscan.com/address/0xA981585c8D26C1169Fb73F25764A5b18c006D075) |
+| CovenantLens | [`0x61a33a14752C7Abbe6A71A211096f19F6E917309`](https://testnet.bscscan.com/address/0x61a33a14752C7Abbe6A71A211096f19F6E917309) |
+| CovenantLiteVault template | [`0x8C86A73a40Bf25Ae445F1B142d3db219e80a31D1`](https://testnet.bscscan.com/address/0x8C86A73a40Bf25Ae445F1B142d3db219e80a31D1) |
 
 Read back on chain 97 after the deploy: both factories hold Flap's testnet name screen
 (`0x5CfbE713d070e87F67D1bc84312B7eB8Fe4F2B5E`); `minRaiseFor(1e27, 6000, 1500)` answers 57.14 BNB (graduation floor,
 $10,000 at the Portal's $700) on the production factory and 28.57 BNB (launch floor, $5,000) on the demo factory; the
-launcher implementation reports `FINALIZE_GAS_LIMIT` 16,700,000.
+oracle's `pushBnbUsd()` returns the live Atlas push rate, which new vaults read in their launch transaction.
 
-`Deploy.s.sol` rewrites `97.json` on every run: re-add the `legacy*` and `previous*` keys after a redeploy.
+Two earlier attempts the same day are superseded and hold no covenant: a deploy with only Flap's review fixes
+(production launcher factory `0xA3884139b002AaCEd9Dd77d8fd89e4E65c1D10Da`, demo `0xFC0a5dc742D21C4e36947762dbb4e36296BD1138`,
+oracle `0x749ec94844Bf50DDfd4CfAFD9167305213CcC11D`), and a broadcast that stopped when the vault factory's constructor
+reverted because `CovenantVault` was over the EIP-170 limit (only an unused oracle,
+`0xf27B019178E9B0E050283215B131Ae589930cF13`, was created). Run `forge build --sizes` before a broadcast: forge's
+script simulation does not enforce the size limit; CI does now.
 
 ## First BNB testnet deployment (chain 97, 26 Nov 2026, before the audit fixes)
 
