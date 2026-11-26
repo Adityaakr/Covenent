@@ -1,7 +1,48 @@
 # Deploying Covenant to BNB testnet and BNB Chain
 
-This is the runbook for `contracts/script/Deploy.s.sol`. Nothing in this repository has been deployed to a public
-network. Run the steps below with the owner, testnet first.
+This is the runbook for `contracts/script/Deploy.s.sol`. Covenant is deployed on BNB testnet (below); nothing is on BNB
+Chain mainnet. Run the steps below with the owner, testnet first.
+
+## BNB testnet deployment (chain 97, 26 Nov 2026)
+
+`contracts/deployments/97.json` holds the record. Deployer `0x6A23244b34bFAFB9594d34c723b886bE89E0cC02`, blocks
+144956048 to 144956125, 8 transactions, 37,604,408 gas at 0.05 gwei (0.00188 tBNB). Push-feed mode: the oracle reads
+the Atlas BNB/USD push feed, max age 3600 s; no pull feed id was set (`atlasFeedIdBnbUsd` 0x00000001 is the
+placeholder, so signed pull reports are not accepted by this oracle). Every contract below, plus the four beacon
+implementations and the four beacons, is source-verified on Sourcify (`match`). BscScan-native verification still
+needs a BscScan API key (`ETHERSCAN_API_KEY`).
+
+| Contract | Address |
+|---|---|
+| CovenantOracle | [`0x3CC607931edaF307dC867111e48cAc28e31fF052`](https://testnet.bscscan.com/address/0x3CC607931edaF307dC867111e48cAc28e31fF052) |
+| CovenantLauncherFactory (production, ask Flap to enable) | [`0x373491d66f68FE2Acc370B12E6FA2bB488FC6A0B`](https://testnet.bscscan.com/address/0x373491d66f68FE2Acc370B12E6FA2bB488FC6A0B) |
+| CovenantVaultFactory (production) | [`0x2665c44Ea346De54207b8E8C1A351aE3e82FCf57`](https://testnet.bscscan.com/address/0x2665c44Ea346De54207b8E8C1A351aE3e82FCf57) |
+| CovenantLauncherFactory (demo, ask Flap to enable) | [`0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48`](https://testnet.bscscan.com/address/0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48) |
+| CovenantVaultFactory (demo) | [`0xF8Bf9A01457C45a8F53E7ae32D863B38d3876c97`](https://testnet.bscscan.com/address/0xF8Bf9A01457C45a8F53E7ae32D863B38d3876c97) |
+| CovenantLens | [`0x6c0D9CDDCbAA497a54fF5aDDCbf444E77b3d1A83`](https://testnet.bscscan.com/address/0x6c0D9CDDCbAA497a54fF5aDDCbf444E77b3d1A83) |
+| CovenantLiteVault template | [`0xC9aD3B8aC5baD26278EFc8F88D1073eB85791437`](https://testnet.bscscan.com/address/0xC9aD3B8aC5baD26278EFc8F88D1073eB85791437) |
+| CovenantVaultDisplay (linked library) | [`0x29765E2633bE5656a8E8eB558EA42df7fBfe9122`](https://testnet.bscscan.com/address/0x29765E2633bE5656a8E8eB558EA42df7fBfe9122) |
+
+Flap has not enabled the launcher factories yet. The testnet Portal launches from them anyway (see step 5).
+
+### Running the platform on testnet
+
+```bash
+TESTNET_WALLETS=/path/to/wallets.env scripts/testnet-up.sh   # first run; later runs: scripts/testnet-up.sh
+```
+
+It writes `contracts/deployments/97.local.json` (the record in the `{chainId, rpcUrl, addresses}` shape the server and
+the web read, git-ignored) and starts the server API, the keeper (push-feed pokes, no Atlas key), the issuer agent
+(once a covenant of its wallet exists) and the web app, all on chain 97. The keeper and issuer keys go to
+`.dev/testnet/keys.env` (mode 600, git-ignored); `TESTNET_SECRETS_FROM=<server .env>` adds the CMC and Anthropic keys.
+`COVENANT_ALLOW_PUBLIC_NETWORK=1` is set in this mode only. There is no faucet and no seeded data: the app shows what
+is on chain 97, and "Get test funds" becomes a link to BNB Chain's testnet faucet.
+
+**Cost of a testnet covenant.** The testnet Portal refuses a pool seed under about 3.57 BNB: a 1 BNB seed fails at
+finalize with custom error `0xa32ef056(700e18, 2500e18)` (read on a testnet fork, 26 Nov 2026), so the launch fails
+and every commitment refunds. `script/TestnetCovenant.s.sol` creates the cheapest covenant that launches: a 4.5 tBNB
+raise split 50 / 40 / 10 (sale / pool / team), which seeds 3.6 tBNB and leaves 0.9 tBNB in the treasury. Gas for the
+whole journey (create, commit, finalize, claim, pokes, tap, wind-down, redeem) is under 8M, a fraction of a cent.
 
 ## What gets deployed
 

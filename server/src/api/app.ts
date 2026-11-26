@@ -86,7 +86,7 @@ export function createApp(deps: AppDeps) {
       abiSource: svc.abis.published.length ? svc.abis.published : ['fallback (docs/DESIGN.md)'],
       covenants: svc.covenants().length,
       oracle: cfg.oracle ?? null,
-      atlasMode: cfg.atlas.apiKey ? 'atlas' : 'local-test-signer',
+      atlasMode: cfg.atlas.apiKey ? 'atlas' : cfg.atlas.localSignerAllowed ? 'local-test-signer' : cfg.atlas.pushFeed ? 'push-feed' : 'none',
       cmcKey: cmc.hasKey,
       simulator: existsSync(cfg.simulatorFile),
     };

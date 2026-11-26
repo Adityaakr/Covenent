@@ -305,7 +305,7 @@ export const Health = z.object({
   abiSource: z.array(z.string()),
   covenants: z.number(),
   oracle: Address.nullable(),
-  atlasMode: z.enum(['atlas', 'local-test-signer']),
+  atlasMode: z.enum(['atlas', 'local-test-signer', 'push-feed', 'none']),
   cmcKey: z.boolean(),
   simulator: z.boolean(),
 });

@@ -125,7 +125,6 @@ function Scene({ step, v: maybe }: { step: Step; v?: CovenantView }) {
           <div className="kpi"><p className="k">Covenant</p><div className="v">5 rules</div><div className="s">One vault, one rule, one price feed</div></div>
           <div className="kpi"><p className="k">For</p><div className="v">Teams and agents</div><div className="s">A budget it is held to</div></div>
         </div>
-        <p className="h-sec" style={{ textAlign: "center" }}>ClawPump lets an agent launch a token. <span className="muted">Covenant lets an agent raise a budget it can be held to.</span></p>
       </div>
     );
   }

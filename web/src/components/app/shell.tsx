@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useSwitchChain } from "wagmi";
 import { privyOriginAllowed, useWallet } from "@/components/providers";
-import { ANVIL_ACCOUNTS, ANVIL_ROLES, anvil, chainName, explorerTx } from "@/lib/chain/chains";
+import { ANVIL_ACCOUNTS, ANVIL_ROLES, TESTNET_FAUCET, anvil, chainName, explorerTx } from "@/lib/chain/chains";
 import { useCovenants, useSource } from "@/lib/data/hooks";
 import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
@@ -98,7 +98,12 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
         );
       })}
       <div className="sb-label">Tools</div>
-      {TOOLS.map((n) => (
+      {TOOLS.map((n) => n.href === "/app/faucet" && source.chainId === 97 ? (
+        // BNB testnet: test BNB comes from BNB Chain's faucet, not from the dev stack
+        <a key={n.href} href={TESTNET_FAUCET} target="_blank" rel="noreferrer" className="sb-item" title="BNB testnet faucet (bnbchain.org)">
+          <Icon name={n.icon} size={18} /><span className="lab">BNB testnet faucet</span>
+        </a>
+      ) : (
         <Link key={n.href} href={n.href} className="sb-item" aria-current={path.startsWith(n.href) ? "page" : undefined} title={n.label}>
           <Icon name={n.icon} size={18} /><span className="lab">{n.label}</span>
         </Link>
@@ -116,7 +121,7 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
           );
         })}
         {!online ? (
-          <Link href="/app" className="sb-offline" title={source.reason}><span className="dot" /><span>{source.mode === "checking" ? "Checking the local chain" : "Not connected to the local chain"}</span></Link>
+          <Link href="/app" className="sb-offline" title={source.reason}><span className="dot" /><span>{source.mode === "checking" ? "Checking the chain" : "Not connected to the chain"}</span></Link>
         ) : loading ? [0, 1, 2].map((k) => <span key={k} className="sb-cov" aria-hidden><Skeleton h={22} w={22} r={22} /><Skeleton h={12} w={`${60 - k * 12}%`} /></span>)
           : live.length === 0 ? <p className="sb-empty">No covenants yet</p> : null}
       </div>
@@ -145,9 +150,10 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
 
 function Crumbs() {
   const path = usePathname();
+  const src = useSource();
   const { list } = useCovenants();
   const parts = path.split("/").filter(Boolean).slice(1);
-  const top: Record<string, string> = { lite: "Four.meme covenant", create: "Create a covenant", simulator: "Launch simulator", demo: "Demo script", portfolio: "Portfolio", covenants: "Covenants", faucet: "Get test funds" };
+  const top: Record<string, string> = { lite: "Four.meme covenant", create: "Create a covenant", simulator: "Launch simulator", demo: "Demo script", portfolio: "Portfolio", covenants: "Covenants", faucet: src.chainId === 97 ? "Get test BNB" : "Get test funds" };
   if (parts[0] === "c") {
     const v = list.find((x) => x.id.toLowerCase() === (parts[1] ?? "").toLowerCase());
     const sub = parts[2] ? { raise: "Raise", settle: "Settlement", redeem: "Redeem", team: v?.issuer.kind === "agent" ? "Agent console" : "Team console" }[parts[2]] ?? null : null;
@@ -176,7 +182,7 @@ function NetworkChip() {
   if (!w.address || !w.chainId) return null;
   const wrong = src.chainId ? w.chainId !== src.chainId : w.chainId !== anvil.id && w.chainId !== 97;
   return (
-    <button className={cx("netpill hide-sm", wrong && "warn")} onClick={() => switchChain?.({ chainId: src.chainId ?? anvil.id })} title={wrong ? "Wrong network: switch to the local chain" : "Connected network"}>
+    <button className={cx("netpill hide-sm", wrong && "warn")} onClick={() => switchChain?.({ chainId: src.chainId ?? anvil.id })} title={wrong ? `Wrong network: switch to ${chainName(src.chainId ?? anvil.id)}` : "Connected network"}>
       <span className="dot" style={wrong ? { background: "var(--warn)" } : undefined} />{withBnb(chainName(w.chainId))}
     </button>
   );
@@ -222,6 +228,7 @@ function useDismiss(open: boolean, close: () => void) {
 
 function WalletMenu() {
   const w = useWallet();
+  const src = useSource();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
@@ -249,7 +256,9 @@ function WalletMenu() {
               <div className="pop-sep" />
               <button className="pop-item" role="menuitem" onClick={() => { void navigator.clipboard?.writeText(w.address!); setCopied(true); setTimeout(() => setCopied(false), 1200); }}><Icon name={copied ? "check" : "copy"} size={16} />{copied ? "Copied" : "Copy address"}</button>
               <Link className="pop-item" role="menuitem" href="/app/portfolio" onClick={() => setOpen(false)}><Icon name="pie" size={16} />Portfolio</Link>
-              <Link className="pop-item" role="menuitem" href="/app/faucet" onClick={() => setOpen(false)}><Icon name="drop" size={16} />Get test funds</Link>
+              {src.chainId === 97
+                ? <a className="pop-item" role="menuitem" href={TESTNET_FAUCET} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}><Icon name="drop" size={16} />BNB testnet faucet</a>
+                : <Link className="pop-item" role="menuitem" href="/app/faucet" onClick={() => setOpen(false)}><Icon name="drop" size={16} />Get test funds</Link>}
               <button className="pop-item" role="menuitem" onClick={() => { w.disconnect(); setOpen(false); }}><Icon name="exit" size={16} />Disconnect</button>
             </>
           ) : (
@@ -270,7 +279,7 @@ function WalletMenu() {
               ) : null}
               <div className="pop-sep" />
               {w.mode === "privy" ? (
-                <button className="pop-item" role="menuitem" onClick={() => w.setMode("browser")}><Icon name="refresh" size={16} /><span>Use a browser wallet instead<small>Skips Privy; adds local test accounts</small></span></button>
+                <button className="pop-item" role="menuitem" onClick={() => w.setMode("browser")}><Icon name="refresh" size={16} /><span>Use a browser wallet instead<small>{w.devWallet ? "Skips Privy; adds local test accounts" : "Skips Privy; MetaMask or another injected wallet"}</small></span></button>
               ) : w.privyAvailable ? (
                 <button className="pop-item" role="menuitem" onClick={() => w.setMode("privy")}><Icon name="refresh" size={16} /><span>Use Privy login{!privyOriginAllowed() ? <small>This origin is not on the Privy app&apos;s allow list; open http://localhost:8080 (pnpm dev)</small> : null}</span></button>
               ) : <p className="t-xs muted w5" style={{ padding: "6px 10px" }}>Privy is off: no NEXT_PUBLIC_PRIVY_APP_ID.</p>}

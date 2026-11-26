@@ -8,7 +8,7 @@ const keeper = new Keeper({ cfg });
 
 console.log(
   `[keeper] chain ${cfg.chainId} at ${cfg.rpcUrl}; ${keeper.svc.covenants().length} covenant(s); oracle ${cfg.oracle ?? 'unknown'}; ` +
-    `Atlas ${cfg.atlas.apiKey ? 'pull API (SDK)' : 'LOCAL TEST SIGNER'}; poke every ${cfg.keeper.pokeIntervalSeconds}s, tick ${cfg.keeper.tickSeconds}s`,
+    `Atlas ${cfg.atlas.apiKey ? 'pull API (SDK)' : cfg.atlas.localSignerAllowed ? 'LOCAL TEST SIGNER' : cfg.atlas.pushFeed ? `push feed ${cfg.atlas.pushFeed} (pokes carry no report)` : 'none (pokes carry no report)'}; poke every ${cfg.keeper.pokeIntervalSeconds}s, tick ${cfg.keeper.tickSeconds}s`,
 );
 
 if (once) {

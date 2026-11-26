@@ -1,8 +1,8 @@
 "use client";
 
 /*
- * One source for every screen: the contracts named by contracts/deployments/local.json, read from the chain they
- * name. There is no stand-in data. When the deployment or the chain is not there, screens show an empty state and
+ * One source for every screen: the contracts named by the deployment file (contracts/deployments/local.json, or
+ * COVENANT_DEPLOYMENTS such as the BNB testnet record), read from the chain they name. There is no stand-in data. When the deployment or the chain is not there, screens show an empty state and
  * the app's status chip says why ("offline").
  */
 import { useQuery } from "@tanstack/react-query";
@@ -56,7 +56,13 @@ async function probe(): Promise<SourceStatus> {
     const id = await client.getChainId();
     if (id !== d.chainId) return { mode: "offline", reason: `RPC answers chain ${id}, deployment is for ${d.chainId}`, payload };
     const launchers = await discover(client, payload);
-    if (launchers.length === 0) return { mode: "offline", reason: "Deployment names no launcher yet", payload };
+    if (launchers.length === 0) {
+      // A real deployment with no covenant yet (BNB testnet before the first create) is live and empty.
+      const factory = addressOf(d, "demoLauncherFactory") ?? addressOf(d, "launcherFactory");
+      const fcode = factory ? await client.getCode({ address: factory }) : undefined;
+      if (fcode && fcode !== "0x") return { mode: "live", reason: `No covenant yet on chain ${id}`, payload, client, chainId: id, launchers };
+      return { mode: "offline", reason: "Deployment names no launcher yet", payload };
+    }
     const code = await client.getCode({ address: launchers[0]! });
     if (!code || code === "0x") return { mode: "offline", reason: "Launcher has no code: the local chain was reset", payload };
     return { mode: "live", reason: `${launchers.length} covenant${launchers.length > 1 ? "s" : ""} on chain ${id}`, payload, client, chainId: id, launchers };
