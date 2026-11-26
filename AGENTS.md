@@ -81,8 +81,9 @@ The server must allow the web origin in `CORS_ORIGINS`.
   real Portal, forked), and BNB testnet (97: real transactions, Atlas push feed, no faucet, no seeded data). The
   Four.meme path runs on the fork only: OpenFour's ForwardVault refuses any chain but 56 and 97.
 - **Keys only in git-ignored files.** `server/.env`, `contracts/.env`, `web/.env.local`, `.dev/testnet/keys.env`.
-  Everything in `web/.env*` is public (`NEXT_PUBLIC_*`); never put a secret there. The anvil keys in scripts and tests
-  are anvil's public test keys. Never print, log or commit a real key.
+  Every `NEXT_PUBLIC_*` value in `web/.env*` is public; the only secret there is `ANTHROPIC_API_KEY` in
+  `web/.env.local`, read by the Ask AI route on the server, never with a `NEXT_PUBLIC_` prefix. The anvil keys in
+  scripts and tests are anvil's public test keys. Never print, log or commit a real key.
 - **Chain guards stay on.** The server refuses to sign on chains 56 and 97 unless the RPC is loopback (a local fork) or
   `COVENANT_ALLOW_PUBLIC_NETWORK=1` is set, and only `scripts/testnet-up.sh` sets it. The faucet refuses any RPC that is
   not a loopback node. Do not loosen these.

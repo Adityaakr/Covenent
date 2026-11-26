@@ -103,5 +103,10 @@ export async function readDecisions(client: PublicClient, payload: DeploymentPay
   }
   // A heartbeat emitted inside a report or claim transaction is the same act: keep the richer row.
   const richTx = new Set(out.filter((e) => e.type !== "action" || e.name !== "Heartbeat").map((e) => e.tx));
-  return out.filter((e) => !(e.type === "action" && e.name === "Heartbeat" && richTx.has(e.tx))).sort((x, y) => y.at - x.at).slice(0, limit);
+  // An action a decision record names (its `tx`) is already told by that decision: keep the decision row only.
+  const explained = new Set(out.flatMap((e) => (e.type === "decision" && e.verified && e.record.tx ? [e.record.tx.toLowerCase()] : [])));
+  return out
+    .filter((e) => !(e.type === "action" && ((e.name === "Heartbeat" && richTx.has(e.tx)) || explained.has(e.tx.toLowerCase()))))
+    .sort((x, y) => y.at - x.at)
+    .slice(0, limit);
 }

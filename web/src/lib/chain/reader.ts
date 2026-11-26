@@ -223,7 +223,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
         }
         case "Observed": history.push({ t: at, price: amount("twapBnb", "twap", "price"), book: amount("bookValue", "book") }); break;
       }
-      events.push({ at, name: l.eventName, detail: Object.entries(a).slice(0, 3).map(([k, v]) => `${k} ${typeof v === "bigint" ? (v > 10n ** 12n ? Number(formatEther(v)).toLocaleString("en-US", { maximumFractionDigits: 6 }) : v.toString()) : String(v)}`).join(" · "), tx: l.transactionHash });
+      events.push({ at, name: l.eventName, detail: Object.entries(a).slice(0, 3).map(([k, v]) => `${k} ${typeof v === "bigint" ? (v > 10n ** 12n ? Number(formatEther(v)).toLocaleString("en-US", { maximumFractionDigits: 6 }) : v.toString()) : typeof v === "string" && v.startsWith("data:") ? "on-chain record (see Agent decisions)" : String(v)}`).join(" · "), tx: l.transactionHash });
     }
   } catch {
     /* log queries can fail on a pruned node; the sheet still renders its reads */
