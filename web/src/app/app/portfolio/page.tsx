@@ -40,7 +40,7 @@ export default function PortfolioPage() {
           <h1 className="h-page">Portfolio</h1>
           <p className="lede">What you hold in each covenant, valued at book (what the vault would pay in an exit round) and at the pool.</p>
         </div>
-        {online && w.address ? <span className="badge lg good">Connected</span> : null}
+
       </div>
 
       {!online && !loading ? <ConnectChain source={source} /> : needsWallet ? (

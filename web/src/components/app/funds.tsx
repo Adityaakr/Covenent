@@ -135,7 +135,7 @@ export function TestnetFunds() {
             </div>
           </div>
           {drip.state === "sent" ? null : off ? <p className="drip-note warn">{off}</p> : blocked ? <p className="drip-note">{blocked}</p> : null}
-          {drip.state === "sent" ? null : <button
+          {drip.state === "sent" || (blocked && wallet.address) ? null : <button
             className="btn btn-primary btn-xl btn-block"
             disabled={drip.state === "busy" || drip.state === "refused" || (Boolean(wallet.address) && (Boolean(off) || Boolean(blocked) || !status.data))}
             onClick={() => void send()}
@@ -145,7 +145,7 @@ export function TestnetFunds() {
               : <><Icon name="drop" size={16} />Send me {t?.drip ?? "0.003"} tBNB</>}
           </button>}
           <DripResult drip={drip} />
-          {drip.state === "sent" || enough ? (
+          {drip.state === "sent" || has > 0 ? (
             <div className="drip-next">
               <span className="lbl">Next</span>
               <Link className="tlink" href="/app/covenants">Commit to a raise<Icon name="chevronRight" size={14} /></Link>
@@ -209,7 +209,7 @@ export function GetStarted() {
   const { drip, send } = useDrip();
   const start = useStart(wallet.address);
   const status = useFaucetStatus(src.chainId === 97 ? (wallet.address as Address | undefined) : undefined);
-  const [min, setMin] = useState(false);
+  const [minSet, setMin] = useState<boolean | null>(null);
 
   const onTestnet = src.mode === "live" && src.chainId === 97;
   const has = bal.data;
@@ -223,6 +223,9 @@ export function GetStarted() {
   const committed = positions.length > 0;
   const raising = list.find((v) => v.source === "live" && v.state === "RAISING" && v.raise.deadline > v.now);
   const doneAll = gas && committed;
+  // on a phone the guide folds to its header once gas is in, so it never sits over the page
+  const phone = typeof window !== "undefined" && window.matchMedia("(max-width: 809.98px)").matches;
+  const min = minSet ?? (phone && gas);
   // the server's answer before any click: dry, off, or this wallet or network already paid today
   const t = status.data?.testnet;
   const cannot = drip.state === "idle" && status.data ? (!status.data.enabled ? status.data.reason : t?.eligible && !t.eligible.ok ? t.eligible.reason : null) : null;
