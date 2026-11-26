@@ -171,7 +171,7 @@ input[type="range"].range { width: 100%; accent-color: var(--accent); }
 @media (max-width: 760px) { .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .rules { grid-template-columns: minmax(0, 1fr); } }
 .rule { display: flex; flex-direction: column; gap: 10px; padding: 16px; min-height: 196px; }
-.rule .num-tag { font-family: var(--font-mono-stack); font-size: 11px; color: var(--faint); }
+.rule .num-tag { font-family: var(--font-mono-stack); font-size: 11px; color: var(--faint); white-space: nowrap; }
 .rule h4 { margin: 0; font-family: var(--font-display-stack); font-size: 15px; font-weight: 600; letter-spacing: -0.012em; }
 .rule .line { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin: 0; }
 .rule .big { font-family: var(--font-mono-stack); font-size: 19px; letter-spacing: -0.02em; color: var(--ink); line-height: 1.15; overflow-wrap: anywhere; }

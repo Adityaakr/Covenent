@@ -156,7 +156,7 @@ export function RuleCards({ v, d }: { v: CovenantView; d: Derived }) {
 
       <article className="card rule">
         <RuleHead n={5} icon="doc" title="Disclosure" stretch />
-        <p className="line">A report each 30 days. A missed or failed report pauses the tap until a passing one lands.</p>
+        <p className="line">Stretch goal: a report each 30 days. A missed or failed report pauses the tap until a passing one lands.</p>
         <div className="big">{v.disclosure.passed} <span className="small muted">of {Math.max(v.disclosure.due, v.disclosure.passed)} reports</span></div>
         <Meter value={v.disclosure.passed} max={Math.max(1, v.disclosure.due, v.disclosure.passed)} tone="good" label="Reports passed against due" />
         <p className="tiny muted" style={{ margin: 0, overflowWrap: "anywhere" }}>{v.disclosure.lastUri ? <>Last: <span className="mono">{v.disclosure.lastUri}</span></> : "No report yet"}</p>
@@ -187,7 +187,7 @@ function RuleHead({ n, icon, title, stretch }: { n: number; icon: IconName; titl
         <span style={{ width: 28, height: 28, borderRadius: 8, display: "grid", placeItems: "center", background: "var(--surface)", color: "var(--ink-2)" }}><Icon name={icon} size={16} /></span>
         <h4>{title}</h4>
       </div>
-      <span className="num-tag">{stretch ? "stretch · " : ""}0{n}</span>
+      <span className="num-tag" title={stretch ? "Stretch goal in the design" : undefined}>0{n}</span>
     </div>
   );
 }
