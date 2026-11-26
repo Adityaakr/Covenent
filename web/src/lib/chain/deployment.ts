@@ -77,7 +77,7 @@ export function pickFn(abi: Abi | undefined, ...names: string[]): string | undef
 /** The contract names the app reads, and the functions it calls on each, for the ABI check in the trust panel. */
 export const EXPECTED: Record<string, string[]> = {
   CovenantLauncher: ["contribute", "finalize", "claimRefund", "acceptedOf", "allocationOf", "terms", "state", "token", "vault"],
-  CovenantVault: ["bookValue", "redeemableSupply", "state", "exitStreak", "tapAccrued", "claimTokens", "claimTap", "lowerTap", "heartbeat", "redeem", "declareAbandoned", "windDown", "releaseTeam"],
+  CovenantVault: ["bookValue", "redeemableSupply", "state", "exitStreak", "owedTeam", "claimTokens", "claimTap", "lowerTap", "heartbeat", "redeem", "declareAbandoned", "windDown", "releaseTeam"],
   CovenantOracle: ["poke"],
 };
 
