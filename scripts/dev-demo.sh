@@ -126,7 +126,7 @@ fourmeme() {
   # mines every second, and an estimate taken a block early falls short on the tax swap and the ForwardVault hop.
   snd() {
     local k="$1" st; shift
-    st="$(cast send --rpc-url "$RPC" --private-key "$k" --gas-limit 3000000 --json "$@" | jq -r .status)"
+    st="$(cast send --rpc-url "$RPC" --private-key "$k" --gas-limit 8000000 --json "$@" | jq -r .status)"
     [ "$st" = "0x1" ] || { echo "transaction failed ($*)" >&2; exit 1; }
   }
   # tap 4% per day-long period, 7-day heartbeat, 1% redeem fee: the template's own bounds allow nothing shorter
