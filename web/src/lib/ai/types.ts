@@ -39,6 +39,8 @@ export interface CreateDraft {
   terms: Terms;
   /** null when the factory's checkTerms passed with these terms (salt aside), else its reason */
   checkTerms: string | null;
+  /** what must change before it can be created (empty when valid) */
+  problems?: string[];
 }
 
 export interface Proposal {
@@ -57,11 +59,29 @@ export interface Proposal {
   create?: CreateDraft;
 }
 
+/** One option the model offers as a button (offer_choices). Clicking it sends `reply` as the user's next message. */
+export interface ChoiceOption {
+  label: string;
+  description?: string;
+  reply: string;
+}
+
+/** A question with options, shown as a choice card instead of a list in prose. */
+export interface ChoiceSet {
+  id: string;
+  question: string;
+  options: ChoiceOption[];
+  /** also show a free-text field */
+  allowCustom: boolean;
+}
+
 export type AskEvent =
   | { t: "text"; d: string }
   | { t: "tool"; id: string; name: string; input: unknown }
-  | { t: "tool_done"; id: string; name: string; ok: boolean; summary: string }
+  /** need "wallet": the tool needs a connected wallet; the chat shows a Connect wallet button */
+  | { t: "tool_done"; id: string; name: string; ok: boolean; summary: string; need?: "wallet" }
   | { t: "proposal"; p: Proposal }
+  | { t: "choices"; c: ChoiceSet }
   /** the conversation to send back with the next question (opaque to the browser), and why the turn ended */
   | { t: "done"; messages: unknown[]; stop: string }
   | { t: "error"; message: string; code?: "not_configured" | "rate_limited" | "bad_request" | "chain" | "api" | "timeout" };

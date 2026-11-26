@@ -144,7 +144,7 @@ describe("decision records and the chat stream", () => {
   });
 
   it("a corrected proposal of the same kind replaces the earlier card", () => {
-    const base = { id: 1, kind: "ai" as const, text: "", tools: [], proposals: [], pending: true };
+    const base = { id: 1, kind: "ai" as const, text: "", tools: [], proposals: [], choices: [], pending: true, at: 0 };
     const p1 = { id: "a", kind: "create", title: "1" } as unknown as Proposal;
     const p2 = { id: "b", kind: "create", title: "2" } as unknown as Proposal;
     const s = applyEvent(applyEvent(applyEvent(base, { t: "proposal", p: p1 }), { t: "proposal", p: p2 }), { t: "text", d: "hi" });

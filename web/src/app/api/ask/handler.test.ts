@@ -119,6 +119,31 @@ describe("/api/ask", () => {
     expect(last.message).not.toMatch(/rpc\.internal|key=abc/);
   });
 
+  it("sends offered options as a choice card, and flags a tool that needs a wallet instead of asking for an address", async () => {
+    const fake = fakeAnthropic([
+      { tools: [
+        { id: "t1", name: "mint_demo_usdc", input: {} },
+        { id: "t2", name: "offer_choices", input: { question: "Which split?", options: [{ label: "Sale 50 · Pool 45", description: "Min raise 2.65 BNB", reply: "Use 50/45/5" }, { label: "Sale 50 · Pool 50", reply: "Use 50/50/0" }] } },
+      ] },
+      { text: "Connect a wallet and I'll draft it." },
+    ]);
+    const ev = await events(await askPost(post({ q: "mint and pick" }), { env, anthropic: () => fake.client, context: async () => context([view()], { calls: [] }, null) }));
+    expect(ev.find((e) => e.t === "tool_done" && e.id === "t1")).toMatchObject({ ok: false, need: "wallet", summary: "needs a connected wallet" });
+    const c = ev.find((e) => e.t === "choices") as Extract<AskEvent, { t: "choices" }>;
+    expect(c.c).toMatchObject({ question: "Which split?", allowCustom: false, options: [{ label: "Sale 50 · Pool 45", description: "Min raise 2.65 BNB", reply: "Use 50/45/5" }, { label: "Sale 50 · Pool 50", reply: "Use 50/50/0" }] });
+    // the model is told the options are on screen, and that the chat offers Connect wallet
+    const results = JSON.stringify((fake.requests[1]!.messages as unknown[]).at(-1));
+    expect(results).toContain("End your turn now without restating them");
+    expect(results).toContain("Connect wallet button");
+    // and the system prompt asks for the structured answer format
+    expect((fake.requests[0]!.system as { text: string }[])[0]!.text).toMatch(/call offer_choices/);
+    // a choice set needs 2 to 4 options
+    const bad = fakeAnthropic([{ tools: [{ id: "t1", name: "offer_choices", input: { question: "x", options: [{ label: "only", reply: "only" }] } }] }, { text: "ok" }]);
+    const ev2 = await events(await askPost(post({ q: "one option" }, "5.5.5.5"), { env, anthropic: () => bad.client, context: async () => context([view()]) }));
+    expect(ev2.find((e) => e.t === "tool_done")).toMatchObject({ ok: false, summary: "invalid input" });
+    expect(ev2.some((e) => e.t === "choices")).toBe(false);
+  });
+
   it("answers 503 when the chain is unavailable", async () => {
     const res = await askPost(post({ q: "hi" }), { env, anthropic: () => fakeAnthropic([]).client, context: async () => { throw new Error("boom"); } });
     expect(res.status).toBe(503);

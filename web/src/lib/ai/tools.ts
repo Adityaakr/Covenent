@@ -20,7 +20,7 @@ import { poolSellQuote, redeemQuote, settleRaise, split, startingFloorRatio } fr
 import { DAY } from "@/lib/covenant/time";
 import type { CovenantView, Terms } from "@/lib/covenant/types";
 import type { AiContext } from "./context";
-import type { Proposal, ProposalKind, Simulation, UnsignedTx } from "./types";
+import type { ChoiceSet, Proposal, ProposalKind, Simulation, UnsignedTx } from "./types";
 
 /** finalize() refuses less than 15M gas; BNB testnet refuses more than 2^24 per transaction (lib/data/actions.ts). */
 export const FINALIZE_GAS = 16_700_000n;
@@ -47,6 +47,8 @@ export interface ToolResult {
   /** one line for the activity row in the chat */
   summary: string;
   proposal?: Proposal;
+  /** options the browser shows as buttons (offer_choices) */
+  choices?: ChoiceSet;
 }
 
 export interface ToolDef {
@@ -211,8 +213,10 @@ const bnbAmount = z.string().regex(/^\d+(\.\d{1,18})?$/, "a decimal BNB amount l
 /* ---------- tools ---------- */
 
 const demoUsdc = (ctx: AiContext) => addressOf(ctx.payload.deployment!, "demoUsdc");
+/** The error text of a tool that needs a wallet; runTool flags it so the chat shows a Connect wallet button. */
+export const NO_WALLET = "No wallet connected. The chat now shows the user a Connect wallet button; ask them to connect and ask again. Do not ask them to type an address.";
 const needAccount = (ctx: AiContext) => {
-  if (!ctx.account) throw new Error("No wallet connected. Ask the user to connect a wallet (top right), then ask again.");
+  if (!ctx.account) throw new Error(NO_WALLET);
   return ctx.account;
 };
 
@@ -223,6 +227,28 @@ function floorFor(chainId: number, poolBps: number, saleBps: number) {
 }
 
 export const TOOLS: ToolDef[] = [
+  {
+    name: "offer_choices",
+    description: "Show the user 2 to 4 options as buttons, whenever they have to pick (which split, which covenant, which amount, whether to go ahead). Use it instead of listing options in prose. Each option has a short label, a one-line description with the numbers that decide it, and the reply sent as the user's next message when they click it. After calling it, end your turn: do not repeat the options in text.",
+    schema: z.object({
+      question: z.string().min(1).max(160).describe("the decision, e.g. 'Which split?'"),
+      options: z.array(z.object({
+        label: z.string().min(1).max(60),
+        description: z.string().max(200).optional().describe("one line: the numbers or the trade-off"),
+        reply: z.string().min(1).max(300).describe("sent as the user's message when picked, e.g. 'Use sale 60%, pool 15%, team 25%'"),
+      })).min(2).max(4),
+      allow_custom: z.boolean().optional().describe("also show a free-text answer field"),
+    }),
+    async run(_ctx, input) {
+      const options = (input.options as { label: string; description?: string; reply: string }[]).map((o) => ({ label: o.label, reply: o.reply, ...(o.description ? { description: o.description } : {}) }));
+      const choices: ChoiceSet = { id: crypto.randomUUID(), question: String(input.question), options, allowCustom: input.allow_custom === true };
+      return {
+        data: { shownToUser: "The options are on the user's screen as buttons. End your turn now without restating them; their pick arrives as their next message." },
+        summary: `${options.length} options`,
+        choices,
+      };
+    },
+  },
   {
     name: "list_covenants",
     description: "Every covenant on the chain with state, treasury (BNB), book value per token, pool price, premium or discount to book, and whether its raise is open. Use under_book_only to find covenants trading below treasury value per token.",
@@ -338,7 +364,7 @@ export const TOOLS: ToolDef[] = [
     async run(ctx, input) {
       const factory = (input.factory as "demo" | "production" | undefined) ?? (ctx.chainId === 97 || ctx.chainId === 31337 ? "demo" : "production");
       const team = (input.team_wallet as Address | undefined) ?? ctx.account;
-      if (!team) throw new Error("No team wallet: connect a wallet (it becomes the team wallet) or give team_wallet.");
+      if (!team) throw new Error(`${NO_WALLET} The connected wallet becomes the team wallet.`);
       const saleBps = Math.round(Number(input.sale_pct ?? DEFAULT_TERMS.saleBps / 100) * 100);
       const poolBps = Math.round(Number(input.pool_pct ?? DEFAULT_TERMS.poolBps / 100) * 100);
       const teamBps = 10_000 - saleBps - poolBps;
@@ -410,7 +436,7 @@ export const TOOLS: ToolDef[] = [
       ];
       const p = await propose(ctx, {
         kind: "create", title: `Create ${terms.symbol}`, summary: problems.length ? `Draft with ${problems.length} problem${problems.length > 1 ? "s" : ""} to fix before it can be created.` : "Terms pass the factory's own check. Mine the 7777 salt, then sign Portal.newLauncher.",
-        facts, risks: problems.length ? [...problems, ...risks] : risks, signer: team, txs: [], create: { factory, terms, checkTerms: problems.length ? problems.join(" ") : check },
+        facts, risks, signer: team, txs: [], create: { factory, terms, checkTerms: problems.length ? problems.join(" ") : check, problems },
       });
       return { ...proposalResult(p), data: { ...(proposalResult(p).data as object), valid: problems.length === 0, problems, flapFloor: floor } };
     },
@@ -642,7 +668,7 @@ export function toolSpecs() {
   });
 }
 
-export async function runTool(ctx: AiContext, name: string, input: unknown): Promise<ToolResult & { ok: boolean }> {
+export async function runTool(ctx: AiContext, name: string, input: unknown): Promise<ToolResult & { ok: boolean; need?: "wallet" }> {
   const t = TOOLS.find((x) => x.name === name);
   if (!t) return { ok: false, data: { error: `Unknown tool ${name}` }, summary: "unknown tool" };
   const parsed = t.schema.safeParse(input ?? {});
@@ -652,6 +678,7 @@ export async function runTool(ctx: AiContext, name: string, input: unknown): Pro
     return { ok: true, ...r, data: { untrustedText: UNTRUSTED, ...(r.data as object) } };
   } catch (e) {
     const m = scrub((e as Error).message ?? String(e));
+    if (m.startsWith(NO_WALLET)) return { ok: false, need: "wallet", data: { error: m }, summary: "needs a connected wallet" };
     return { ok: false, data: { error: m }, summary: m.slice(0, 120) };
   }
 }
