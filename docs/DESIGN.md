@@ -3,7 +3,8 @@
  · 
 ## Summary
 Covenant is a launcher and vault for token raises on BNB Chain that binds the team after the money comes in. Five rules, enforced by contract and a verified price feed, replace the trust a buyer normally has to extend.
-The pitch in one line: tokens are sold to the public with none of the protections investors get elsewhere, and Covenant writes the core ones into the launch itself. |  | 
+The pitch in one line: tokens are sold to the public with none of the protections investors get elsewhere, and Covenant writes the core ones into the launch itself.
+The same contracts work when the issuer is an AI agent, and that is where they matter most. An agent cannot be sued, can be hijacked and can simply stop. The agent layer section covers that case and puts an agent at the center of the demo. |  | 
 What it is | A Flap Pool Launch launcher (the raise) plus a vault (the treasury and the team's tokens) governed by fixed rules | 
 Who it is for | Teams that want to raise credibly, buyers who want a floor under what they buy, launchpads that want fewer rugs | 
 The five rules | Tap, performance unlock, book-value exit, abandonment switch, disclosure (stretch) | 
@@ -21,7 +22,7 @@ Disclosure (stretch). A missed or failed monthly report pauses the tap until it 
 CovenantLauncher and CovenantVault launching through Flap's Portal: on BNB testnet if Flap enables our factory, on a fork if not.
 An oracle contract that combines the pool's time-weighted price with signed Atlas reports.
 A tax vault template that brings the tap and the abandonment switch to Four.meme tokens.
-A web app with a raise page, a live covenant sheet per token, a redeem flow and a launch simulator on CoinMarketCap data.
+A web app with a raise page, a live covenant sheet per token, a redeem flow and a launch simulator on CoinMarketCap data. An MCP server lets AI agents read terms, commit and redeem, and a reference issuer agent lives on its tap.
 A scripted three-minute demo: an oversubscribed raise, a tap claim, a slide under book value that pays a holder, and an abandoned project that opens its treasury.
 ## Problem and evidence
 Token buyers hand over money at launch and get no enforceable claim on it afterwards. The data shows what that produces.
@@ -268,6 +269,112 @@ It depends on a price feed for the dollar rules, and on Flap's Guardian for upgr
 Pool Launch's launcher and vault interfaces were announced on Nov 4, 2026. Few teams will have read the spec closely enough to pair a launcher with a vault.
 The mechanism has traps that take time to find: counting pool tokens in book value, making a failed launch refundable, bounding the tap pause.
 Most teams on these tracks will build a trading agent or a dashboard. A fundraising primitive that uses Flap, Atlas and OpenFour for what each is best at stands alone.
+## Agent layer
+The vault that binds a human team binds an AI agent the same way, and an agent needs it more. This section puts agents on both sides of a covenant without changing the five rules, and makes the agent the lead character of the demo.
+### Why add it now
+Judges on this circuit reward agents. At BNB Hack Abu Dhabi the top two overall projects were an AI DeFi assistant and an autonomous trading agent, and the ChatAndBuild track went to an AI agent launchpad (BNB Chain recap). The Developer Track here is open to builders in AI, RWA or Trading.
+BNB Chain has named the gap. Its May 21, 2026 post says agent finance needs identity, capability, payment and accountability. Identity is live at scale: about 89,000 ERC-8004 agents on BSC, roughly 44.5% of all tracked, plus about 132,000 BAP-578 agents. Accountability in that post means task escrow and dispute resolution. It does not cover an agent that raises capital (BNB Chain blog).
+Research points the same way. Google DeepMind's paper on virtual agent economies argues that agent markets need infrastructure for trust, safety and accountability, built on purpose and not left to emerge (Tomasev et al., 2025).
+### Why an agent needs a covenant more than a human team
+Problem with an agent holding money | Evidence | Rule that answers it | 
+Nobody to hold liable | AI16Z was marketed as an autonomous, AI-run venture fund, per a class action complaint. It peaked at $2.39B on Jan 2, 2025. On Aug 5, 2026 its founder wrote that the token is dead, and the foundation's remaining treasury went to settle the case (CoinDesk) | Treasury sits in the vault under fixed rules. Exit at book value | 
+Agents get hijacked | About $175,000 was drained from an agent wallet on May 4, 2026 through a hidden instruction. Vitalik Buterin advised capping autonomous spending near $100 a day, as reported in this roundup | Tap. The agent's key reaches its accrued budget and nothing else | 
+Agents stop without notice | Credits run out, a server goes down, an operator walks away | Heartbeat and the abandonment switch | 
+Agent income is on-chain | CoinMarketCap already sells data to agents at $0.01 per request, with the payment as the login (x402 docs) | An agent can name the vault as its payee. Revenue raises book value for every holder | 
+Investor agents cannot judge a meme | A launch with no terms gives a program nothing to compute | Terms and book value are on-chain. Downside is a number before committing | 
+The fourth row is the one human teams cannot match. A company can only promise revenue through a legal wrapper. An agent that is paid on-chain can route that revenue to the vault in code.
+### ClawPump: what it proves and what it leaves open
+ClawPump calls itself the financial operating system for AI agents. It gives agents wallets, token launches on Solana or Robinhood Chain and 136 MCP tools. Creators keep 75% of collected creator fees. Its site describes no treasury, vesting, lock or investor protection (clawpump.tech). | ClawPump | Covenant with the agent layer | 
+Chain | Solana, Robinhood Chain | BNB Chain, on Flap and Four.meme | 
+How the agent is funded | A share of trading fees on its token | A capped raise in a vault, plus trading tax, plus its own revenue | 
+When trading dries up | Funding stops | Treasury runway continues at the tap cap | 
+What buyers hold | A token with no claim | A token with an exit at treasury value | 
+If the agent stops | Nothing happens | Anyone can open the treasury to holders | 
+If the agent's key is stolen | Its wallet and fee stream are exposed | Only the accrued tap is exposed | 
+How agents reach it | CLI, API, MCP | MCP server and skill file over the same contracts human teams use | 
+Verdict. The direction is right about distribution and weak on economics. Agents will launch and transact through MCP tools and command lines, and the story of an agent becoming a business is one judges already believe. But fee income funds an agent only while people speculate on its token, and it gives buyers nothing when the agent stops. Borrow the interface. Replace the funding model. Do not integrate ClawPump itself: it runs on other chains and is not a sponsor here.
+Two lines for the pitch:
+ClawPump lets an agent launch a token. Covenant lets an agent raise a budget it can be held to.
+BNB Chain has identity, capability and payment for agents. Covenant is accountability for the ones that hold other people's money.
+### Three agent roles
+Role | What it does | Built from | New contract code | 
+Issuer agent | Holds the team wallet. Claims its tap as a compute budget, sends heartbeats, posts a report each period, can lower its own tap, routes revenue to the vault | A small loop with an LLM for the report and the budget decision. ERC-8004 identity | None | 
+Investor agent | Reads terms, computes the downside, commits, claims, redeems when a round opens | Covenant MCP server and a skill file, in any MCP client | None | 
+Keeper agent | Pokes hourly, dispatches tax, declares abandonment when due, buys market data per request | The keeper already in the build plan, plus CoinMarketCap's MCP or x402 endpoints | None | 
+All three work against the contracts as specified. The agent layer is software around the vault, so it cannot break the core.
+### Optional contract changes
+These bind a covenant to a registered agent and write its outcome to the agent's public record. Skip them if the contracts are frozen.
+Identity. Add agentId to Terms, zero for human teams. The launcher factory requires IdentityRegistry.ownerOf(agentId) == teamWallet.
+Track record. On abandonment, wind-down or a tranche unlock, the vault calls ReputationRegistry.giveFeedback(agentId, value, 0, \"covenant\", outcome, \"\", uri, hash) inside a try and catch. ERC-8004 blocks feedback from the agent's own owner or operators. The vault is neither, so the call is allowed (ERC-8004).
+Badge. The covenant sheet shows the agent id, its registration file and the outcomes of its past covenants.
+An agent that abandons one covenant carries that record into its next raise. BNB Chain's post calls reputation that travels across protocols still early. Money outcomes are the strongest signal that record could hold.
+ERC-8004 registry | BNB Chain (56) | BNB testnet (97) | 
+Identity | 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 | 0x8004A818BFB912233c491871b3d84c89A494BD9e | 
+Reputation | 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63 | 0x8004B663056A597Dffe9eCcC1965A193B7388713 | 
+Addresses are from the ERC-8004 contracts repo. The agent registers by calling register(agentURI) from the team wallet. Its registration file lists the Covenant MCP endpoint under services and crypto-economic under supportedTrust.
+### Covenant MCP server
+One server that turns a covenant into tools any assistant can call. Writes return an unsigned transaction by default, so the user's own wallet signs.
+Tool | Kind | Returns | 
+list_covenants | Read | Token, state, treasury, book value, pool price, premium or discount | 
+get_terms | Read | The full terms as JSON, plus a plain-language summary | 
+get_status | Read | State, exit streak, round end, tap accrued and cap, heartbeat age, tranche progress, last trust result | 
+get_downside | Read | What a position redeems for at book today, floor as a share of sale price, runway at the tap cap | 
+get_issuer | Read | Team wallet, agent id, registration file, outcomes of past covenants | 
+get_market | Read | Pair quote, liquidity and holders from CoinMarketCap | 
+commit, claim_tokens, claim_refund | Write | Unsigned transaction for the launcher or vault | 
+redeem, poke, declare_abandoned | Write | Unsigned transaction for the vault or oracle | 
+claim_tap, heartbeat, lower_tap, post_report | Write, issuer only | Unsigned transaction from the team wallet | 
+Build notes:
+TypeScript with the MCP SDK and viem. Standard input and output transport is enough for the demo. Reads are the same multicalls the app uses.
+Ship a SKILL.md beside it, so skill-based agents can use Covenant without running a server.
+CoinMarketCap's own MCP server exposes 12 tools and marks DEX data as work in progress, so get_market calls the DEX API directly (CMC MCP docs).
+### Issuer agent loop
+every few minutes:
+  status = vault.status()                      # state, treasury, book, price, tap accrued
+  if status.state is ACTIVE and status.tapAccrued > minimumClaim:
+      vault.claimTap()                         # also a heartbeat
+  else:
+      vault.heartbeat()
+  if status.price is close to status.book:
+      consider vault.lowerTap(lowerBudget)     # a pay cut that protects the floor
+  if earned revenue since last tick:
+      send it to the vault                     # raises book value for every holder
+  if the period ended:
+      report = llm.write(ledger of spend, actions, revenue)
+      vault.postReport(period, uri(report), hash(report))
+The LLM never decides a rule. It writes the report and explains the budget choices. The rules stay in the vault, which is the point.
+### Four.meme tie-in
+OpenFour's Agent ID Exclusive preset lets only Binance Agentic Wallets with an Agent ID trade a token on the inner market, with a 1% holding cap per address. The preset accepts an optional founder tax vault (mechanism doc). CovenantLiteVault drops into that slot with no new code: a token only agents can trade early, with the founder's tax under a covenant. Preset id 1778027615735.
+One limit to know. Binance's docs for the Agentic Wallet cover transfers and swaps that the user confirms, and do not document arbitrary contract calls (AI Pro docs). The issuer agent therefore runs on its own key with an ERC-8004 identity, not on an Agentic Wallet.
+### Build order for the hours left
+Nothing here starts before Gate B is green. The first two items touch no contract.
+Priority | Item | Rough hours | Contract change | 
+1 | Issuer agent loop: claim tap, heartbeat, report. Rehearse killing it on stage | 3 | No | 
+2 | MCP server with the read tools plus commit and redeem. Skill file | 3 | No | 
+3 | ERC-8004 identity check, outcome written to the reputation registry, badge on the sheet | 2 | Yes, small | 
+4 | Revenue scene: the agent earns once and forwards it to the vault | 1 | No | 
+Stretch | Agent ID Exclusive token with the Lite vault. Keeper paying for data through x402. Cournot check on the agent's report | Open | No | 
+If only one item fits, build the first. Unplugging an agent and watching the treasury open to holders is the most memorable ten seconds available to this project.
+### What it does for each track
+Track | Effect | 
+Developer Track | Puts the project inside the AI theme with a real job for the agent. My estimate for a top-three finish moves from 25% to about 30% if the first two items work on stage. It falls if they delay Gate B | 
+Flap | Same launcher and vault, with a sharper reason to exist: agents raising under rules | 
+CoinMarketCap and Atlas | An agent's budget is priced by Atlas, and its decisions use CoinMarketCap data it can buy per request | 
+Four.meme | Agent ID Exclusive plus the Lite vault is a second, distinct OpenFour integration | 
+ChatAndBuild | Ask what the track requires here. At Abu Dhabi it asked for the best AI agent or platform built with Non-Fungible Agents. If it needs BAP-578, wrapping the issuer agent is extra scope to weigh after asking | 
+### Honest limits
+An agent is whoever holds its key. Covenant does not prove autonomy. It makes the question matter less, because the rules bind the wallet either way.
+A stolen key can still end the project. The thief can claim the accrued tap and call wind-down. Wind-down returns the treasury to holders, so nothing is taken, but the project is over. A notice period on wind-down is a later fix.
+A fresh agent id has no history. Reputation helps from the second covenant on. Readers should count feedback only from vaults our factory created, since ERC-8004 warns that unfiltered summaries invite spam.
+Write tools move money. Never give a hosted MCP server a key. Unsigned transactions are the default for that reason.
+Revenue to the vault is BNB only in v1. Stablecoin income needs a swap step.
+### Hard questions on the agent layer
+Question | Answer | 
+Is the agent really autonomous? | It does not need to be. A human with the key and an agent with the key are bound by the same vault. That is the design. | 
+Why would anyone fund an agent? | Today nobody should, because an agent can hold a treasury with no rules. With a capped budget, an exit at book and a dead-man switch, the worst case is a number. | 
+Is this ClawPump on BNB Chain? | ClawPump funds agents from trading fees and gives buyers no claim. Covenant gives agents a budget and gives buyers the treasury back if the agent fails. | 
+What does the AI actually do? | It runs the business side: spends within its budget, reports, decides when to cut its own pay, and on the investor side reads terms and exits. It never controls the money rules. | 
+What if the agent's key leaks? | The attacker reaches the accrued tap, at most 4% of the treasury a month. The treasury stays in the vault. | 
 ## System architecture
 Covenant is six contracts, one keeper and one web app. Flap creates the token, the pool and the vault. Our code decides who can raise, where the money sits and when it can move.
 Money enters through the launcher, rests in the vault and leaves only through the vault's rules. The Portal also hands the vault the sale and team tokens at launch. CovenantLiteVault for Four.meme is a separate, smaller contract and is not drawn.
@@ -604,7 +711,8 @@ Look. Satoshi for text, a monospace face for every figure, one accent color for 
 ## Build plan for the 36 hours
 The build runs from the evening of Nov 25 to the morning of Nov 27, with Demo Night on Nov 27 from 15:00 to 18:00 (BNB Chain blog). The plan is in hours from kickoff, with three gates. If a gate slips, cut scope from the list below instead of pushing the gate.
 ### First two hours: sponsor asks
-These unblock the most work for the least effort. Do them before writing code.
+
+This doc takes suggestions. Rewording what is already here ("tighten", "improve", "review", "clean up", "this is clunky") → lay the changes in the doc as suggestions: guide( items = ["topic.index", "topic.suggestions"] ) first. Small fixes met on the way (a typo) go in as suggestions with them. The same when asked to suggest, propose or mark up, when the person wants to look before it goes in, and for a question that invites changes ("Any suggestions?", "What would you change?"): suggestions in the doc on this reply, not a list in chat and not comments. An ask for only an exact fix (a typo, a stated fact), new content, a delete or a move → save the edit as usual; the same in a doc you made in this chat, for a rewrite of the whole doc, when told to edit directly, and on an unattended run. While the person is in Suggesting mode, lay it as a suggestion. The person tells you in chat to go ahead with suggestions you laid on an earlier reply ("go ahead", "do the second one") → accept the ones they mean, one call each (topic.suggestions), rather than write the change again. Any other question about the doc → answer in chat.{"verdict":"allow","rev":58,"data":{"rev":58,"xml":"These unblock the most work for the least effort. Do them before writing code.
 Flap: enable our launcher factory on BNB testnet once deployed. Ask what tax does after taxDuration, and whether commissionReceiver is open to third-party launchers
 Atlas: API key and BNB/USD feed id for pull mode. Ask whether Consensus Score status is readable on-chain, and how a new token gets a feed
 CoinMarketCap: API key with DEX endpoints
@@ -649,19 +757,19 @@ Live app URL
 One paragraph per sponsor track on what we used and why
 A plain statement that all code was written during the build, with third-party files in their own folders
 ## Demo script and pitch
-The demo tells one story in three minutes: money goes in, rules hold it, and a holder gets it back when the price says the project has failed. Everything on screen is a real transaction on a fork or testnet with short timers.
+The demo tells one story in three minutes: money goes in, rules hold it, and a holder gets it back when the price says the project has failed. Everything on screen is a real transaction on a fork or testnet with short timers. The issuer in the demo is an AI agent, because every rule is easier to see when the team is software. If the agent layer is cut, the same script runs with a human team wallet.
 ### One line
 Covenant is a token launch where the raise sits in a vault that pays the team a capped salary, unlocks their tokens only on performance, and lets any holder cash out at treasury value when the price falls below it.
 ### Three-minute script
 Time | On screen | Say | 
 0:00 | One number, full screen: 80.96% of BSC meme coins inactive within about two months | \"Most meme coins launched on this chain go quiet within two months. The money buyers put in never comes back. We built the launch where it can.\" | 
-0:20 | Raise page. Three wallets commit 1,400 BNB against a 500 BNB cap. Press finalize | \"Buyers commit. The raise is capped, so everyone is scaled back pro rata and refunded the rest. One transaction refunds, launches the token on Flap and creates the vault.\" | 
-0:50 | Covenant sheet. Treasury 375 BNB. Floor at 60% of sale price. A trade lands and tax arrives. Team claims tap | \"Three quarters of the raise is in this vault, not in the team's wallet. Trading tax adds to it. The team draws a dollar salary at the Atlas rate, capped at four percent a month.\" | 
+0:20 | Raise page for an agent's covenant, with its ERC-8004 id shown. Three wallets commit 1,400 BNB against a 500 BNB cap. Press finalize | \"Buyers commit. The raise is capped, so everyone is scaled back pro rata and refunded the rest. One transaction refunds, launches the token on Flap and creates the vault.\" | 
+0:50 | Covenant sheet. Treasury 375 BNB. Floor at 60% of sale price. A trade lands and tax arrives. The agent claims its tap | \"Three quarters of the raise is in this vault, not in the agent's wallet. Trading tax adds to it. The agent draws a dollar compute budget at the Atlas rate, capped at four percent a month. If its key is hijacked, that budget is all an attacker can reach.\" | 
 1:20 | A whale sells. Price line drops under the book line. Streak meter fills. State flips to exit round. Tap card shows paused | \"Now the price falls below what the treasury is worth per token and stays there. No vote. No proposal. The exit opens.\" | 
 1:45 | Redeem screen: 6M tokens return 2.53 BNB, against 2.1 BNB on the pool. Confirm | \"This holder burns tokens and takes their share of the treasury. Everyone who stays keeps exactly the same book value.\" | 
-2:05 | Skip time. Heartbeat meter runs out. Press declare abandoned. Locked team tokens burn | \"If the team simply disappears, anyone can flip this switch. The salary stops, their locked tokens burn and the treasury opens to holders.\" | 
-2:25 | Four.meme create page with our template pasted. Then the simulator with one headline number | \"The same rules ship as a Four.meme vault template. And with CoinMarketCap data we replayed recent BNB launches: this share would have triggered an exit.\" | 
-2:45 | Closing slide | \"MetaDAO showed the demand: $580M committed for raises that accepted about $45M. Covenant brings that to BNB Chain with one vault, one rule and one price feed. It is open source and it runs on Flap today.\" | 
+2:05 | Kill the agent's process on stage. Heartbeat meter runs out. Press declare abandoned. Locked tokens burn and the outcome is written to the agent's ERC-8004 record | \"Now we unplug the agent. There is nobody to sue, and nobody needs to be sued. Anyone can flip this switch: the budget stops, the locked tokens burn and the treasury opens to holders.\" | 
+2:25 | An AI assistant with the Covenant MCP server lists covenants trading under book and exits one. Then the Four.meme template and the simulator number | \"The terms are on-chain, so another agent can read them, price the downside and exit by itself. The same rules ship as a Four.meme vault template, and CoinMarketCap data shows what share of recent BNB launches would have triggered an exit.\" | 
+2:45 | Closing slide | \"MetaDAO showed the demand: $580M committed for raises that accepted about $45M. Covenant brings that to BNB Chain, for human teams and for agents, with one vault, one rule and one price feed. It is open source and it runs on Flap today.\" | 
 Sources for the two numbers: MemeChain and Basis Point. The simulator number is ours and is computed during the build.
 ### Five slides for the pitch
 Problem. Buyers fund launches and have no claim on the money. Two statistics.
@@ -683,7 +791,7 @@ How do you make money? | Flap's launch parameters include a commission receiver,
 What did you build here? | Every contract, the keeper and the app. The design document came first. Sponsor code sits in its own folders. | 
 ### Demo logistics
 Environment. A fork with the demo factory: exit streak 3 minutes, round 5 minutes, heartbeat 10 minutes. A script advances time between scenes.
-Accounts. Three buyers, one team wallet, one whale, one keeper. Balances preset.
+Accounts. Three buyers, one issuer agent holding the team wallet, one whale, one keeper. Balances preset.
 Backup. A recorded run of the same script. If the network fails, play it and keep talking.
 Proof. Keep the explorer tab open on the vault. Judges trust a transaction list more than a chart.
 ## Track map against judging criteria
@@ -710,8 +818,9 @@ Outcome | Estimate | What would raise it |
 Developer Track, top three | 25% | A flawless three-minute demo and a sheet that looks finished | 
 Flap track | 45% | A live testnet launch through Flap's Portal, shown on Flap.sh | 
 CoinMarketCap and Atlas track | 30% | Real pull reports from Atlas in the demo and one strong simulator number | 
-","complete":false,"next":{"parentId":"m84kzafkyhc.72978","from":"m84kzafkyhc.73308","then":{"from":"m84kzafkyhc.73484"}}},"frame":{"slug":"499217c5-7688-4c33-939d-f20dcacdccea","url":"https://claude.ai/artifact/A5vLXGJHCopNSzS5kAdqCV","artifactUrl":"https://claude.ai/artifact/A5vLXGJHCopNSzS5kAdqCV"}}
-This doc takes suggestions. Rewording what is already here ("tighten", "improve", "review", "clean up", "this is clunky") → lay the changes in the doc as suggestions: guide( items = ["topic.index", "topic.suggestions"] ) first. Small fixes met on the way (a typo) go in as suggestions with them. The same when asked to suggest, propose or mark up, when the person wants to look before it goes in, and for a question that invites changes ("Any suggestions?", "What would you change?"): suggestions in the doc on this reply, not a list in chat and not comments. An ask for only an exact fix (a typo, a stated fact), new content, a delete or a move → save the edit as usual; the same in a doc you made in this chat, for a rewrite of the whole doc, when told to edit directly, and on an unattended run. While the person is in Suggesting mode, lay it as a suggestion. The person tells you in chat to go ahead with suggestions you laid on an earlier reply ("go ahead", "do the second one") → accept the ones they mean, one call each (topic.suggestions), rather than write the change again. Any other question about the doc → answer in chat.{"verdict":"allow","rev":44,"data":{"rev":44,"xml":"The biggest single lever is Gate B. A complete story on a fork beats a broader build that breaks on stage.
+Four.meme track | 20% | A token created on Four.meme with the template during the event | 
+At least one cash prize | 65% | Hitting Gate B on time, which protects everything above | 
+The biggest single lever is Gate B. A complete story on a fork beats a broader build that breaks on stage.
 ### Where to spend the last six hours
 Rehearse the demo until it runs in three minutes without notes.
 Make the covenant sheet look finished: spacing, numbers in a monospace face, clear state badge.
@@ -818,6 +927,17 @@ Atlas, push oracle interfaces on GitHub.
 Venus community forum, oracle updates for the core pool.
 CoinMarketCap API: DEX token endpoints, candles.
 Cournot: documentation, partner public API.
+### Agent layer
+ClawPump, homepage, read Nov 26, 2026.
+BNB Chain, Building the infrastructure base for the AI agent economy, May 21, 2026.
+BNB Chain, BNB Hack Abu Dhabi highlights.
+CoinDesk, AI agent token once worth $2.4 billion ends with founder calling it dead, Aug 5, 2026.
+hoge.gg, AI agents on-chain: the 2026 reckoning over autonomy and trust. A secondary roundup, used for the wallet drain and the spending-cap advice.
+Tomasev et al., Virtual agent economies, arXiv 2509.10147, Sept 2025.
+ERC-8004: Trustless Agents, draft standard, and the contracts repo for BNB Chain addresses.
+CoinMarketCap AI Agent Hub: x402, MCP server.
+Four.meme, OpenFour Binance Agent ID Exclusive preset.
+Binance, Agentic Wallet with AI Pro.
 ### Classic theory
 Akerlof, G. (1970). The market for lemons. Quarterly Journal of Economics 84(3).
 Aghion, P. and Bolton, P. (1992). An incomplete contracts approach to financial contracting. Review of Economic Studies 59(3).
@@ -885,5 +1005,5 @@ Trust gate | The checks an observation must pass before its time counts toward a
 Trusted day | A day of time accumulated from observations that passed the trust gate | 
 Vault | The contract that holds the treasury and reserved tokens and enforces the rules | 
 Wind-down | The final state: no tap, locked team tokens burned, redemption open with no fee | 
-","complete":true},"frame":{"slug":"499217c5-7688-4c33-939d-f20dcacdccea","url":"https://claude.ai/artifact/A5vLXGJHCopNSzS5kAdqCV","artifactUrl":"https://claude.ai/artifact/A5vLXGJHCopNSzS5kAdqCV"}}
+
 This doc takes suggestions. While the person is in Suggesting mode, lay a change as a suggestion. Otherwise, when to suggest and when to edit: guide( items = ["topic.suggestions"] ).
