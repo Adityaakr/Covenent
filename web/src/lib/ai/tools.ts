@@ -1,5 +1,5 @@
 /*
- * Ask AI's tools. Read tools answer from the chain (the same readCovenant the screens use). Action tools build an
+ * Covenant AI's tools. Read tools answer from the chain (the same readCovenant the screens use). Action tools build an
  * UNSIGNED transaction, simulate it with eth_call from the user's wallet, and hand the browser a Proposal: the user
  * reads the confirmation card and signs with their own wallet, or does nothing. No tool holds a key or sends a
  * transaction. Names and descriptions follow the Covenant MCP server (server/mcp/tools.ts) where the two overlap:

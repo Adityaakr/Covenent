@@ -55,7 +55,7 @@ function CovenantCreate() {
   const wallet = useWallet();
   const config = useConfig();
   const qc = useQueryClient();
-  // An Ask AI draft (the create card's "Edit in Create") opens with its terms filled in.
+  // An Covenant AI draft (the create card's "Edit in Create") opens with its terms filled in.
   const draftParam = useSearchParams().get("draft");
   const [draft] = useState(() => readDraft(draftParam));
   const [t, setT] = useState<Terms>(draft?.terms ?? { ...DEFAULT_TERMS, name: "", symbol: "", meta: "", teamWallet: (wallet.address as Address) ?? (LOCAL_MODE ? DEFAULT_TERMS.teamWallet : ("" as Address)) });
@@ -595,7 +595,7 @@ function Slider({ label, hint, value, min, max, step, onChange, issue, onFix }: 
   );
 }
 
-/** The ?draft= parameter Ask AI's create card links with: base64 of {factory, terms}. Anything malformed is ignored. */
+/** The ?draft= parameter Covenant AI's create card links with: base64 of {factory, terms}. Anything malformed is ignored. */
 function readDraft(raw: string | null): { factory: FactoryKind; terms: Terms } | null {
   if (!raw) return null;
   try {

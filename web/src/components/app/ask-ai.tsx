@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * Ask AI: a chat with Claude that reads the chain and drafts transactions, laid out on beUI's chat-app pattern
+ * Covenant AI: a chat with Claude that reads the chain and drafts transactions, laid out on beUI's chat-app pattern
  * (components/agents). A header with the model and a status pill; recent chats in a collapsible sidebar (this
  * browser only); the conversation in a MessageScroller; a PromptInput with suggestion chips and Stop.
  *
@@ -75,10 +75,10 @@ export function AskAI({ initial }: { initial?: string }) {
         <ChatSidebarTrigger />
         <span className="ag-head-mark" aria-hidden="true"><ThinkingMark size={16} still /></span>
         <div className="ag-head-title">
-          <h1>Ask AI</h1>
+          <h1>Covenant AI</h1>
           <p>Raise, run and exit autonomous ventures in plain words</p>
         </div>
-        {/* the model and what Ask AI touches stay out of the headline: a tooltip on the status */}
+        {/* the model and what Covenant AI touches stay out of the headline: a tooltip on the status */}
         <span className={cx("ag-pill", `tone-${pill.tone}`)} title={`${model ? `${model} · ` : ""}reads ${chain} · drafts transactions you sign`}>{pill.t}</span>
         {s.items.length ? <button type="button" className="btn btn-secondary btn-sm ag-head-new" onClick={reset}><Icon name="plus" size={14} /><span>New chat</span></button> : null}
       </header>
@@ -88,8 +88,8 @@ export function AskAI({ initial }: { initial?: string }) {
           <div className="ag-hello">
             <span className="ag-hello-mark" aria-hidden="true"><ThinkingMark size={26} calm /></span>
             <h2>Say what you want in plain words.</h2>
-            <p>Ask AI reads covenants, positions and agent decisions from the chain, drafts a covenant or a transaction, simulates it from your wallet and shows you a card. You sign in your own wallet, or you don&apos;t: it never holds a key.</p>
-            {status.isLoading ? null : !configured ? <Callout tone="warn">{status.data?.reason ?? "Ask AI is not configured on this site."} The rest of the app works without it.</Callout> : null}
+            <p>Covenant AI reads covenants, positions and agent decisions from the chain, drafts a covenant or a transaction, simulates it from your wallet and shows you a card. You sign in your own wallet, or you don&apos;t: it never holds a key.</p>
+            {status.isLoading ? null : !configured ? <Callout tone="warn">{status.data?.reason ?? "Covenant AI is not configured on this site."} The rest of the app works without it.</Callout> : null}
             {!wallet.address && configured ? <button type="button" className="btn btn-secondary btn-sm" onClick={wallet.connect}><Icon name="wallet" size={14} />Connect a wallet for answers about your positions</button> : null}
           </div>
         ) : (
@@ -108,8 +108,8 @@ export function AskAI({ initial }: { initial?: string }) {
           onStop={stop}
           disabled={!configured}
           maxLength={2000}
-          label="Ask AI"
-          placeholder={configured ? "Raise, commit, redeem, explain… in plain words" : "Ask AI is not configured on this site"}
+          label="Covenant AI"
+          placeholder={configured ? "Raise, commit, redeem, explain… in plain words" : "Covenant AI is not configured on this site"}
           header={s.items.length === 0 && configured ? (
             <div className="ag-chips" role="group" aria-label="Suggestions">
               {SUGGEST.map((x) => <button key={x} type="button" className="ag-chip-btn" onClick={() => send(x)}>{x}</button>)}
@@ -149,7 +149,7 @@ export function AiTurn({ m, latest, busy, lastQuestion: question }: { m: AiItem;
     <Message from="assistant" animateIn>
       <MessageAvatar><ThinkingMark size={14} still={!m.pending} /></MessageAvatar>
       <MessageContent className="ag-answer">
-        <MessageHeader><b>Ask AI</b><span className="faint">{messageTime(m.at)}</span></MessageHeader>
+        <MessageHeader><b>Covenant AI</b><span className="faint">{messageTime(m.at)}</span></MessageHeader>
         {m.pending && !m.tools.length && !m.text ? <div className="ag-thinking" role="status"><ThinkingShimmer>Thinking…</ThinkingShimmer></div> : null}
         {m.tools.length ? (
           <AgentActivity
@@ -163,7 +163,7 @@ export function AiTurn({ m, latest, busy, lastQuestion: question }: { m: AiItem;
         {m.needWallet ? (
           !wallet.address ? (
             <Callout tone="accent" icon="wallet">
-              <div className="ag-callout-row"><span>Connect a wallet to continue. Ask AI simulates from it; you sign in it.</span><button type="button" className="btn btn-primary btn-sm" onClick={wallet.connect}><Icon name="wallet" size={14} />Connect wallet</button></div>
+              <div className="ag-callout-row"><span>Connect a wallet to continue. Covenant AI simulates from it; you sign in it.</span><button type="button" className="btn btn-primary btn-sm" onClick={wallet.connect}><Icon name="wallet" size={14} />Connect wallet</button></div>
             </Callout>
           ) : latest && !busy && question ? (
             <Callout tone="good" icon="check">

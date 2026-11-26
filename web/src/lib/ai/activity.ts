@@ -1,5 +1,5 @@
 /*
- * Ask AI's activity log, as plain data: each tool the model ran becomes one row with a human label, and repeated
+ * Covenant AI's activity log, as plain data: each tool the model ran becomes one row with a human label, and repeated
  * calls of the same tool fold into one row with a count ("Checked Flap's floor for 4 splits"). The chat renders these
  * rows in AgentActivity; keeping the folding here makes it testable without a DOM.
  */

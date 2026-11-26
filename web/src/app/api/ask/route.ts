@@ -1,6 +1,6 @@
 import { askPost, askStatus } from "./handler";
 
-/* Ask AI (lib/ai): Claude with Covenant's read tools and unsigned-transaction builders. Never signs. */
+/* Covenant AI (lib/ai): Claude with Covenant's read tools and unsigned-transaction builders. Never signs. */
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 

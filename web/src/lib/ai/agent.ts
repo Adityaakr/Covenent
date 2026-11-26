@@ -1,5 +1,5 @@
 /*
- * The Ask AI loop: Claude with Covenant's tools, streamed. Each model turn streams its text to the browser; tool calls
+ * The Covenant AI loop: Claude with Covenant's tools, streamed. Each model turn streams its text to the browser; tool calls
  * run here (chain reads, unsigned transaction builders with simulation) and loop back until the model answers. The
  * conversation goes back to the browser at the end and comes back with the next question, so the route keeps no
  * state. Limits: a few model turns per question, a wall-clock budget, and a per-turn token cap.
@@ -28,7 +28,7 @@ export const LIMITS = {
   maxHistoryMessages: 80,
 };
 
-export const SYSTEM = `You are Ask AI inside Covenant, an app for token raises on BNB Chain whose treasury sits in a vault under five rules enforced by the contracts:
+export const SYSTEM = `You are Covenant AI, the assistant inside Covenant, an app for token raises on BNB Chain whose treasury sits in a vault under five rules enforced by the contracts:
 1. Tap: the team draws a dollar budget per 30 days, paid in BNB at the Atlas BNB/USD rate, never above a hard cap (a percent of the treasury per 30 days). It can be lowered, never raised.
 2. Performance unlock: team tokens unlock in tranches only after the pool holds a price multiple (2x, 4x...) of the sale price for a trusted window.
 3. Book-value exit: if the pool trades below book value (treasury per redeemable token) for the exit streak, an exit round opens and any holder can burn tokens for their share of the treasury, less a small fee. The streak runs on on-chain numbers only and decays above book; it never resets.
@@ -146,9 +146,9 @@ export function parseHistory(raw: unknown): MessageParam[] | string {
 }
 
 export function apiErrorText(e: unknown): { message: string; code: "api" | "timeout" | "not_configured" } {
-  if (e instanceof Anthropic.AuthenticationError) return { message: "Ask AI's API key was rejected. The site owner needs to set a valid ANTHROPIC_API_KEY.", code: "not_configured" };
-  if (e instanceof Anthropic.RateLimitError) return { message: "Ask AI is busy right now (rate limited). Try again in a minute.", code: "api" };
+  if (e instanceof Anthropic.AuthenticationError) return { message: "Covenant AI's API key was rejected. The site owner needs to set a valid ANTHROPIC_API_KEY.", code: "not_configured" };
+  if (e instanceof Anthropic.RateLimitError) return { message: "Covenant AI is busy right now (rate limited). Try again in a minute.", code: "api" };
   if (e instanceof Anthropic.APIUserAbortError) return { message: "That took too long and was stopped. Try a narrower question.", code: "timeout" };
   if (e instanceof Anthropic.APIError) return { message: `The model API returned an error${e.status ? ` (${e.status})` : ""}. Try again.`, code: "api" };
-  return { message: scrub(`Ask AI failed: ${(e as Error)?.message ?? String(e)}`.split("\n")[0]!).slice(0, 240), code: "api" };
+  return { message: scrub(`Covenant AI failed: ${(e as Error)?.message ?? String(e)}`.split("\n")[0]!).slice(0, 240), code: "api" };
 }

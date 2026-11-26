@@ -1,5 +1,5 @@
 /*
- * Agent components for Ask AI, after beUI's agent kit (beui.dev, MIT): the same component names, props and behaviour,
+ * Agent components for Covenant AI, after beUI's agent kit (beui.dev, MIT): the same component names, props and behaviour,
  * drawn with Covenant's tokens and icons (components/agents/agents.css) instead of beUI's shadcn theme, and without
  * its sound engine, shiki or floating-ui dependencies.
  *

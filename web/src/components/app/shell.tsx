@@ -25,7 +25,7 @@ const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = 
   { href: "/app/covenants", label: "Covenants", icon: "layers" },
   { href: "/app/portfolio", label: "Portfolio", icon: "pie" },
   { href: "/app/create", label: "Create", icon: "plus" },
-  { href: "/app/ask", label: "Ask AI", icon: "sparkle" },
+  { href: "/app/ask", label: "Covenant AI", icon: "sparkle" },
 ];
 
 /**
@@ -169,7 +169,7 @@ function Crumbs() {
   const path = usePathname();
   const { list } = useCovenants();
   const parts = path.split("/").filter(Boolean).slice(1);
-  const top: Record<string, string> = { lite: "Four.meme covenant", create: "Create a covenant", portfolio: "Portfolio", covenants: "Covenants", ask: "Ask AI" };
+  const top: Record<string, string> = { lite: "Four.meme covenant", create: "Create a covenant", portfolio: "Portfolio", covenants: "Covenants", ask: "Covenant AI" };
   if (parts[0] === "settings") {
     const sub = SETTINGS.find((t) => t.href !== "/app/settings" && path.startsWith(t.href));
     return (
@@ -368,8 +368,8 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [list, theme]);
   const matches = all.filter((c) => !q || `${c.label} ${c.hint ?? ""}`.toLowerCase().includes(q.toLowerCase()));
-  // a typed question goes to Ask AI: first when nothing else matches, last otherwise
-  const askCmd: Cmd | null = q.trim().length > 2 ? { id: "ask-ai", group: "Ask AI", label: `Ask AI: “${q.trim()}”`, icon: "sparkle", run: go(`/app/ask?q=${encodeURIComponent(q.trim())}`) } : null;
+  // a typed question goes to Covenant AI: first when nothing else matches, last otherwise
+  const askCmd: Cmd | null = q.trim().length > 2 ? { id: "ask-ai", group: "Covenant AI", label: `Covenant AI: “${q.trim()}”`, icon: "sparkle", run: go(`/app/ask?q=${encodeURIComponent(q.trim())}`) } : null;
   const shown = askCmd ? (matches.length === 0 ? [askCmd] : [...matches, askCmd]) : matches;
   const groups = [...new Set(shown.map((c) => c.group))];
   const active = Math.min(sel, Math.max(0, shown.length - 1));
@@ -379,7 +379,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
       <div className="cmdk" role="dialog" aria-modal="true" aria-label="Search">
         <div className="cmdk-in">
           <Icon name="search" size={18} />
-          <input autoFocus value={q} placeholder="Search, or ask AI in plain words" aria-label="Search"
+          <input autoFocus value={q} placeholder="Search, or ask Covenant AI in plain words" aria-label="Search"
             onChange={(e) => { setQ(e.target.value); setSel(0); }}
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(shown.length - 1, s + 1)); }

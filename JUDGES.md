@@ -13,7 +13,7 @@ clients, so every check below uses Sourcify or an RPC.
    https://covenant.adibuilds.in/app/c/0x524059B1424101D4CAFD33B9a1A8D332dD71193D (`$CVT`). The timeline shows the
    raise, the Flap launch, the issuer agent's budget claim and heartbeats, the keeper declaring abandonment, and a holder
    redeeming at book.
-2. **Ask the app.** Open Ask AI in the app and ask: "What happened to this covenant, and why can holders redeem?" It
+2. **Ask the app.** Open Covenant AI in the app and ask: "What happened to this covenant, and why can holders redeem?" It
    answers from live chain reads and never holds a key.
 3. **Read what agents read.** https://covenant.adibuilds.in/llms.txt (summary) and
    https://covenant.adibuilds.in/llms-full.txt (every MCP tool, generated from the server).
@@ -77,7 +77,7 @@ by real transactions, and opens http://localhost:8080.
 - **Planned:** Cournot report checks.
 - **CoinMarketCap** feeds the launch simulator's backtest of BNB Chain launches. The hosted site runs without a Covenant
   server, so it shows no live CMC quote.
-- **No hosted MCP or API.** Run the MCP server from a clone (above). The hosted site serves `/llms.txt` and Ask AI.
+- **No hosted MCP or API.** Run the MCP server from a clone (above). The hosted site serves `/llms.txt` and Covenant AI.
 - **Open findings** from an outside review (two Low, fixes planned before mainnet), and the ones already fixed, are listed in
   [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md#open-findings-27-nov-2026). Threat model and policy:
   [SECURITY.md](SECURITY.md). [docs/DESIGN.md](docs/DESIGN.md) was written before the code; its banner lists where the

@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * Ask AI's confirmation cards, wired up: the views (ask-card-views.tsx) with the user's wallet, the chain and the chat
+ * Covenant AI's confirmation cards, wired up: the views (ask-card-views.tsx) with the user's wallet, the chain and the chat
  * store. Nothing is signed anywhere but the user's own wallet, after they press the button; before sending, each step
  * is simulated again on the current block from the signing wallet, and a step that would revert is not sent. Every
  * outcome (sent, rejected, failed, cancelled) is queued as a note for the model's next turn.

@@ -1,6 +1,6 @@
 /*
- * Ask AI's request handler, separate from route.ts so tests can call it with a mocked Anthropic client and chain.
- * POST streams NDJSON AskEvents; GET says whether Ask AI is configured. The API key comes only from the server's
+ * Covenant AI's request handler, separate from route.ts so tests can call it with a mocked Anthropic client and chain.
+ * POST streams NDJSON AskEvents; GET says whether Covenant AI is configured. The API key comes only from the server's
  * ANTHROPIC_API_KEY and never reaches the browser.
  */
 import Anthropic from "@anthropic-ai/sdk";
@@ -23,13 +23,13 @@ const json = (status: number, body: unknown, headers: Record<string, string> = {
 export function askStatus(deps: AskDeps = {}) {
   const env = deps.env ?? process.env;
   const configured = Boolean(env.ANTHROPIC_API_KEY);
-  return json(200, { configured, model: configured ? env.ANTHROPIC_MODEL || DEFAULT_MODEL : null, reason: configured ? null : "Ask AI is not configured on this site: the server has no ANTHROPIC_API_KEY." });
+  return json(200, { configured, model: configured ? env.ANTHROPIC_MODEL || DEFAULT_MODEL : null, reason: configured ? null : "Covenant AI is not configured on this site: the server has no ANTHROPIC_API_KEY." });
 }
 
 export async function askPost(req: Request, deps: AskDeps = {}): Promise<Response> {
   const env = deps.env ?? process.env;
   const key = env.ANTHROPIC_API_KEY;
-  if (!key) return json(503, { t: "error", code: "not_configured", message: "Ask AI is not configured on this site: the server has no ANTHROPIC_API_KEY." } satisfies AskEvent);
+  if (!key) return json(503, { t: "error", code: "not_configured", message: "Covenant AI is not configured on this site: the server has no ANTHROPIC_API_KEY." } satisfies AskEvent);
 
   const wait = rateLimit(clientIp(req.headers));
   if (wait > 0) return json(429, { t: "error", code: "rate_limited", message: `Too many questions from this address. Try again in ${Math.ceil(wait / 60)} minute${wait > 60 ? "s" : ""}.` } satisfies AskEvent, { "retry-after": String(wait) });

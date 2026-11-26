@@ -6,7 +6,7 @@ import type { DeploymentPayload } from "./deployment";
  * The typed loader's server half, for a local chain. It reads contracts/deployments/local.json and every
  * contracts/abi/<Contract>.json on each call, so a fresh `scripts/dev-*` run shows up without rebuilding the app and
  * nothing is hard-coded. ABI files may be a bare ABI array or a Foundry artifact with an `abi` field. Served by
- * /api/deployment and read by the Ask AI route in local mode.
+ * /api/deployment and read by the Covenant AI route in local mode.
  */
 const CONTRACTS_DIR = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.COVENANT_CONTRACTS_DIR ?? "../contracts");
 

@@ -1,6 +1,6 @@
 /*
  * Which covenants exist: the launchers the deployment names, plus every launcher the launcher factories have created
- * (allLaunchers()), on every launcher factory the record names, current and earlier. Shared by the browser (lib/data/hooks) and the Ask AI route (lib/ai), so both see the same list.
+ * (allLaunchers()), on every launcher factory the record names, current and earlier. Shared by the browser (lib/data/hooks) and the Covenant AI route (lib/ai), so both see the same list.
  */
 import type { PublicClient } from "viem";
 import type { Address } from "@/lib/covenant/types";

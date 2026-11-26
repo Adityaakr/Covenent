@@ -959,7 +959,7 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 @keyframes tm-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.9); } }
 @keyframes tm-walk { 0%, 10% { transform: translate(0, 0); } 28% { transform: translate(-6px, 0); } 48% { transform: translate(-6px, -6px); } 68% { transform: translate(0, -6px); } 86%, 100% { transform: translate(0, 0); } }
 @keyframes tm-sweep { 0%, 15% { transform: translateX(0); } 65%, 100% { transform: translateX(36px); } }
-/* calm: the idle loop for a resting surface (Ask AI's empty state) */
+/* calm: the idle loop for a resting surface (Covenant AI's empty state) */
 .tmark.calm .tmark-body { animation: tm-breathe-soft 6s ease-in-out infinite; }
 .tmark.calm .tmark-dot { animation: tm-orbit 6s ease-in-out infinite; }
 .tmark.calm .tmark-sweep { display: none; }

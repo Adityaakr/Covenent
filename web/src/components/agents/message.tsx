@@ -23,7 +23,7 @@ export function Message({ from, animateIn = false, children, className, label }:
     <Side.Provider value={from}>
       <motion.article
         data-from={from}
-        aria-label={label ?? (from === "user" ? "Your message" : "Ask AI's answer")}
+        aria-label={label ?? (from === "user" ? "Your message" : "Covenant AI's answer")}
         className={cx("ag-msg", from === "user" ? "is-user" : "is-assistant", className)}
         initial={play ? { opacity: 0, y: 8, scale: 0.98 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}

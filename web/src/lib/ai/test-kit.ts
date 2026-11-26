@@ -1,4 +1,4 @@
-/* Test helpers for Ask AI: a covenant view and a chain context with no network. Imported by *.test.ts only. */
+/* Test helpers for Covenant AI: a covenant view and a chain context with no network. Imported by *.test.ts only. */
 import type { PublicClient } from "viem";
 import { TESTNET_PAYLOAD } from "@/lib/chain/target";
 import { DEFAULT_TERMS } from "@/lib/covenant/defaults";

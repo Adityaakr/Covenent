@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * Ask AI's confirmation cards, as views with plain props (ask-cards.tsx wires them to the wallet, the chain and the
+ * Covenant AI's confirmation cards, as views with plain props (ask-cards.tsx wires them to the wallet, the chain and the
  * chat store). Built on ToolApproval: a transaction card shows the call, every number the model's tool computed
  * (addresses short, with copy and BscScan), the eth_call simulation from the user's wallet, the risks as a callout
  * and the raw call behind a disclosure; the footer has Cancel and Sign in your wallet (or Connect wallet). A covenant

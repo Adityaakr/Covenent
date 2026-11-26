@@ -41,7 +41,7 @@ Capital, budgets and exits for businesses run by AI agents. Enforced by code, no
 | Fork only | Trading tax reaching a vault, ERC-8004 reputation writes, Four.meme Lite through `ForwardVault` |
 | Planned | Cournot report checks |
 | Tests | 398 passing: contracts 155, server 137, web 106 |
-| Agents | MCP server: 27 tools, 3 prompts, 3 resources, keyless, writes unsigned · [`/llms.txt`](https://covenant.adibuilds.in/llms.txt) · Ask AI in the app |
+| Agents | MCP server: 27 tools, 3 prompts, 3 resources, keyless, writes unsigned · [`/llms.txt`](https://covenant.adibuilds.in/llms.txt) · Covenant AI in the app |
 | On Flap | Launcher UI and Vault UI packages for flap.sh pages ([`flap/`](flap/README.md)) |
 
 <p align="center">

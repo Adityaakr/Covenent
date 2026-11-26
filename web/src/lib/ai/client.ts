@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * The browser half of Ask AI: one conversation held in module state (it survives moving between pages), sent to
+ * The browser half of Covenant AI: one conversation held in module state (it survives moving between pages), sent to
  * /api/ask and read back as NDJSON. The route keeps no state; the opaque `messages` it returns are sent back with the
  * next question. Wallet activity on proposals (sent, confirmed, failed, cancelled) is queued as notes for the next
  * question. Finished conversations are kept in this browser's localStorage as recent chats (never sent anywhere).
@@ -102,7 +102,7 @@ export async function ask(q: string, account?: string) {
     });
     if (!res.ok || !res.body) {
       const e = (await res.json().catch(() => null)) as { message?: string } | null;
-      patchAi(aid, (x) => ({ ...x, pending: false, workEnd: Date.now(), error: e?.message ?? `Ask AI answered ${res.status}.` }));
+      patchAi(aid, (x) => ({ ...x, pending: false, workEnd: Date.now(), error: e?.message ?? `Covenant AI answered ${res.status}.` }));
       set({ notes: [...notes, ...state.notes] });
       return;
     }
@@ -113,7 +113,7 @@ export async function ask(q: string, account?: string) {
     patchAi(aid, (x) => ({ ...x, pending: false, workEnd: x.workEnd ?? Date.now() }));
   } catch (e) {
     const stopped = (e as Error).name === "AbortError";
-    patchAi(aid, (x) => ({ ...x, pending: false, workEnd: x.workEnd ?? Date.now(), error: stopped ? "Stopped." : "Ask AI did not answer. Check the connection and try again." }));
+    patchAi(aid, (x) => ({ ...x, pending: false, workEnd: x.workEnd ?? Date.now(), error: stopped ? "Stopped." : "Covenant AI did not answer. Check the connection and try again." }));
   } finally {
     ctl = null;
     set({ busy: false });

@@ -1,5 +1,5 @@
 /*
- * What one Ask AI request reads from: the deployment (baked BNB testnet record, or the local dev chain's file when a
+ * What one Covenant AI request reads from: the deployment (baked BNB testnet record, or the local dev chain's file when a
  * developer opted in), a public client for that chain, and a per-request cache of covenant views. The chain is
  * allowlisted: BNB testnet (97) always; a local chain (31337, or a BNB Chain fork reporting 56) only in local mode and
  * only through a loopback RPC. Nothing here can sign.
@@ -34,7 +34,7 @@ export interface AiContext {
  * types never becomes a covenant, and a transfer target (pay_agent_usdc) is always such a covenant's team wallet.
  */
 
-/** The chain ids Ask AI will read and build transactions for, given the build's mode. */
+/** The chain ids Covenant AI will read and build transactions for, given the build's mode. */
 export function allowedChain(chainId: number, rpcUrl: string | undefined): boolean {
   if (chainId === 97) return true;
   return LOCAL_MODE && (chainId === 31337 || chainId === 56) && loopback(rpcUrl || LOCAL_RPC);
@@ -51,7 +51,7 @@ export async function loadContext(account?: string, opts: { payload?: Deployment
   }
   const d = payload.deployment;
   if (payload.status !== "ok" || !d) throw new ChainUnavailable(payload.problems[0] ?? "No deployment");
-  if (!allowedChain(d.chainId, d.rpcUrl)) throw new ChainUnavailable(`Chain ${d.chainId} is not one Ask AI serves`);
+  if (!allowedChain(d.chainId, d.rpcUrl)) throw new ChainUnavailable(`Chain ${d.chainId} is not one Covenant AI serves`);
   const client = opts.client ?? (createPublicClient({
     chain: d.chainId === 97 ? bscTestnet : makeLocalChain({ id: d.chainId, rpcUrl: d.rpcUrl || LOCAL_RPC }),
     transport: d.chainId === 97

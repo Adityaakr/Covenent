@@ -263,7 +263,7 @@ button.ag-activity-head:hover .ag-chev { color: var(--ink); }
 .ag-chip-btn:hover { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .ag-composer-note { text-align: center; font-size: 11px; color: var(--faint); font-weight: 500; margin: 0; }
 
-/* ---------- Ask AI page ---------- */
+/* ---------- Covenant AI page ---------- */
 .ask-page.page { max-width: 1240px; padding: 12px 20px 20px; gap: 0; height: calc(100dvh - 16px - 60px); grid-template-rows: minmax(0, 1fr); }
 .ask-page .ask-ai { height: 100%; min-height: 520px; }
 

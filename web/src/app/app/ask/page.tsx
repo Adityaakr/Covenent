@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { AskAI } from "@/components/app/ask-ai";
 
-/** Ask AI, full page. /app/ask?q=… sends the question straight away (the ⌘K palette links here). */
+/** Covenant AI, full page. /app/ask?q=… sends the question straight away (the ⌘K palette links here). */
 export default function AskPage() {
   return <Suspense fallback={<main className="page page-narrow" />}><Ask /></Suspense>;
 }

@@ -1,5 +1,5 @@
 /*
- * A simple per-IP rate limit for Ask AI: a sliding window held in this server instance's memory. On Vercel each
+ * A simple per-IP rate limit for Covenant AI: a sliding window held in this server instance's memory. On Vercel each
  * function instance keeps its own window, so this caps a burst from one visitor, not global spend; the Anthropic
  * console's spend limit is the backstop.
  */

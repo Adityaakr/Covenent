@@ -19,7 +19,7 @@ async function proposal(name: string, input: unknown, ctx = context([view()])): 
   return r.proposal!;
 }
 
-describe("Ask AI tool schemas", () => {
+describe("Covenant AI tool schemas", () => {
   it("has unique names, the MCP server's names where they overlap, and object JSON schemas", () => {
     expect(new Set(TOOL_NAMES).size).toBe(TOOL_NAMES.length);
     for (const n of ["list_covenants", "commit", "claim_tokens", "claim_refund", "redeem", "poke", "claim_tap", "heartbeat", "lower_tap"]) expect(TOOL_NAMES).toContain(n);
@@ -47,7 +47,7 @@ describe("Ask AI tool schemas", () => {
   });
 });
 
-describe("Ask AI transaction builders", () => {
+describe("Covenant AI transaction builders", () => {
   it("commit: contribute() with the BNB as value, simulated from the wallet", async () => {
     const chain = { calls: [] as { method: string; args: unknown }[] };
     const p = await proposal("commit", { covenant: "SCOUT", amount_bnb: "0.01" }, context([view()], chain));

@@ -5,7 +5,7 @@ import { useId, type CSSProperties } from "react";
  * "thinking" loop for loading and agent work: the cut-out dot walks the square's inner corners and comes home while
  * the square breathes and a soft light sweeps across, about 2.8 s a cycle. It draws in currentColor with a true
  * hole, so it sits on any surface (buttons included). Under prefers-reduced-motion it is the still mark.
- * `calm` is the idle variant for a resting surface (Ask AI's empty state): a slow breath and the dot drifting on a
+ * `calm` is the idle variant for a resting surface (Covenant AI's empty state): a slow breath and the dot drifting on a
  * small orbit, about 6 s a cycle, no light sweep.
  */
 export function ThinkingMark({ size = 16, label, still = false, calm = false, style }: { size?: number; label?: string; still?: boolean; calm?: boolean; style?: CSSProperties }) {

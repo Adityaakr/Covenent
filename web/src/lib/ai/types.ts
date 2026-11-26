@@ -1,5 +1,5 @@
 /*
- * Ask AI wire types, shared by the route handler (app/api/ask) and the chat panel. The route streams one JSON object
+ * Covenant AI wire types, shared by the route handler (app/api/ask) and the chat panel. The route streams one JSON object
  * per line (NDJSON). Nothing here signs: a Proposal carries unsigned transactions that the user's own wallet signs
  * after reading the confirmation card.
  */

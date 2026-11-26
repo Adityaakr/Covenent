@@ -83,7 +83,7 @@ The server must allow the web origin in `CORS_ORIGINS`.
   Four.meme path runs on the fork only: OpenFour's ForwardVault refuses any chain but 56 and 97.
 - **Keys only in git-ignored files.** `server/.env`, `contracts/.env`, `web/.env.local`, `.dev/testnet/keys.env`.
   Every `NEXT_PUBLIC_*` value in `web/.env*` is public; the only secret there is `ANTHROPIC_API_KEY` in
-  `web/.env.local`, read by the Ask AI route on the server, never with a `NEXT_PUBLIC_` prefix. The anvil keys in
+  `web/.env.local`, read by the Covenant AI route (`/api/ask`) on the server, never with a `NEXT_PUBLIC_` prefix. The anvil keys in
   scripts and tests are anvil's public test keys. Never print, log or commit a real key.
 - **Chain guards stay on.** The server refuses to sign on chains 56 and 97 unless the RPC is loopback (a local fork) or
   `COVENANT_ALLOW_PUBLIC_NETWORK=1` is set, and only `scripts/testnet-up.sh` sets it. The faucet refuses any RPC that is

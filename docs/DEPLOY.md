@@ -161,10 +161,10 @@ in with `NEXT_PUBLIC_CHAIN_ID=31337` (or 56 for a fork), which `scripts/dev-all.
 | `NEXT_PUBLIC_COVENANT_API` | optional | a running Covenant server: market data, rerunning the simulator with other terms, downside quotes. Without it those parts say they are not available on this site |
 | `NEXT_PUBLIC_BSC_TESTNET_RPC` | optional | a private BNB testnet RPC, tried before the public ones |
 | `NEXT_PUBLIC_SITE_URL` | optional | the canonical URL for link previews |
-| `ANTHROPIC_API_KEY` | for Ask AI | server-only (never `NEXT_PUBLIC_`): the `/api/ask` route calls Claude with it. Without it the Ask AI panel says it is not configured; everything else works |
-| `ANTHROPIC_MODEL` | optional | the model Ask AI uses, default `claude-opus-5-5` |
+| `ANTHROPIC_API_KEY` | for Covenant AI | server-only (never `NEXT_PUBLIC_`): the `/api/ask` route calls Claude with it. Without it the Covenant AI panel says it is not configured; everything else works |
+| `ANTHROPIC_MODEL` | optional | the model Covenant AI uses, default `claude-opus-5-5` |
 
-**Ask AI** runs in the web app's own route handler (`web/src/app/api/ask`, `maxDuration` 60 s), so it needs no
+**Covenant AI** runs in the web app's own route handler (`web/src/app/api/ask`, `maxDuration` 60 s), so it needs no
 Covenant server: Claude reads chain 97 through the same public RPCs and builds unsigned transactions that the user's
 own wallet signs after a confirmation card. Limits per question: 8 model turns, 8,000 output tokens per turn, 55 s; per
 IP, 20 questions per 10 minutes on each server instance (set a spend limit in the Anthropic console as the backstop).
@@ -172,7 +172,7 @@ IP, 20 questions per 10 minutes on each server instance (set a spend limit in th
 **Demo USDC on testnet.** `script/DemoUSDC.s.sol` deployed `DemoUSDC` (test funds, an open `faucet()` of 1,000 dUSDC
 per wallet per day; the app labels it USDT with the Tether mark and a Testnet tag, and the contract is unchanged) at `0x85D09A18824421FfC9dC5197DA7a95b9643B3ba5`, recorded as `demoUsdc` in `deployments/97.json`
 (`Deploy.s.sol` rewrites that file, so add the key back after a redeploy). Visitors mint it from Settings, Test funds
-or through Ask AI and pay issuer agents with it. Covenant treasuries stay BNB: Flap's pools are BNB-quoted, and a
+or through Covenant AI and pay issuer agents with it. Covenant treasuries stay BNB: Flap's pools are BNB-quoted, and a
 stablecoin-quoted treasury waits on Flap supporting that pair (docs/DESIGN.md, Roadmap).
 
 In the Privy dashboard, add the deployed domain (for example `https://covenant.adibuilds.in`) to the app's allowed
