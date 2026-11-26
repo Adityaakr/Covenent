@@ -1,0 +1,10 @@
+forge-std/=lib/forge-std/src/
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+@openzeppelin/=lib/openzeppelin-contracts/contracts/
+@openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+solady/=lib/solady/src/
+base/=src/vendor/atlas/base/
+constants/=src/vendor/atlas/constants/
+libraries/=src/vendor/atlas/libraries/
+interfaces/=src/vendor/atlas/interfaces/
