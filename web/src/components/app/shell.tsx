@@ -193,6 +193,8 @@ function NetworkChip() {
   const { switchChain } = useSwitchChain();
   if (!w.address || !w.chainId) return null;
   const wrong = src.chainId ? w.chainId !== src.chainId : w.chainId !== anvil.id && w.chainId !== 97;
+  // The source pill already names the network; this chip only shows when the wallet is on a different one.
+  if (!wrong && src.mode === "live") return null;
   return (
     <button className={cx("netpill hide-sm", wrong && "warn")} onClick={() => switchChain?.({ chainId: src.chainId ?? anvil.id })} title={wrong ? `Wrong network: switch to ${chainName(src.chainId ?? anvil.id)}` : "Connected network"}>
       {wrong ? <Icon name="alert" size={14} /> : null}{withBnb(chainName(w.chainId))}
