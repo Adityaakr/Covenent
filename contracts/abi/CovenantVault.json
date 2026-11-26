@@ -75,6 +75,19 @@
   },
   {
     "type": "function",
+    "name": "burnSaleDust",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "claimTap",
     "inputs": [],
     "outputs": [
@@ -103,6 +116,19 @@
         "internalType": "address"
       }
     ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "claimedCommitments",
+    "inputs": [],
     "outputs": [
       {
         "name": "",
@@ -296,7 +322,33 @@
   },
   {
     "type": "function",
+    "name": "failedPeriods",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "freeTreasury",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "freshBnbUsd",
     "inputs": [],
     "outputs": [
       {
@@ -950,6 +1002,25 @@
   },
   {
     "type": "function",
+    "name": "reportPostedBy",
+    "inputs": [
+      {
+        "name": "period",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "reportRelayer",
     "inputs": [],
     "outputs": [
@@ -1042,6 +1113,19 @@
   {
     "type": "function",
     "name": "saleClaimed",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "saleDustBurned",
     "inputs": [],
     "outputs": [
       {
@@ -1386,6 +1470,19 @@
   },
   {
     "type": "function",
+    "name": "usdSaleRefAt",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "vaultUISchema",
     "inputs": [],
     "outputs": [
@@ -1511,6 +1608,25 @@
       }
     ],
     "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "verdictOf",
+    "inputs": [
+      {
+        "name": "period",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -1848,6 +1964,25 @@
   },
   {
     "type": "event",
+    "name": "SaleDustBurned",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "total",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "TapAccrued",
     "inputs": [
       {
@@ -1987,6 +2122,25 @@
   },
   {
     "type": "event",
+    "name": "UsdSalePriceSet",
+    "inputs": [
+      {
+        "name": "usdSalePrice",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "bnbUsd",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "VerdictRecorded",
     "inputs": [
       {
@@ -2073,6 +2227,17 @@
     "type": "error",
     "name": "InsufficientGas",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoReport",
+    "inputs": [
+      {
+        "name": "period",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -2167,6 +2332,17 @@
     "type": "error",
     "name": "Reentrancy",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReportExists",
+    "inputs": [
+      {
+        "name": "period",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
