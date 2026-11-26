@@ -38,6 +38,37 @@ the web read, git-ignored) and starts the server API, the keeper (push-feed poke
 `COVENANT_ALLOW_PUBLIC_NETWORK=1` is set in this mode only. There is no faucet and no seeded data: the app shows what
 is on chain 97, and "Get test funds" becomes a link to BNB Chain's testnet faucet.
 
+### End-to-end run on BNB testnet (26 Nov 2026)
+
+One covenant through every stage on chain 97, with the platform running (`scripts/testnet-up.sh`): launcher
+[`0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E`](https://testnet.bscscan.com/address/0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E), token [`0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777`](https://testnet.bscscan.com/address/0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777),
+pool [`0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201`](https://testnet.bscscan.com/address/0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201), vault [`0x524059B1424101D4CAFD33B9a1A8D332dD71193D`](https://testnet.bscscan.com/address/0x524059B1424101D4CAFD33B9a1A8D332dD71193D).
+The keeper poked 14 times and dispatched tax 14 times on its own; the issuer agent sent heartbeats and claimed the tap.
+
+| Step | Tx |
+|---|---|
+| Create (team = issuer agent wallet, demo factory, 2.65 tBNB at 50/45/5) | [`0x6176d4d1…`](https://testnet.bscscan.com/tx/0x6176d4d188fc535a2ce8eb712dd62abd57b88d21018655a2f69015b3ac36a737) |
+| Commit 2.65 tBNB (buyer = deployer) | [`0xb4e10947…`](https://testnet.bscscan.com/tx/0xb4e10947392e695164b4861970e7d306bdc4c6ead874d9d5b913103fe48e8976) |
+| Finalize: Flap launches the token and the pool, the vault is funded (ACTIVE) | [`0xa41449d9…`](https://testnet.bscscan.com/tx/0xa41449d924c01b477e16562c3e0eb9212dda1e42b1a4d9b27b47c5f43c0399be) |
+| Buyer claims 500M CVT | [`0xfec82370…`](https://testnet.bscscan.com/tx/0xfec823709b21df2d4d0ecc2a09d20a9a3d9a5676fabfe11c5d87b3d7b9da8e8e) |
+| Keeper's first poke (push feed, no report) | [`0x7a358c90…`](https://testnet.bscscan.com/tx/0x7a358c903192c5c2b5dd16f38f5c64f1e0360f4e3c173eaaa420d2571416b393) |
+| Keeper dispatches trading tax | [`0xf648b4a9…`](https://testnet.bscscan.com/tx/0xf648b4a9f97af134088c632dec8130a0f312ef4f564d1115a350bd7ed66d2a56) |
+| Buyer sells 450M CVT into the pool (1.185 tBNB back) | [`0x35b92e75…`](https://testnet.bscscan.com/tx/0x35b92e75bbae2092d80f8a0bfa3afca76edcb1fc6a66877eef585e0e9e4810df) |
+| Issuer agent heartbeat | [`0x0b14fe5a…`](https://testnet.bscscan.com/tx/0x0b14fe5ae8a626ee9223c78cb0a604fd06eab8e36944932a6c19debc832a9c54) |
+| Issuer agent claims the tap (budget) | [`0x88b0c875…`](https://testnet.bscscan.com/tx/0x88b0c87590deceabb5a2e2b688a2e5ca53f20ab0328880839f1ac783faf4b988) |
+| Issuer agent stopped; keeper declares the covenant abandoned after 600 s of silence | [`0xb353116e…`](https://testnet.bscscan.com/tx/0xb353116ef47c503e415fdac059b02a7de6f27635f448ccae1879700b6a2ae86f) |
+| Buyer redeems its last 50M CVT at book (0.01395 tBNB) | [`0xc6ef64d2…`](https://testnet.bscscan.com/tx/0xc6ef64d27ccfc62aed8ab4c8b3b66e988f7b33e5e3095bd8676a32d9a3349a7f) |
+
+Of the 2.65 tBNB raised, 1.199 came back to the buyer (sell 1.185, redeem 0.014). 0.251 stays in the vault for the
+other holders (mostly tokens in the pool), and the rest is in the pool. The trading tax the keeper dispatched did not
+reach the vault in this run (the sheet shows trading tax +0.00), which is still to be checked against Flap's tax
+processor on testnet.
+
+**Hosting the web app (Vercel or any host).** Set `NEXT_PUBLIC_PRIVY_APP_ID` (the owner's Privy app id; public, not a
+secret) in the host's environment, and add the deployed domain to the Privy app's allowed origins in the Privy
+dashboard (and to `NEXT_PUBLIC_PRIVY_ORIGINS`), or Privy's login iframe is blocked there and the app falls back to
+browser wallets. `NEXT_PUBLIC_*` values are inlined at build time, so redeploy after changing them.
+
 **Cost of a testnet covenant.** Flap's testnet Portal refuses a pool unless seed (BNB) × 700 ≥ 750 / pool share,
 so the seed must be at least 1.0714 BNB / pool share. A Portal facet (`0x756b91aB3ecA51191212A98a68917685161b8A30`,
 selector `db9c8c66`, delegatecalled inside `launchTaxTokenV2`) reverts with custom error `0xa32ef056(seed × 700,
@@ -164,8 +195,9 @@ set -a && . ./.env && set +a
 - **Keeper.** Calls `CovenantOracle.poke(vault)` about hourly with a signed Atlas report appended (the Atlas pull
   SDK builds the calldata); with no API key on testnet it pokes plainly and the oracle reads the push feed. A poke without a report still counts for the exit streak; only strict pokes (fresh
   Atlas rate and a pool at least half its seed) price the dollar tap and move unlock counters. One poke adds at
-  most 6 hours to any counter. `finalize()` needs a gas limit of at least 15M (the launch guard); wallets that
-  estimate gas pick this up automatically.
+  most 6 hours to any counter. `finalize()` needs a gas limit of at least 15M (the launch guard) and at most 16,777,216: BNB testnet refuses any
+  transaction above 2^24 gas (`-32003: gas limit too high`). The app sends 16.7M; from the command line pass
+  `--gas-limit 16700000`.
 - **Tax.** Anyone can call the token's tax processor `dispatch()`; the vault recognizes the BNB by balance delta.
 - **Agents.** An agent covenant needs the ERC-8004 agent NFT in the team wallet when the covenant is created. The
   vault records abandonment (-100), wind-down (0) and each unlock (+multiple) on the ReputationRegistry. Read only
