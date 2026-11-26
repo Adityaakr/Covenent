@@ -6,7 +6,8 @@ import { Icon } from "@/components/app/icons";
 import { ConnectChain, CopyCode } from "@/components/app/live";
 import { Addr, Note, Skeleton, Ticker, TokenAvatar, cx } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
-import { TESTNET_FAUCET, chainName } from "@/lib/chain/chains";
+import { chainName } from "@/lib/chain/chains";
+import { TestnetFunds } from "@/components/app/funds";
 import { useSource } from "@/lib/data/hooks";
 import { requestFunds, useBalances, useFaucetStatus, useSwap } from "@/lib/data/faucet";
 import { short } from "@/lib/format";
@@ -15,61 +16,24 @@ import { LOCAL_MODE } from "@/lib/chain/target";
 import { ThinkingMark } from "@/components/app/mark";
 
 /*
- * Get test funds: local dev chain only. The server sends test BNB from an anvil account and mints Demo USDC; the
- * swap trades dUSDC for BNB on the local PancakeSwap pool. Covenant raises stay BNB-quoted; dUSDC never enters a vault.
+ * Settings, Test funds. BNB testnet (chain 97): the server's tBNB drip (components/app/funds.tsx). Local dev chain:
+ * test BNB from an anvil account and Demo USDC minted by the dev stack; the swap trades dUSDC for BNB on the local
+ * PancakeSwap pool. Covenant raises stay BNB-quoted; dUSDC never enters a vault.
  */
-export default function FaucetPage() {
+export default function FundsPage() {
   const src = useSource();
-  if (!LOCAL_MODE || src.chainId === 97) return <TestnetFunds />;
+  // A hosted build is BNB testnet (lib/chain/target.ts); a local dev chain is opt-in.
+  const testnet = !LOCAL_MODE || src.chainId === 97;
   return (
-    <main className="page">
-      <div className="sec-head">
-        <div className="stack-sm" style={{ display: "grid", maxWidth: 700 }}>
-          <span className="eyebrow">Local chain · test funds</span>
-          <h1 className="h-page">Get test funds</h1>
-          <p className="lede">For the local dev chain only, worthless anywhere else. Test BNB from one of anvil&apos;s public accounts and Demo USDC minted by the dev stack, sent to the connected wallet. Raises are in BNB, as Flap requires; dUSDC funds a wallet and swaps to BNB on the local PancakeSwap pool.</p>
-        </div>
+    <div className="set-body">
+      <div className="set-intro">
+        <h2 className="h-sec">Test funds</h2>
+        <p className="t-s muted w5">{testnet
+          ? "Everything on Covenant runs on BNB testnet with test BNB, which has no value. Get a little for gas here, then commit to a raise."
+          : "For the local dev chain only, worthless anywhere else: test BNB from one of anvil\u2019s public accounts and Demo USDC minted by the dev stack. Raises are in BNB, as Flap requires; dUSDC swaps to BNB on the local pool."}</p>
       </div>
-      {src.mode === "live" ? <Funds /> : <ConnectChain source={src} />}
-    </main>
-  );
-}
-
-/** BNB testnet: no dev faucet and no Demo USDC. Test BNB comes from BNB Chain's own faucet. */
-function TestnetFunds() {
-  const src = useSource();
-  const wallet = useWallet();
-  const bal = useQuery({
-    queryKey: ["testnet-balance", wallet.address],
-    enabled: Boolean(src.client && wallet.address),
-    refetchInterval: 6_000,
-    queryFn: async () => Number(await src.client!.getBalance({ address: wallet.address! })) / 1e18,
-  });
-  return (
-    <main className="page">
-      <div className="sec-head">
-        <div className="stack-sm" style={{ display: "grid", maxWidth: 700 }}>
-          <span className="eyebrow">BNB testnet · test BNB</span>
-          <h1 className="h-page">Get test BNB</h1>
-          <p className="lede">This app is on BNB Smart Chain Testnet (chain 97), so test BNB comes from BNB Chain&apos;s own faucet, not from Covenant. Paste your wallet address there, then come back to commit to a raise.</p>
-        </div>
-      </div>
-      <div className="card" style={{ maxWidth: 700 }}>
-        <div className="card-head"><h2 className="h-card">Your wallet on BNB testnet</h2></div>
-        <div style={{ display: "grid", gap: 14, padding: "0 var(--pad, 20px) var(--pad, 20px)" }}>
-          {wallet.address ? (
-            <div className="row between wrap-ok" style={{ gap: 12 }}>
-              <Addr a={wallet.address} chainId={97} />
-              <span className="mono ink">{bal.data === undefined ? "–" : `${bal.data.toLocaleString("en-US", { maximumFractionDigits: 4 })} tBNB`}</span>
-            </div>
-          ) : (
-            <button className="btn btn-secondary" onClick={() => wallet.connect()}><Icon name="wallet" size={15} />Connect a wallet</button>
-          )}
-          <a className="btn btn-primary" href={TESTNET_FAUCET} target="_blank" rel="noreferrer"><Icon name="drop" size={15} />Open the BNB testnet faucet</a>
-          <p className="t-xs muted w5">{withBnb(chainName(97))} · faucet at bnbchain.org</p>
-        </div>
-      </div>
-    </main>
+      {testnet ? <TestnetFunds /> : src.mode === "checking" ? <Skeleton h={360} r={18} /> : src.mode === "live" ? <Funds /> : <ConnectChain source={src} />}
+    </div>
   );
 }
 
@@ -185,7 +149,7 @@ function Funds() {
 
       <div className="stack sticky">
         <div className="card">
-          <div className="card-head ruled"><h2 className="h-card">The chain you are on</h2><span className="badge good"><span className="dot pulse" />Live</span></div>
+          <div className="card-head ruled"><h2 className="h-card">The chain you are on</h2><span className="badge good">Live</span></div>
           <div className="card-body ruled">
             <dl className="kv">
               <dt>Network</dt><dd>{src.chainId ? withBnb(chainName(src.chainId)) : "–"}</dd>

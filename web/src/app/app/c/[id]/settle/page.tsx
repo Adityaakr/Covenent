@@ -51,7 +51,7 @@ function Settle({ v, d }: { v: CovenantView; d: Derived }) {
     <div className="grid-side">
       <div className="stack">
         <div className="card">
-          <div className="card-head"><div><h3 className="h-card">Result of the raise</h3><p className="t-xs muted w5">{failed ? "The minimum was missed" : "One transaction settled all of this"}</p></div><span className={failed ? "badge" : "badge good"}><span className="dot" />{failed ? "Failed" : "Launched"}</span></div>
+          <div className="card-head"><div><h3 className="h-card">Result of the raise</h3><p className="t-xs muted w5">{failed ? "The minimum was missed" : "One transaction settled all of this"}</p></div><span className={failed ? "badge" : "badge good"}>{failed ? "Failed" : "Launched"}</span></div>
           <div className="card-body stack">
             {failed ? (
               <div className="split-bar">{seg(v.raise.committed, "var(--faint)", "Refunded in full", 0)}</div>

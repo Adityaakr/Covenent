@@ -107,7 +107,7 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
         <span className="chip-stat"><Icon name="coins" size={14} />Tap <b>{bnb(v.tap.accrued, 2)} BNB</b></span>
         <span className={cx("chip-stat", hbLow && "warn")}><Icon name="heart" size={14} />Heartbeat <b>{d.hbLeft > 0 ? duration(d.hbLeft, 1) : "lapsed"}</b></span>
         <span className="chip-stat hide-sm"><Icon name="doc" size={14} />Report <b>{v.disclosure.nextDueAt ? relative(v.disclosure.nextDueAt, v.now) : "–"}</b></span>
-        {!isTeam ? <span className="badge warn lg">Read only: connect the team wallet</span> : <span className="badge good lg"><span className="dot" />Team wallet connected</span>}
+        {!isTeam ? <span className="badge warn lg">Read only: connect the team wallet</span> : <span className="badge good lg">Team wallet connected</span>}
       </div>
 
       {agent ? (

@@ -74,12 +74,13 @@ export function networkKind(id: number | undefined): NetworkKind {
   return id === 97 ? "testnet" : id === 56 ? "mainnet" : "other";
 }
 
-/** Where test BNB comes from: the dev stack's faucet page locally, BNB Chain's faucet on testnet, none on mainnet. */
+/** Where test BNB comes from: Settings, Test funds (the dev stack's faucet locally, the server's tBNB drip on testnet, with
+ *  BNB Chain's public faucets beside it); none on mainnet. */
 export function faucetFor(id: number | undefined): { href: string; label: string; external: boolean } | null {
   if (!LOCAL_MODE && id === undefined) id = 97;
   const k = networkKind(id);
-  if (k === "local") return { href: "/app/faucet", label: "Get test funds", external: false };
-  if (k === "testnet") return { href: TESTNET_FAUCET, label: "BNB testnet faucet", external: true };
+  if (k === "local") return { href: "/app/settings/funds", label: "Get test funds", external: false };
+  if (k === "testnet") return { href: "/app/settings/funds", label: "Get test BNB", external: false };
   return null;
 }
 

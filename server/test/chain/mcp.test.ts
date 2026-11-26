@@ -93,6 +93,24 @@ describe('Covenant MCP server', () => {
     expect((await fx.client.waitForTransactionReceipt({ hash })).status).toBe('success');
     expect(await fx.client.readContract({ address: fx.vault, abi: fx.abis.vault, functionName: 'lastTrusted' })).toBe(true);
   });
+
+  it('tells the client how to use it, and pokes plainly where no pull report exists (BNB testnet, no Atlas key)', async () => {
+    expect(mcp.getInstructions()).toMatch(/never sign/);
+    const base = fx.cfg();
+    const feed = '0x3957d289ee9C38272377786787ea34F9dd29788D' as const;
+    const server = createMcpServer({ cfg: { ...base, atlas: { ...base.atlas, apiKey: undefined, localSignerAllowed: false, pushFeed: feed } } });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const c = new Client({ name: 'push-feed', version: '0' });
+    await c.connect(b);
+    const r = (await c.callTool({ name: 'poke', arguments: { vault: fx.vault } })) as ToolResult;
+    expect(r.isError ?? false, r.content[0]!.text).toBe(false);
+    const body = JSON.parse(r.content[0]!.text) as { unsignedTransaction: unknown; note: string };
+    const tx = UnsignedTx.parse(body.unsignedTransaction);
+    expect(tx.data.length).toBe(2 + 8 + 64); // poke(vault) with no report appended
+    expect(body.note).toMatch(/push feed/);
+    await c.close();
+  });
 });
 
 describe('investor agent over MCP', () => {

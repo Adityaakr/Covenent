@@ -39,7 +39,7 @@ function PrimaryActions({ v, d, size = "lg" }: { v: CovenantView; d: Derived; si
   const base = `/app/c/${v.id}`;
   const b = size === "lg" ? "btn" : "btn btn-sm";
   const pair = v.pair ? explorerAddress(v.chainId, v.pair) : null;
-  if (v.state === "RAISING") return <><Link className={`${b} btn-primary`} href={`${base}/raise`}><Icon name="plus" size={15} />Commit BNB</Link><Link className={`${b} btn-secondary hide-xs`} href="/app/simulator">Run the simulator</Link></>;
+  if (v.state === "RAISING") return <><Link className={`${b} btn-primary`} href={`${base}/raise`}><Icon name="plus" size={15} />Commit BNB</Link><Link className={`${b} btn-secondary hide-xs`} href="/app/settings/simulator">Run the simulator</Link></>;
   if (v.state === "FAILED") return <Link className={`${b} btn-primary`} href={`${base}/settle`}>Claim refund<Icon name="arrow" size={15} /></Link>;
   const open = v.state === "EXIT_ROUND" || v.state === "WIND_DOWN";
   return (
@@ -119,7 +119,7 @@ export function CovenantTabs({ v }: { v: CovenantView }) {
   ];
   return (
     <nav className="ptabs" aria-label="Covenant pages">
-      {tabs.map((t) => <Link key={t.href} href={t.href} aria-current={path === t.href ? "page" : undefined}><Icon name={t.icon} size={15} />{t.label}{t.dot ? <span className="dot" aria-label="open" /> : null}</Link>)}
+      {tabs.map((t) => <Link key={t.href} href={t.href} aria-current={path === t.href ? "page" : undefined}><Icon name={t.icon} size={15} />{t.label}{t.dot ? <span className="ptab-flag">Open</span> : null}</Link>)}
     </nav>
   );
 }
@@ -528,7 +528,7 @@ export function RulesModule({ v, d }: { v: CovenantView; d: Derived }) {
             <p className="t-s ink2 w5" style={{ maxWidth: "60ch" }}>{featured.detail}</p>
           </div>
           <div className="rfeat-r">
-            <span className={cx("rstate", featured.tone)}><i />{featured.state}</span>
+            <span className={cx("rstate", featured.tone)}>{featured.state}</span>
             <div className="rfeat-fig">{featured.figure}</div>
             <span className="t-s muted w5">{featured.next}</span>
             {featured.meter ? <Meter size="lg" value={featured.meter.value} max={featured.meter.max} tone={featured.meter.tone} label={featured.name} /> : null}
@@ -544,7 +544,7 @@ export function RulesModule({ v, d }: { v: CovenantView; d: Derived }) {
               <button type="button" className="rrow-main" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : r.key)}>
                 <span className={cx("icon-tile sm", r.tone)}><Icon name={r.icon} size={15} /></span>
                 <span className="rrow-name"><b>{r.name}</b><span>{r.terms}</span></span>
-                {launched ? <span className="rrow-state"><span className={cx("rstate", r.tone)}><i />{r.state}</span><span className="t-xs muted w5 trunc">{r.next}</span></span> : <span className="rrow-state"><span className="t-xs muted w5">{r.next}</span></span>}
+                {launched ? <span className="rrow-state"><span className={cx("rstate", r.tone)}>{r.state}</span><span className="t-xs muted w5 trunc">{r.next}</span></span> : <span className="rrow-state"><span className="t-xs muted w5">{r.next}</span></span>}
                 <span className="rrow-meter">{r.meter ? <Meter value={r.meter.value} max={r.meter.max} tone={r.meter.tone} label={r.name} /> : null}</span>
                 <span className="rrow-fig"><span className="fig">{r.figure}</span>{r.figSub ? <span className="t-xs muted w5">{r.figSub}</span> : null}</span>
                 <Icon name="chevronDown" size={16} className="rrow-chev" />

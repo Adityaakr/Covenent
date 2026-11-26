@@ -343,7 +343,7 @@ function CovenantCreate() {
 
         <aside className="stack sticky" aria-label="Live preview">
           <div className="card preview">
-            <div className="card-head"><div><h3 className="h-card">Live preview</h3><p className="t-xs muted w5">BNB/USD assumed at $600</p></div><span className="badge accent"><span className="dot pulse" />Live</span></div>
+            <div className="card-head"><div><h3 className="h-card">Live preview</h3><p className="t-xs muted w5">BNB/USD assumed at $600</p></div><span className="badge accent">Live</span></div>
             <div className="card-body stack">
               <div style={{ display: "grid", gap: 2 }}><span className="lbl">Sale price at the cap</span><span className="fig-md mono" style={{ fontFamily: "var(--font-mono-stack)", fontSize: 20 }}>{price(atCap.salePrice)}<BnbUnit /></span></div>
               <dl className="kv">
