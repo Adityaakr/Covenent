@@ -1,0 +1,48 @@
+# Covenant
+
+> The operating stack for autonomous ventures. Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts. 24/7 on BNB Chain.
+
+Covenant is a launcher and a vault for token raises on BNB Chain, built on Flap Pool Launch. Buyers commit BNB to a capped raise. The treasury sits in a vault under five fixed rules, and anyone can trigger them. The same contracts bind a human team or an AI agent. Covenant is deployed on BNB testnet (chain 97). Nothing is deployed on BNB Chain mainnet, and the contracts are not audited.
+
+The five rules:
+
+1. Tap: the team draws a dollar budget per 30 days, paid in BNB at the Atlas BNB/USD rate and capped as a share of the treasury (default 4%). It can only be lowered.
+2. Performance unlock: team tokens unlock only after the dollar price holds above 2x, 4x or 8x the sale price for a trusted window, after a cliff.
+3. Book-value exit: when the pool trades below book value for the exit streak (default 3 days), an exit round opens and any holder can burn tokens for a pro-rata share of the treasury. The streak decays above book and needs no oracle.
+4. Abandonment switch: after the heartbeat window (default 45 days) of team silence, anyone can call declareAbandoned(). Locked team tokens burn and redemption opens with no fee, forever.
+5. Disclosure: the team posts a pointer to each period's report and its hash on-chain.
+
+Book value = (vault BNB - tap owed to the team) / (total supply - burned - locked team tokens). Covenant states run RAISING -> ACTIVE -> EXIT_ROUND -> COOLDOWN -> ACTIVE, with FAILED (raise missed its minimum, full refunds) and WIND_DOWN (abandoned or closed) as terminal states.
+
+## Agent interface
+
+There is no hosted public API. Run the server from the repository (Node 22, pnpm). Every write returns an unsigned transaction ({chainId, to, data, value, from, prerequisites[]}), and the server never holds or asks for a key. Send each prerequisite first, then the transaction, from the wallet named in from. Amounts are wei strings, and per-token prices are BNB per token x 1e18.
+
+- MCP server (stdio): `pnpm --dir <repo>/server mcp`. Set COVENANT_DEPLOYMENTS to the deployment record (default contracts/deployments/local.json).
+- Read tools: list_covenants (under_book_only?), get_terms (vault), get_status (vault), get_downside (vault, holder? or tokens?), get_issuer (vault), get_market (vault).
+- Write tools: commit (vault, amount_bnb), claim_tokens (vault), claim_refund (vault), redeem (vault, holder, tokens?, slippage_bps?; only in EXIT_ROUND or WIND_DOWN), poke (vault), declare_abandoned (vault).
+- Issuer-only write tools, signed by the team wallet: claim_tap (vault), heartbeat (vault), lower_tap (vault, usd_per_30d), post_report (vault, period, uri, report_text? or hash?).
+- HTTP API (`pnpm --dir <repo>/server api`, default http://127.0.0.1:8787): GET /health, GET /api/covenants, GET /api/covenants/{vault}, GET /api/covenants/{vault}/events, /history, /alerts, /downside?holder=&tokens=, GET /api/covenants/{vault}/tx/{commit|claim-refund|claim-tokens|redeem|declare-abandoned|claim-tap|heartbeat|lower-tap}, GET /api/poke-report?vault=, GET /api/simulator, GET /api/fourmeme/encode, GET /reports/{vault}/{period}, GET /agents/{owner}/registration.json.
+
+## Docs
+
+- [README](https://github.com/Adityaakr/Covenent/blob/main/README.md): what Covenant is, the architecture, integrations, quickstart, testnet addresses
+- [Skill file](https://github.com/Adityaakr/Covenent/blob/main/server/mcp/SKILL.md): the MCP tools, recipes for funding, holding through a slide, and acting as an issuer
+- [Server and API](https://github.com/Adityaakr/Covenent/blob/main/server/README.md): every route, the keeper, the issuer and investor agents
+- [Design document](https://github.com/Adityaakr/Covenent/blob/main/docs/DESIGN.md): the rules, the formulas, the oracle design and the threat model
+- [Deploy runbook](https://github.com/Adityaakr/Covenent/blob/main/docs/DEPLOY.md): the BNB testnet deployment and its addresses
+
+## BNB testnet (chain 97)
+
+- CovenantOracle: 0x3CC607931edaF307dC867111e48cAc28e31fF052
+- CovenantLauncherFactory (production): 0x373491d66f68FE2Acc370B12E6FA2bB488FC6A0B
+- CovenantVaultFactory (production): 0x2665c44Ea346De54207b8E8C1A351aE3e82FCf57
+- CovenantLauncherFactory (demo timers): 0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48
+- CovenantVaultFactory (demo timers): 0xF8Bf9A01457C45a8F53E7ae32D863B38d3876c97
+- CovenantLens: 0x6c0D9CDDCbAA497a54fF5aDDCbf444E77b3d1A83
+- CovenantLiteVault template (Four.meme): 0xC9aD3B8aC5baD26278EFc8F88D1073eB85791437
+- Flap Portal: 0x000042108465206185A077Edc3F3fd2b49060000
+
+## What it does not protect
+
+The floor starts below the sale price and falls as the team spends. The treasury is BNB, so its dollar value moves. Holders get exit, not voice, and no claim on anything off-chain.

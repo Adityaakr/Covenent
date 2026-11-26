@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getAddress, isAddress, keccak256, parseEther, toBytes, type Address, type Hex } from 'viem';
 import { z } from 'zod';
 import { CMC_ROUTES, CmcClient } from '../src/api/cmc.js';
-import { fetchBnbUsdReport } from '../src/atlas/report.js';
+import { fetchBnbUsdReport, NoPullReport } from '../src/atlas/report.js';
 import type { ServerConfig } from '../src/config.js';
 import { downside } from '../src/covenant/downside.js';
 import { settle } from '../src/covenant/math.js';
@@ -59,7 +59,18 @@ export function createMcpServer(deps: McpDeps): McpServer {
   const svc = deps.svc ?? new CovenantService({ cfg });
   const txb = new TxBuilder(svc);
   const cmc = deps.cmc ?? new CmcClient(cfg.cmc.apiKey, cfg.cmc.baseUrl);
-  const server = new McpServer({ name: 'covenant', version: '0.1.0' });
+  const server = new McpServer(
+    { name: 'covenant', version: '0.1.0' },
+    {
+      instructions:
+        'Covenant: token raises on BNB Chain whose treasury sits in a vault under five fixed rules (tap, performance unlock, ' +
+        'book-value exit, abandonment switch, disclosure). Start with list_covenants, then get_terms / get_status / get_downside ' +
+        'on a vault address. Write tools never sign: they return an unsigned transaction ({chainId, to, data, value, from, ' +
+        'prerequisites[]}); send each prerequisite first, then the transaction, from the wallet named in from. Amounts are wei ' +
+        'strings; per-token prices are BNB per token x 1e18. redeem works only in EXIT_ROUND or WIND_DOWN; claim_tap, heartbeat, ' +
+        'lower_tap and post_report must be signed by the team wallet.',
+    },
+  );
   const read = { readOnlyHint: true, openWorldHint: false };
   const write = { readOnlyHint: true, destructiveHint: false, openWorldHint: false }; // builds a tx, changes nothing itself
 
@@ -249,13 +260,20 @@ export function createMcpServer(deps: McpDeps): McpServer {
     'poke',
     {
       title: 'Poke',
-      description: 'Unsigned CovenantOracle.poke(vault) with a fresh signed BNB/USD report appended (Atlas, or the local test signer when no Atlas key is set). Anyone can send it; the oracle refuses pokes closer together than its minimum interval.',
+      description: 'Unsigned CovenantOracle.poke(vault) with a fresh signed BNB/USD report appended (Atlas, or the local test signer on a local chain with no Atlas key). On BNB testnet with no Atlas key it is a plain poke and the oracle reads the Atlas push feed. Anyone can send it; the oracle refuses pokes closer together than its minimum interval.',
       inputSchema: vaultArg,
       annotations: write,
     },
     async ({ vault }) => {
       try {
-        const rep = await fetchBnbUsdReport(cfg.atlas, svc.client);
+        let rep;
+        try {
+          rep = await fetchBnbUsdReport(cfg.atlas, svc.client);
+        } catch (e) {
+          // No pull report to attach (BNB testnet without an Atlas key): a plain poke, as the keeper sends.
+          if (e instanceof NoPullReport) return unsigned(txb.poke(vault), e.message);
+          throw e;
+        }
         return unsigned(txb.poke(vault, rep), `${rep.note} Report timestamp ${rep.timestamp}; it is valid for about 180 seconds.`);
       } catch (e) {
         return fail(e);
