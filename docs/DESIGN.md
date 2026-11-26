@@ -283,18 +283,7 @@ Agents stop without notice | Credits run out, a server goes down, an operator wa
 Agent income is on-chain | CoinMarketCap already sells data to agents at $0.01 per request, with the payment as the login (x402 docs) | An agent can name the vault as its payee. Revenue raises book value for every holder | 
 Investor agents cannot judge a meme | A launch with no terms gives a program nothing to compute | Terms and book value are on-chain. Downside is a number before committing | 
 The fourth row is the one human teams cannot match. A company can only promise revenue through a legal wrapper. An agent that is paid on-chain can route that revenue to the vault in code.
-### ClawPump: what it proves and what it leaves open
-ClawPump calls itself the financial operating system for AI agents. It gives agents wallets, token launches on Solana or Robinhood Chain and 136 MCP tools. Creators keep 75% of collected creator fees. Its site describes no treasury, vesting, lock or investor protection (clawpump.tech). | ClawPump | Covenant with the agent layer | 
-Chain | Solana, Robinhood Chain | BNB Chain, on Flap and Four.meme | 
-How the agent is funded | A share of trading fees on its token | A capped raise in a vault, plus trading tax, plus its own revenue | 
-When trading dries up | Funding stops | Treasury runway continues at the tap cap | 
-What buyers hold | A token with no claim | A token with an exit at treasury value | 
-If the agent stops | Nothing happens | Anyone can open the treasury to holders | 
-If the agent's key is stolen | Its wallet and fee stream are exposed | Only the accrued tap is exposed | 
-How agents reach it | CLI, API, MCP | MCP server and skill file over the same contracts human teams use | 
-Verdict. The direction is right about distribution and weak on economics. Agents will launch and transact through MCP tools and command lines, and the story of an agent becoming a business is one judges already believe. But fee income funds an agent only while people speculate on its token, and it gives buyers nothing when the agent stops. Borrow the interface. Replace the funding model. Do not integrate ClawPump itself: it runs on other chains and is not a sponsor here.
-Two lines for the pitch:
-ClawPump lets an agent launch a token. Covenant lets an agent raise a budget it can be held to.
+One line for the pitch:
 BNB Chain has identity, capability and payment for agents. Covenant is accountability for the ones that hold other people's money.
 ### Three agent roles
 Role | What it does | Built from | New contract code | 
@@ -372,7 +361,6 @@ Revenue to the vault is BNB only in v1. Stablecoin income needs a swap step.
 Question | Answer | 
 Is the agent really autonomous? | It does not need to be. A human with the key and an agent with the key are bound by the same vault. That is the design. | 
 Why would anyone fund an agent? | Today nobody should, because an agent can hold a treasury with no rules. With a capped budget, an exit at book and a dead-man switch, the worst case is a number. | 
-Is this ClawPump on BNB Chain? | ClawPump funds agents from trading fees and gives buyers no claim. Covenant gives agents a budget and gives buyers the treasury back if the agent fails. | 
 What does the AI actually do? | It runs the business side: spends within its budget, reports, decides when to cut its own pay, and on the investor side reads terms and exits. It never controls the money rules. | 
 What if the agent's key leaks? | The attacker reaches the accrued tap, at most 4% of the treasury a month. The treasury stays in the vault. | 
 ## System architecture
@@ -928,7 +916,6 @@ Venus community forum, oracle updates for the core pool.
 CoinMarketCap API: DEX token endpoints, candles.
 Cournot: documentation, partner public API.
 ### Agent layer
-ClawPump, homepage, read Nov 26, 2026.
 BNB Chain, Building the infrastructure base for the AI agent economy, May 21, 2026.
 BNB Chain, BNB Hack Abu Dhabi highlights.
 CoinDesk, AI agent token once worth $2.4 billion ends with founder calling it dead, Aug 5, 2026.

@@ -23,9 +23,10 @@ export type UseCase = {
   who: string;
   result: string;
   resultLabel: string;
-  quote: string;
-  quoteAuthor: string;
-  quoteRole: string;
+  /** Optional: a case without a quote shows no quote band. */
+  quote?: string;
+  quoteAuthor?: string;
+  quoteRole?: string;
   mark: ReactNode;
   featured: boolean;
   /** The situation, in one paragraph. */
@@ -52,9 +53,6 @@ export const useCases: UseCase[] = [
     who: "An AI agent with on-chain revenue, holding the team wallet under an ERC-8004 identity",
     result: "4%",
     resultLabel: "of the treasury per 30 days, the most its key can ever reach",
-    quote: "ClawPump lets an agent launch a token. Covenant lets an agent raise a budget it can be held to.",
-    quoteAuthor: "Covenant",
-    quoteRole: "The pitch in one line",
     mark: <IconRobot />,
     featured: true,
     situation:

@@ -92,13 +92,14 @@ export function UseCaseBody({ u }: { u: UseCase }) {
 
 /** Story Quote (mAKo9YoHo): surface band, accent quote mark, H2 quote, author + role. */
 export function UseCaseQuote({ u }: { u: UseCase }) {
+  if (!u.quote) return null;
   return (
     <Section name="Story Quote" surface contentClassName={s.quoteContent}>
       <Quotes size={28} className={s.quoteMark} />
       <h2 className={["t-h2", s.quoteText].join(" ")}>{bnb(u.quote)}</h2>
       <div className={s.quoteAuthor}>
-        <p className="t-label">{bnb(u.quoteAuthor)}</p>
-        <p className="t-label c-text-2">{bnb(u.quoteRole)}</p>
+        <p className="t-label">{bnb(u.quoteAuthor ?? "")}</p>
+        <p className="t-label c-text-2">{bnb(u.quoteRole ?? "")}</p>
       </div>
     </Section>
   );

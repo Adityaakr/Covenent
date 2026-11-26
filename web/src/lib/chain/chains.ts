@@ -16,7 +16,7 @@ export function makeLocalChain(info: LocalChainInfo) {
   const rpc = info.rpcUrl || LOCAL_RPC;
   return defineChain({
     id: info.id,
-    name: info.id === 56 ? "BNB Chain fork (local)" : info.id === 31337 ? "Anvil (local)" : `Local chain ${info.id}`,
+    name: info.id === 97 ? "BNB Smart Chain Testnet" : info.id === 56 ? "BNB Chain fork (local)" : info.id === 31337 ? "Anvil (local)" : `Local chain ${info.id}`,
     nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
     rpcUrls: { default: { http: [rpc] }, privyWalletOverride: { http: [rpc] } },
     testnet: true,
@@ -38,6 +38,9 @@ export function configureLocalChain(info: LocalChainInfo | null | undefined) {
 }
 
 export { bscTestnet };
+
+/** BNB Chain's own testnet faucet: test BNB on chain 97 comes from here, never from the dev stack's faucet. */
+export const TESTNET_FAUCET = "https://www.bnbchain.org/en/testnet-faucet";
 
 /** No explorer for the local node: a hash on a local fork of BNB Chain does not exist on BscScan. */
 const isLocal = (chainId: number) => chainId === anvil.id && localIsLoopback;

@@ -12,15 +12,21 @@ export const dynamic = "force-dynamic";
 
 const CONTRACTS_DIR = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.COVENANT_CONTRACTS_DIR ?? "../contracts");
 
+/** COVENANT_DEPLOYMENTS (relative to web/) picks another record in the same shape, e.g. the BNB testnet one. */
+const DEPLOYMENT_FILE = process.env.COVENANT_DEPLOYMENTS
+  ? path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.COVENANT_DEPLOYMENTS)
+  : path.join(CONTRACTS_DIR, "deployments", "local.json");
+
 export async function GET() {
-  const deploymentFile = path.join(CONTRACTS_DIR, "deployments", "local.json");
+  const deploymentFile = DEPLOYMENT_FILE;
+  const name = path.basename(deploymentFile);
   const abiDir = path.join(CONTRACTS_DIR, "abi");
   const payload: DeploymentPayload = { status: "missing", dir: path.relative(process.cwd(), CONTRACTS_DIR) || ".", abis: {}, problems: [] };
 
   try {
     const raw = JSON.parse(await readFile(deploymentFile, "utf8"));
     if (typeof raw !== "object" || raw === null || typeof raw.addresses !== "object") {
-      payload.problems.push("deployments/local.json has no addresses object");
+      payload.problems.push(`deployments/${name} has no addresses object`);
     } else {
       payload.deployment = {
         chainId: Number(raw.chainId ?? 31337),
@@ -34,7 +40,7 @@ export async function GET() {
       };
     }
   } catch (e) {
-    payload.problems.push(`deployments/local.json: ${(e as NodeJS.ErrnoException).code === "ENOENT" ? "not written yet" : (e as Error).message}`);
+    payload.problems.push(`deployments/${name}: ${(e as NodeJS.ErrnoException).code === "ENOENT" ? "not written yet" : (e as Error).message}`);
   }
 
   try {

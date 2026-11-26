@@ -3,7 +3,8 @@
  * home "How it's built" diagram and the /features integrations grid. Every line is checked against the build
  * (contracts/, server/, docs/DEPLOY.md on the integration branch) and, for the Atlas feed, against BNB testnet itself
  * on 26 Nov 2026 (decimals() = 18, description() = "SingleFeed BNB/USD", latestRoundData() updated seconds before).
- * Nothing is deployed to a public network yet (docs/DEPLOY.md); statuses say exactly how far each piece is proven.
+ * Our contracts are deployed on BNB testnet (contracts/deployments/97.json, 26 Nov 2026, source verified on Sourcify);
+ * nothing is on BNB Chain mainnet. Statuses say exactly how far each piece is proven.
  * Citations: docs/landing/sources.md "How it's built".
  */
 export type IntegrationStatus = "live" | "testnet" | "fork" | "planned";
@@ -45,7 +46,7 @@ export const integrations: Integration[] = [
     y: 20,
     flow: "Raise, tokens and tax in",
     status: "fork",
-    statusText: "Proven on a BNB Chain mainnet fork; waiting for Flap to enable our launcher on testnet",
+    statusText: "Proven on a BNB Chain mainnet fork; our factories are deployed on testnet, waiting for Flap to enable the launcher factory",
     short: "Creates the token, seeds the pool, docks the reserved tokens and routes tax to the vault",
     does: "Our launcher and vault are a Flap Pool Launch pair. Flap creates the token, seeds the PancakeSwap pool at the sale price, holds the vault’s reserved tokens in its Token Dock and routes trading tax to the vault.",
     how: [
@@ -56,6 +57,10 @@ export const integrations: Integration[] = [
     addresses: [
       { label: "Portal", address: "0x000042108465206185A077Edc3F3fd2b49060000", chain: "bsc-testnet" },
       { label: "TokenDockRouter", address: "0x000048E888aBf09f690a952E1b386b2D031a0000", chain: "bsc-testnet" },
+      { label: "Our launcher factory", address: "0x373491d66f68FE2Acc370B12E6FA2bB488FC6A0B", chain: "bsc-testnet" },
+      { label: "Our vault factory", address: "0x2665c44Ea346De54207b8E8C1A351aE3e82FCf57", chain: "bsc-testnet" },
+      { label: "Demo launcher factory", address: "0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48", chain: "bsc-testnet" },
+      { label: "Demo vault factory", address: "0xF8Bf9A01457C45a8F53E7ae32D863B38d3876c97", chain: "bsc-testnet" },
     ],
     without: "No raise, no launch and no tax coming into the treasury.",
   },
@@ -86,7 +91,7 @@ export const integrations: Integration[] = [
     y: 20,
     flow: "BNB/USD",
     status: "testnet",
-    statusText: "Feed live on BNB testnet; CovenantOracle takes it at deployment",
+    statusText: "Live on BNB testnet: our CovenantOracle reads the BNB/USD push feed",
     short: "Live BNB/USD for the dollar budget and dollar unlocks; never needed for the exit",
     does: "Live BNB/USD from Atlas’s on-chain push feed prices the dollar budget and the dollar unlock multiples, and feeds the strict trust gate that keeps a faked pump from counting toward an unlock. The exit never depends on it.",
     how: [
@@ -94,7 +99,12 @@ export const integrations: Integration[] = [
       "Signed Atlas pull reports are also accepted when a signing key is set; they are tried first.",
       "Only strict observations (fresh BNB/USD and a pool at least half its seed) move the dollar rules.",
     ],
-    addresses: [{ label: "BNB/USD push feed", address: "0x3957d289ee9C38272377786787ea34F9dd29788D", chain: "bsc-testnet" }],
+    addresses: [
+      { label: "BNB/USD push feed", address: "0x3957d289ee9C38272377786787ea34F9dd29788D", chain: "bsc-testnet" },
+      { label: "BTC/USD push feed", address: "0x83B2F2c20df36F166cF5b3f017204cbB7BABcAD0", chain: "bsc-testnet" },
+      { label: "ETH/USD push feed", address: "0x35369dEcD8c662954B3D24acc2A862C708A34fD2", chain: "bsc-testnet" },
+      { label: "Our CovenantOracle", address: "0x3CC607931edaF307dC867111e48cAc28e31fF052", chain: "bsc-testnet" },
+    ],
     without: "The dollar rules freeze, then fall back in holders’ favour. The exit keeps working.",
   },
   {
@@ -154,7 +164,10 @@ export const integrations: Integration[] = [
       "OpenFour’s ForwardVault clones CovenantLiteVault for each token that picks the template.",
       "The template settings (tap share, period, heartbeat, redeem fee) are fixed at creation.",
     ],
-    addresses: [{ label: "ForwardVault", address: "0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4", chain: "bsc" }],
+    addresses: [
+      { label: "Our Lite template", address: "0xC9aD3B8aC5baD26278EFc8F88D1073eB85791437", chain: "bsc-testnet" },
+      { label: "ForwardVault", address: "0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4", chain: "bsc" },
+    ],
     without: "Four.meme founders would have no covenant to opt into.",
   },
   {
@@ -179,12 +192,12 @@ export const integrations: Integration[] = [
     x: 50,
     y: 11,
     flow: "Where it runs",
-    status: "fork",
-    statusText: "Proven on a BNB Chain mainnet fork; testnet deployment next",
+    status: "testnet",
+    statusText: "Deployed on BNB testnet and verified on Sourcify; mainnet after Flap's factory audit",
     short: "Where every contract and every rule runs",
     does: "The launcher, the vault, the oracle and every rule are BNB Chain contracts. Agents, keepers and buyers all meet there.",
     how: ["Deploy.s.sol targets BNB testnet (97) and BNB Chain (56) and refuses any other chain."],
-    addresses: [],
+    addresses: [{ label: "Our CovenantLens", address: "0x6c0D9CDDCbAA497a54fF5aDDCbf444E77b3d1A83", chain: "bsc-testnet" }],
     without: "Nothing above exists without it.",
   },
 ];
