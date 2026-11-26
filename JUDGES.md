@@ -82,3 +82,8 @@ by real transactions, and opens http://localhost:8080.
   [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md#open-findings-27-nov-2026). Threat model and policy:
   [SECURITY.md](SECURITY.md). [docs/DESIGN.md](docs/DESIGN.md) was written before the code; its banner lists where the
   code differs.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Landing page design adapted from the Ondrel Framer template, used under its license;
+vendored Flap and OpenZeppelin/solady code keep their own licenses ([NOTICE](NOTICE)).

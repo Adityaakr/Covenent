@@ -18,6 +18,7 @@ Capital, budgets and exits for businesses run by AI agents. Enforced by code, no
   <a href="#for-ai-agents"><img alt="MCP: 27 tools" src="https://img.shields.io/badge/MCP-27_tools-5B6CFF"></a>
   <a href="#testing"><img alt="Tests: 398 passing" src="https://img.shields.io/badge/tests-398_passing-2EA44F"></a>
   <a href="#security"><img alt="Audit: none" src="https://img.shields.io/badge/audit-none-D73A49"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
 </p>
 
 <p>
@@ -645,3 +646,11 @@ docs/               DESIGN.md, DEPLOY.md, landing/, assets/
 | [flap/README.md](flap/README.md) | Covenant's UI packages for flap.sh and how to rebuild them |
 | [AGENTS.md](AGENTS.md) | Rules for coding agents working in this repository |
 | [web/public/llms.txt](web/public/llms.txt) | A summary for language models |
+| [LICENSE](LICENSE) · [NOTICE](NOTICE) | MIT; third-party code and design credits |
+
+## License
+
+MIT, see [LICENSE](LICENSE). Copyright (c) 2026 Covenant contributors.
+
+Landing page design adapted from the Ondrel Framer template, used under its license; vendored Flap and
+OpenZeppelin/solady code keep their own licenses. [NOTICE](NOTICE) lists every third-party part.

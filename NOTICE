@@ -1,0 +1,12 @@
+Covenant
+Copyright (c) 2026 Covenant contributors. Licensed under the MIT License (see LICENSE).
+
+Landing page design adapted from the Ondrel Framer template, used under its license; vendored Flap and
+OpenZeppelin/solady code keep their own licenses.
+
+Third-party code kept under its own license:
+- contracts/src/flap/ and contracts/src/vendor/: vendored unchanged from Flap (see contracts/VENDORED.md); each file
+  states its license in its SPDX header.
+- contracts/lib/: forge-std, OpenZeppelin Contracts and solady, as git submodules, each under its own license.
+- web/src/fonts/: Inter, under the SIL Open Font License (web/src/fonts/Inter-LICENSE.txt).
+- web/public/landing/logos/: third-party marks, credited in web/public/landing/logos/SOURCES.md.
