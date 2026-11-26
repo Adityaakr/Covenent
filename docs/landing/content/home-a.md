@@ -10,8 +10,8 @@ Section headings in DESIGN.md are quoted as "Heading".
 | Chip | Agents | "Agent layer" |
 | Announcement (Desktop, Tablet) | Now with an agent layer: issuer, investor and keeper agents | "Three agent roles" |
 | Announcement (Phone) | Now with an agent layer | same |
-| Heading | Investor protections that enforce themselves. | Title line of DESIGN.md |
-| Subheading | Covenant is a launcher and vault for token raises on BNB Chain. Five rules bind whoever holds the team wallet, a human team or an AI agent. | "Summary"; "Agent layer" (same contracts bind an agent issuer) |
+| Heading | The operating stack for autonomous ventures. | The owner's headline (see `content/home-v2.md`) |
+| Subheading | Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts. 24/7 on BNB Chain. | The owner's subline |
 | Buttons | Read the rules (`/features`), Launch app (`/app`) | content plan |
 | Note | No fees in v1 · Built on Flap Pool Launch | "Business model and roadmap" (no raise fee in v1); "Summary" (Built on) |
 
@@ -49,9 +49,9 @@ Section headings in DESIGN.md are quoted as "Heading".
 ### Logo row
 
 Caption: "Built on Flap Pool Launch, priced by Atlas, explained with CoinMarketCap data" ("Summary", "Sponsor
-integrations"). Names, integrations and not customers: Flap, Atlas, CoinMarketCap, OpenFour, PancakeSwap, ERC-8004,
-Cournot ("Summary", "Sponsor integrations", "Lifecycle" for PancakeSwap V2, "Optional contract changes" for
-ERC-8004). Marks are the template's generic shapes, never the projects' logos.
+integrations"). Names, integrations and not customers: Flap, Atlas, CoinMarketCap, PancakeSwap, Four.meme, ERC-8004,
+Cournot, BNB Chain. Each shows the project's own mark, monochrome in the ticker grey; sources in
+`web/public/landing/logos/SOURCES.md`.
 
 ## Features
 

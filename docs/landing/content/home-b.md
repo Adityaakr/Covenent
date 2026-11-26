@@ -2,14 +2,10 @@
 
 Every number comes from `docs/DESIGN.md`. Section names are the Framer section names.
 
-## Stats (HomeStats)
+## Stats -> The problem today (HomeProblem)
 
-| Value | Label | Source (DESIGN.md "Problem and evidence") |
-| --- | --- | --- |
-| 98.6% | of Pump.fun tokens fell below $1,000 of liquidity, per Solidus Labs | Solidus Labs, May 2025 |
-| 80.96% | of BSC meme coins went inactive about two months in, per MemeChain | MemeChain, arXiv 2601.22185 |
-| ~60% | of BSC and Ethereum tokens lasted under a day, per Cernera et al. | Cernera et al., USENIX Security 2023 ("about 60%", active for less than one day) |
-| $580M | committed to protected raises, 92.2% of it refunded, per Basis Point | Basis Point, Aug 2026 |
+Rebuilt as "The problem today": two stat rows and a demand row, each figure linked to its source. Copy in
+`content/home-v2.md`, citations in `docs/landing/sources.md`.
 
 ## Weekly Update -> agent layer (HomeAgentLayer)
 
@@ -29,7 +25,7 @@ Every number comes from `docs/DESIGN.md`. Section names are the Framer section n
 
 ## Stories -> use cases (HomeUseCases)
 
-- Eyebrow: Use cases. Heading: "One vault for every issuer." / "Agents, teams and launchpads raise under the same rules."
+- Eyebrow: Use cases. Heading: "One vault for every issuer." / "AI agents, teams, machines and launchpads raise under the same five rules."
   (DESIGN.md "Who it is for", "Agent layer".) Link: "All use cases" -> `/use-cases`.
 - Cards: first three items of `content/useCases.tsx` (owned by the use-cases agent; sources in its content doc).
 

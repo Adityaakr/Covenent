@@ -18,20 +18,27 @@ the template, and every fact and number comes from `docs/DESIGN.md`.
 | `web/src/landing/pages/<route>.tsx` | Default exports for the app router: `features`, `pricing`, `use-cases`, `use-case` (dynamic, with `generateStaticParams`), `changelog`, `changelog-entry` (dynamic), `contact`, `not-found`. |
 | `web/src/landing/components/` | Foundation: navigation, footer, section shell, buttons, page CTA, FAQ, card grids, motion helpers. |
 | `web/src/landing/sections/` | Sections for each page. |
-| `web/src/landing/content/` | Covenant data: FAQs, plans, use cases, milestones. |
+| `web/src/landing/content/` | Covenant data: FAQs, plans, use cases, milestones, the problem stats (`problem.ts`) and the cited voices (`voices.ts`). |
+| `web/src/landing/meta.ts` | Page metadata and Open Graph, including the home headline and subline. |
 | `web/src/landing/styles/landing.css` | Tokens and text styles, scoped under `.landing-root`. |
 | `web/public/landing/` | Images reused from the template (plates and covers), served at `/landing/...`. |
-| `docs/landing/content.md` | Every section's final copy, with the DESIGN.md source for each fact. |
+| `web/public/landing/logos/` | The Built-on marks, monochrome SVGs from each project's own site or Simple Icons. Sources: `SOURCES.md` there. |
+| `docs/landing/sources.md` | Every outside number and quote on the landing, with the exact source wording and link. |
+| `docs/landing/content.md` | Every section's final copy, with the DESIGN.md source for each fact. The v2 sections are in `content/home-v2.md`. |
 | `docs/landing/spec/` | Extracted design spec for each page, the build contract, and Framer reference screenshots in `reference/`. |
 | `docs/landing/screens/` | Final screenshots of the rebuilt pages at 1200, 810 and 390 px. |
 
 ## Routes
 
 `/`, `/features` (the five rules and the agent layer), `/pricing` (how Covenant is paid for), `/use-cases` and
-`/use-cases/<slug>`, `/changelog` and `/changelog/<slug>` (build milestones), `/contact`, plus a 404 page.
+`/use-cases/<slug>` (five cases), `/changelog` and `/changelog/<slug>` (build milestones), `/contact`, plus a 404 page.
 "Launch app" and "Connect wallet" go to `/app` on the same origin. The app runs at http://localhost:8080.
 
 ## Requirements in the app shell
+
+- Metadata: the page modules export `metadata` (or `generateMetadata`), and `@/landing` exports the home `metadata`.
+  The route files should re-export them, for example `export { default, metadata } from "@/landing"` in
+  `app/page.tsx` and `export { default, generateStaticParams, generateMetadata } from ...` for the slug routes.
 
 - Fonts: `--font-inter` for text, and `--font-inter-display` for headings, with Inter at optical size 32 as the
   fallback.
