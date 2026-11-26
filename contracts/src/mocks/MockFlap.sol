@@ -171,7 +171,32 @@ contract MockTokenDockRouter {
     }
 }
 
+/// @notice Stand-in for Flap's name and symbol blocklist (`IFlapNameScreen`): exact, case-insensitive matches.
+contract MockNameScreen {
+    mapping(bytes32 word => bool) public blocked;
+
+    constructor() {
+        string[5] memory w = ["BNB", "ETH", "BTC", "USDT", "USDC"];
+        for (uint256 i; i < w.length; ++i) {
+            blocked[keccak256(bytes(w[i]))] = true;
+        }
+    }
+
+    function isScamWord(string calldata name, string calldata symbol) external view returns (bool, bool) {
+        return (blocked[keccak256(_upper(name))], blocked[keccak256(_upper(symbol))]);
+    }
+
+    function _upper(string calldata s) internal pure returns (bytes memory b) {
+        b = bytes(s);
+        for (uint256 i; i < b.length; ++i) {
+            if (b[i] >= 0x61 && b[i] <= 0x7a) b[i] = bytes1(uint8(b[i]) - 32);
+        }
+    }
+}
+
 /// @notice The Pool Launch Portal calls Covenant makes, and the admin calls a fork test uses to open a factory.
+///         Floors follow Flap's live model (read on BNB Chain and testnet, 26 Nov 2026): the seed's USD value at
+///         `quotePriceUsd` must reach $750 x totalSupply / poolToken x multiplier to launch, twice that to graduate.
 contract MockPortal {
     uint256 public constant SALT_LOCK_FEE = 0.005 ether;
     address internal constant DEAD = 0x000000000000000000000000000000000000dEaD;
@@ -180,9 +205,33 @@ contract MockPortal {
     address public immutable tokenImpl;
     address public immutable wbnb;
     address public immutable v2Factory;
-    /// @notice Stand-in for Flap's liquidity floor: the least BNB a launch may seed.
+    /// @notice Test knob, 0 by default: an extra least-BNB-seed checked at launch only, standing in for Flap raising
+    ///         its floor during a sale.
     uint256 public minPoolQuote;
     uint256 public featureFlags;
+    /// @notice The BNB price in USD (1e18) the floors use, as Flap's `launchQuoteConfig` reports it.
+    uint256 public quotePriceUsd = 700 ether;
+    /// @notice The creation floor in USD for a launch that seeds its whole supply; it scales with S / P.
+    uint256 public createFloorUsd = 750 ether;
+    address public immutable nameScreen;
+
+    struct GraduationFloorParams {
+        address quoteToken;
+        uint256 quotePriceUsd;
+        uint256 poolQuote;
+        uint256 poolToken;
+        uint256 totalSupply;
+        address vaultFactory;
+    }
+
+    struct GraduationFloorResultV2 {
+        bool meetsFloor;
+        uint256 floorUsdWad;
+        uint256 quoteUsdWad;
+        uint16 multiplierBps;
+        bool meetsCreateFloor;
+        uint256 createFloorUsdWad;
+    }
 
     struct FactoryConfig {
         bool enabled;
@@ -213,6 +262,7 @@ contract MockPortal {
     error AllowanceNotFullyConsumed();
     error ExcessiveRemainder();
     error NotAdmin();
+    error BlacklistedNameOrSymbol(string word);
 
     constructor(address admin_, address wbnb_, address v2Factory_, uint256 minPoolQuote_) {
         admin = admin_;
@@ -220,6 +270,7 @@ contract MockPortal {
         v2Factory = v2Factory_;
         minPoolQuote = minPoolQuote_;
         tokenImpl = address(new MockTaxToken());
+        nameScreen = address(new MockNameScreen());
         featureFlags = 1; // creation paused for non-tester callers, as on BNB Chain
     }
 
@@ -243,6 +294,29 @@ contract MockPortal {
 
     function setMinPoolQuote(uint256 v) external onlyAdmin {
         minPoolQuote = v;
+    }
+
+    function setQuotePriceUsd(uint256 v) external onlyAdmin {
+        quotePriceUsd = v;
+    }
+
+    function setCreateFloorUsd(uint256 v) external onlyAdmin {
+        createFloorUsd = v;
+    }
+
+    // ── floors (Flap's lens) ────────────────────────────────────────────────
+    function launchQuoteConfig(uint8, address quoteToken) external view returns (bool enabled, uint256 price) {
+        return (quoteToken == address(0), quotePriceUsd);
+    }
+
+    function graduationFloorV2(GraduationFloorParams memory p) public view returns (GraduationFloorResultV2 memory r) {
+        FactoryConfig memory vf = _vaultFactories[p.vaultFactory];
+        r.multiplierBps = vf.enabled ? vf.multiplier : 10_000;
+        r.createFloorUsdWad = createFloorUsd * p.totalSupply / p.poolToken * r.multiplierBps / 10_000;
+        r.floorUsdWad = 2 * r.createFloorUsdWad;
+        r.quoteUsdWad = p.poolQuote * p.quotePriceUsd / 1e18;
+        r.meetsCreateFloor = r.quoteUsdWad >= r.createFloorUsdWad;
+        r.meetsFloor = r.quoteUsdWad >= r.floorUsdWad;
     }
 
     function launcherFactoryMultiplier(address factory) external view returns (bool, uint16) {
@@ -298,8 +372,7 @@ contract MockPortal {
         } else if (featureFlags & 1 != 0) {
             revert CreationPaused();
         }
-        if (p.poolQuote < minPoolQuote) revert LaunchLiquidityTooLow();
-        if (p.poolToken == 0 || p.poolToken > p.totalSupply) revert FeeConfigInvalid();
+        _checkLaunch(p);
 
         address predicted = predictToken(p.salt);
         if (uint16(uint160(predicted)) != 0x7777) revert BadSalt();
@@ -325,6 +398,27 @@ contract MockPortal {
 
         (bool found, address declared) = LaunchExtensionHelper.decodeCreator(p.extensionID, p.extensionData);
         emit FlapDirectLaunched(token, 0, found ? declared : msg.sender, p.salt, "");
+    }
+
+    /// @dev Flap's launch-time checks, in the order the live facet runs them.
+    function _checkLaunch(IPortalTypes.CreateTaxTokenParams calldata p) internal view {
+        if (p.poolToken == 0 || p.poolToken > p.totalSupply) revert FeeConfigInvalid();
+        if (p.poolQuote < minPoolQuote) revert LaunchLiquidityTooLow();
+        if (!_meetsCreateFloor(p)) revert LaunchLiquidityTooLow();
+        (bool nameBad, bool symbolBad) = MockNameScreen(nameScreen).isScamWord(p.name, p.symbol);
+        if (nameBad) revert BlacklistedNameOrSymbol(p.name);
+        if (symbolBad) revert BlacklistedNameOrSymbol(p.symbol);
+        require(p.taxDuration >= p.antiFarmerDuration, "taxDuration < antiFarmerDuration");
+    }
+
+    function _meetsCreateFloor(IPortalTypes.CreateTaxTokenParams calldata p) internal view returns (bool) {
+        address vf;
+        if (p.feeConfigs.length > 0 && p.feeConfigs[0].feeType == IPortalTypes.FeeSlotType.VAULT) {
+            vf = abi.decode(p.feeConfigs[0].configData, (IPortalTypes.FeeConfigVault)).vaultFactory;
+        }
+        return graduationFloorV2(
+            GraduationFloorParams(address(0), quotePriceUsd, p.poolQuote, p.poolToken, p.totalSupply, vf)
+        ).meetsCreateFloor;
     }
 
     function _createVault(address predicted, IPortalTypes.CreateTaxTokenParams calldata p, Distribution calldata d)

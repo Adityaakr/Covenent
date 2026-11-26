@@ -21,7 +21,7 @@ library CovenantProfiles {
         p.maxStep = 6 hours;
         p.staleAfter = 14 days;
         p.antiFarmerDuration = 1 days;
-        p.minPoolQuote = 10 ether;
+        p.requireGraduation = true;
     }
 
     /// @notice Demo bounds: the same rules with time in minutes, for the stage and the local stack only.
@@ -40,11 +40,12 @@ library CovenantProfiles {
         p.maxStep = 60;
         p.staleAfter = 1 hours;
         p.antiFarmerDuration = 1 days;
-        p.minPoolQuote = 1 ether;
+        p.requireGraduation = false; // creation floor only: a demo token may launch without graduating
     }
 
     /// @notice Default terms (Appendix A): 1B supply, 60% sale, 15% pool, 25% team at 2x/4x/8x, 200 to 500 BNB,
-    ///         1% taxes, $30k tap capped at 4%, 6-month cliff, 30-day unlock window, 3-day exit streak, 7-day round,
+    ///         1% taxes for 100 years (the longest the factory allows: the tax is the treasury's revenue stream),
+    ///         $30k tap capped at 4%, 6-month cliff, 30-day unlock window, 3-day exit streak, 7-day round,
     ///         14-day cooldown, 1% exit fee, 45-day heartbeat. Name, symbol, salt and team are the caller's.
     function defaultTerms(string memory name, string memory symbol, bytes32 salt, address team)
         internal
@@ -71,7 +72,7 @@ library CovenantProfiles {
         t.saleDuration = 4 days;
         t.buyTaxBps = 100;
         t.sellTaxBps = 100;
-        t.taxDuration = 30 days;
+        t.taxDuration = 100 * 365 days;
         t.teamWallet = team;
         t.tapUsdPer30d = 30_000 ether;
         t.tapCapBps = 400;

@@ -179,6 +179,8 @@ export function createApp(deps: AppDeps) {
         }
         return c.json(await txb.commit(launcher, amount));
       }
+      case 'finalize':
+        return c.json(await txb.finalize({ vault }));
       case 'claim-refund':
         return c.json(await txb.claimRefund(launcher));
       case 'finalize':

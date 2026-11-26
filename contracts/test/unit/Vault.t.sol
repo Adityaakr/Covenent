@@ -423,9 +423,75 @@ contract VaultRulesTest is CovenantTestBase {
         v.windDown();
     }
 
+    /// @dev Flap's spec lets the Guardian call every team function, windDown included. The vault records who ended
+    ///      the covenant so the app can show a Guardian wind-down for what it is.
+    function test_windDown_recordsWhoEndedIt_teamGuardianOrAbandonment() public {
+        assertEq(v.windDownCause(), 0);
+        vm.expectEmit(true, false, false, true, address(v));
+        emit CovenantVault.WindDownCaused(team, 1);
+        vm.prank(team);
+        v.windDown();
+        assertEq(v.windDownCause(), 1, "team");
+        assertEq(v.windDownBy(), team);
+
+        (, CovenantVault v2,) = _launchDefault("guardian-wind-down");
+        vm.expectEmit(true, false, false, true, address(v2));
+        emit CovenantVault.WindDownCaused(guardian, 2);
+        vm.prank(guardian);
+        v2.windDown();
+        assertEq(uint8(v2.state()), uint8(State.WIND_DOWN));
+        assertEq(v2.windDownCause(), 2, "Flap's Guardian");
+        assertEq(v2.windDownBy(), guardian);
+
+        (, CovenantVault v3,) = _launchDefault("abandoned-cause");
+        vm.warp(block.timestamp + 46 days);
+        vm.prank(stranger);
+        v3.declareAbandoned();
+        assertEq(v3.windDownCause(), 3, "abandoned");
+        assertEq(v3.windDownBy(), stranger);
+
+        vm.prank(stranger);
+        vm.expectRevert(CovenantVault.NotTeam.selector);
+        v3.windDown();
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // Rule 2: performance unlock
     // ═════════════════════════════════════════════════════════════════════
+
+    /// @dev Audit fix: one signer's bad BNB/USD rate must not unlock team tokens. A report at 10x the real rate makes
+    ///      the dollar price look like 10x the sale price, but the pool still trades at the sale price in BNB, so no
+    ///      counter moves, before or after the cliff.
+    function test_unlock_anOutlierAtlasRateAloneCannotUnlock() public {
+        vm.warp(uint256(v.launchedAt()) + 180 days); // past the cliff
+        for (uint256 i; i < 31 * 4; ++i) {
+            _step(v, 6 hours, BNB_USD * 10);
+        }
+        assertTrue(v.lastStrict(), "the forged-rate pokes were strict");
+        for (uint256 k; k < 3; ++k) {
+            (,, uint256 progress, bool unlocked,) = v.trancheProgress(k);
+            assertEq(progress, 0, "no unlock time without the multiple in BNB");
+            assertFalse(unlocked);
+        }
+        assertEq(v.lockedTeam(), 250_000_000 ether, "every team token still locked");
+    }
+
+    /// @dev And the other way: the pool at 2x in BNB with an honest rate still unlocks; a rate that understates
+    ///      BNB (dollar leg fails) holds it back, so the team cannot ride a bad low rate either.
+    function test_unlock_needsTheMultipleInBnbAndInDollars() public {
+        _pumpTo(205);
+        vm.warp(uint256(v.launchedAt()) + 180 days);
+        for (uint256 i; i < 10 * 4; ++i) {
+            _step(v, 6 hours, BNB_USD / 4); // the dollar price reads ~0.5x: dollar leg fails
+        }
+        (,, uint256 progress,,) = v.trancheProgress(0);
+        assertEq(progress, 0);
+        for (uint256 i; i < 31 * 4; ++i) {
+            _step(v, 6 hours, BNB_USD);
+        }
+        (,,, bool unlocked,) = v.trancheProgress(0);
+        assertTrue(unlocked, "both legs held for the window");
+    }
 
     function test_unlock_firstTranche_after30StrictDaysAt2x_andTheCliff() public {
         _pumpTo(205); // the dollar price at 2.05x the sale price, BNB/USD unchanged

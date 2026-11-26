@@ -4,6 +4,7 @@ import { publicClient } from '../chain.js';
 import type { CovenantRef, ServerConfig } from '../config.js';
 import {
   STATE_ORDER,
+  type Claimable,
   type CovenantSheet,
   type CovenantState,
   type CovenantSummary,
@@ -528,6 +529,31 @@ export class CovenantService {
       }
     }
     return { vault: ref.vault, points, rounds };
+  }
+
+  /**
+   * What `holder` can still pull from each covenant: the refundable part of its commitment (claimRefund on the
+   * launcher) and its unclaimed sale tokens (claimTokens on the vault). Refunds and tokens are pull payments, never
+   * pushed, so this is what a wallet, the keeper's reminders or an agent checks after a raise settles.
+   */
+  async claimable(holder: Address): Promise<Claimable[]> {
+    await this.discover().catch(() => undefined);
+    const out: Claimable[] = [];
+    for (const ref of this.covenants()) {
+      if (!ref.launcher) continue;
+      const l = new Reader(this.client, ref.launcher, this.abis.launcher, 'launcher');
+      const v = new Reader(this.client, ref.vault, this.abis.vault, 'vault');
+      const [refund, allocation, claimed] = await Promise.all([
+        l.get<bigint>('refundOf', [holder]),
+        l.get<bigint>('allocationOf', [holder]),
+        v.get<boolean>('tokensClaimed', [holder]),
+      ]);
+      const refundWei = refund ?? 0n;
+      const tokensWei = claimed ? 0n : (allocation ?? 0n);
+      if (refundWei === 0n && tokensWei === 0n) continue;
+      out.push({ vault: ref.vault, launcher: ref.launcher, name: ref.name ?? null, refundWei: refundWei.toString(), tokensWei: tokensWei.toString() });
+    }
+    return out;
   }
 
   async launcherInfo(launcher: Address): Promise<CovenantSheet['launcherInfo']> {

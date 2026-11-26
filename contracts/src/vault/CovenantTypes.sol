@@ -70,7 +70,10 @@ struct Profile {
     uint32 maxStep; // the most time one observation can add to any counter or to the tap
     uint32 staleAfter; // with no strict observation ever, the tap falls back to its cap after this long
     uint32 antiFarmerDuration; // passed to Flap's launch
-    uint256 minPoolQuote; // guard against Flap's creation floor (LaunchLiquidityTooLow)
+    // Which of Flap's two liquidity floors the minimum raise's pool seed must clear at creation, read live from the
+    // Portal (`graduationFloorV2`): true = the graduation floor (twice the creation floor; the token is marked
+    // graduated at launch), false = the creation floor only (the demo profile, so testnet demos stay cheap).
+    bool requireGraduation;
 }
 
 /// @notice One observation the oracle sends to a vault.

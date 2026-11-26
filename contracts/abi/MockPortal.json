@@ -53,6 +53,19 @@
   },
   {
     "type": "function",
+    "name": "createFloorUsd",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "featureFlags",
     "inputs": [],
     "outputs": [
@@ -110,6 +123,118 @@
             "internalType": "address"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "graduationFloorV2",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct MockPortal.GraduationFloorParams",
+        "components": [
+          {
+            "name": "quoteToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quotePriceUsd",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "poolQuote",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "poolToken",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "totalSupply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "vaultFactory",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "r",
+        "type": "tuple",
+        "internalType": "struct MockPortal.GraduationFloorResultV2",
+        "components": [
+          {
+            "name": "meetsFloor",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "floorUsdWad",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "quoteUsdWad",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "multiplierBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "meetsCreateFloor",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "createFloorUsdWad",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launchQuoteConfig",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "quoteToken",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "enabled",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -382,6 +507,19 @@
   },
   {
     "type": "function",
+    "name": "nameScreen",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "newLauncher",
     "inputs": [
       {
@@ -425,6 +563,19 @@
   },
   {
     "type": "function",
+    "name": "quotePriceUsd",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "saltLocker",
     "inputs": [
       {
@@ -441,6 +592,19 @@
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setCreateFloorUsd",
+    "inputs": [
+      {
+        "name": "v",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -481,6 +645,19 @@
   {
     "type": "function",
     "name": "setMinPoolQuote",
+    "inputs": [
+      {
+        "name": "v",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setQuotePriceUsd",
     "inputs": [
       {
         "name": "v",
@@ -649,6 +826,17 @@
     "type": "error",
     "name": "BadSalt",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BlacklistedNameOrSymbol",
+    "inputs": [
+      {
+        "name": "word",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
   },
   {
     "type": "error",

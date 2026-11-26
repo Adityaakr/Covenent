@@ -1,17 +1,18 @@
 import path from 'node:path';
-import { BaseError, ContractFunctionRevertedError, decodeErrorResult, encodeFunctionData, type Abi, getAddress, type Address, type Hex, type PublicClient, type WalletClient } from 'viem';
+import { BaseError, ContractFunctionRevertedError, decodeErrorResult, encodeFunctionData, formatEther, type Abi, getAddress, type Address, type Hex, type PublicClient, type WalletClient } from 'viem';
 import { erc20Abi, hasFunction, taxTokenAbi } from '../abi/index.js';
 import { fetchBnbUsdReport, pokeCalldata, type AtlasReport } from '../atlas/report.js';
 import { assertLocalNodeIfLoopback, assertSigningAllowed, walletClient } from '../chain.js';
 import type { CovenantRef, ServerConfig } from '../config.js';
 import { CovenantService } from '../covenant/read.js';
+import { FINALIZE_GAS_LIMIT } from '../covenant/tx.js';
 import { Alerter, alertsFor } from './alerts.js';
 import { acquireLock, JsonStore } from './store.js';
 
 interface VaultRecord {
   lastPokeAt?: number; // chain time of our last confirmed poke
   lastPokeTx?: Hex;
-  pending?: { hash: Hex; sentAt: number; kind: 'poke' | 'dispatch' | 'sync' | 'declareAbandoned' };
+  pending?: { hash: Hex; sentAt: number; kind: 'poke' | 'dispatch' | 'sync' | 'declareAbandoned' | 'finalize' };
   lastDispatchAt?: number;
   lastSkip?: string;
   pokes?: number;
@@ -36,7 +37,20 @@ export interface KeeperOptions {
   log?: (m: string) => void;
   /** call declareAbandoned() when a covenant is past its heartbeat window (keeper agent role) */
   declareAbandoned?: boolean;
+  /** call finalize() on raises past their sale deadline (anyone may; default on, KEEPER_FINALIZE=false turns it off) */
+  finalize?: boolean;
 }
+
+export interface FinalizeResult {
+  launcher: Address;
+  action: 'finalized' | 'failed' | 'pending';
+  tx?: Hex;
+  reason?: string;
+}
+
+const LAUNCHER_LIST_ABI = [
+  { type: 'function', name: 'allLaunchers', stateMutability: 'view', inputs: [], outputs: [{ type: 'address[]' }] },
+] as const;
 
 export function revertReason(e: unknown, abi: Abi = []): string {
   if (e instanceof BaseError) {
@@ -77,6 +91,7 @@ export class Keeper {
   readonly alerter: Alerter;
   private log: (m: string) => void;
   private declare: boolean;
+  private finalizeRaises: boolean;
   private get errorsAbi(): Abi {
     return [...this.svc.abis.oracle, ...this.svc.abis.vault].filter((i) => i.type === 'error') as Abi;
   }
@@ -95,6 +110,9 @@ export class Keeper {
     // On by default (owner decision): the keeper flips the abandonment switch on its first tick after it is due.
     // The anyone-can-press button (web, MCP declare_abandoned) stays as the fallback when no keeper runs.
     this.declare = opts.declareAbandoned ?? process.env.KEEPER_DECLARE_ABANDONED !== 'false';
+    // On by default: a raise past its deadline is settled on the next tick, so refunds open without anyone pressing
+    // the button. The web's finalize button and MCP finalize stay as the fallback.
+    this.finalizeRaises = opts.finalize ?? process.env.KEEPER_FINALIZE !== 'false';
   }
 
   get client(): PublicClient {
@@ -157,11 +175,18 @@ export class Keeper {
     }
   }
 
-  private async send(vault: Address, kind: NonNullable<VaultRecord['pending']>['kind'], to: Address, data: Hex, now: number): Promise<Hex> {
+  private async send(
+    vault: Address,
+    kind: NonNullable<VaultRecord['pending']>['kind'],
+    to: Address,
+    data: Hex,
+    now: number,
+    gas?: bigint,
+  ): Promise<Hex> {
     const account = this.wallet.account!;
     // simulate first: a revert here costs nothing (TooSoon from a redundant keeper, NotDue, ...)
-    await this.client.call({ account: account.address, to, data });
-    const hash = await this.wallet.sendTransaction({ account, chain: this.wallet.chain, to, data });
+    await this.client.call({ account: account.address, to, data, ...(gas ? { gas } : {}) });
+    const hash = await this.wallet.sendTransaction({ account, chain: this.wallet.chain, to, data, ...(gas ? { gas } : {}) });
     this.save(vault, { pending: { hash, sentAt: now, kind } });
     const r = await this.client.waitForTransactionReceipt({ hash, timeout: 60_000 }).catch(() => null);
     if (r) await this.resolvePending(vault, now);
@@ -265,12 +290,91 @@ export class Keeper {
   }
 
   private nodeChecked?: Promise<void>;
+  /**
+   * Settle every raise past its sale deadline that nobody has finalized yet. finalize() needs a gas limit above its
+   * 15M launch guard and BNB testnet caps a transaction at 2^24, so it is sent with FINALIZE_GAS_LIMIT (16.7M); the
+   * gas actually used is about 5 to 7M. A raise below its minimum settles as FAILED, which opens full refunds.
+   */
+  async finalizeDue(now: number): Promise<FinalizeResult[]> {
+    if (!this.finalizeRaises) return [];
+    const out: FinalizeResult[] = [];
+    for (const f of this.cfg.launcherFactories ?? []) {
+      let launchers: readonly Address[] = [];
+      try {
+        launchers = await this.client.readContract({ address: f, abi: LAUNCHER_LIST_ABI, functionName: 'allLaunchers' });
+      } catch {
+        continue;
+      }
+      for (const l of launchers) {
+        const launcher = getAddress(l);
+        if (await this.resolvePending(launcher, now)) {
+          out.push({ launcher, action: 'pending', tx: this.rec(launcher).pending?.hash });
+          continue;
+        }
+        const read = (functionName: string) =>
+          this.client.readContract({ address: launcher, abi: this.svc.abis.launcher, functionName }).catch(() => null);
+        const [state, deadline] = await Promise.all([read('state'), read('saleDeadline')]);
+        if (state === null || Number(state) !== 0 || deadline === null || Number(deadline) > now) continue;
+        const data = encodeFunctionData({ abi: this.svc.abis.launcher, functionName: 'finalize' });
+        try {
+          const tx = await this.send(launcher, 'finalize', launcher, data, now, FINALIZE_GAS_LIMIT);
+          this.log(`finalized raise ${launcher} tx ${tx}`);
+          await this.alerter.emit({
+            id: `${launcher}:finalized`,
+            kind: 'raise-finalized',
+            vault: launcher,
+            at: now,
+            message: `Raise ${launcher} settled (${tx}). Contributors pull their refund with claimRefund() and, if it launched, their tokens with claimTokens().`,
+            data: { tx, launcher },
+          });
+          out.push({ launcher, action: 'finalized', tx });
+        } catch (e) {
+          out.push({ launcher, action: 'failed', reason: revertReason(e, this.svc.abis.launcher.filter((i) => i.type === 'error') as Abi) });
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Refunds and sale tokens are pull payments: nothing is pushed to contributors. Raise one alert per covenant while
+   * either is still waiting, so whoever watches the alerts (a webhook, the app) can remind contributors to claim.
+   */
+  async claimReminder(ref: CovenantRef, now: number): Promise<void> {
+    if (!ref.launcher) return;
+    const launcher = ref.launcher;
+    const read = (address: Address, abi: Abi, functionName: string) =>
+      this.client.readContract({ address, abi, functionName }).catch(() => null) as Promise<bigint | null>;
+    const [held, contributors, saleAmount, saleClaimed] = await Promise.all([
+      this.client.getBalance({ address: launcher }).catch(() => 0n),
+      read(launcher, this.svc.abis.launcher, 'contributorCount'),
+      read(ref.vault, this.svc.abis.vault, 'saleAmount'),
+      read(ref.vault, this.svc.abis.vault, 'saleClaimed'),
+    ]);
+    // the launcher keeps at most one wei per contributor of rounding buffer; anything above that is refunds owed
+    const refundsOpen = held > (contributors ?? 0n);
+    const tokensOpen = saleAmount !== null && saleClaimed !== null && saleClaimed < saleAmount;
+    if (!refundsOpen && !tokensOpen) return;
+    const parts = [
+      refundsOpen ? `${formatEther(held)} BNB of refunds (claimRefund() on the launcher)` : null,
+      tokensOpen ? `${formatEther(saleAmount! - saleClaimed!)} sale tokens (claimTokens() on the vault)` : null,
+    ].filter(Boolean);
+    await this.alerter.emit({
+      id: `${ref.vault}:claims-open`,
+      kind: 'claims-open',
+      vault: ref.vault,
+      at: now,
+      message: `Still unclaimed: ${parts.join(' and ')}. Nothing is pushed: each contributor claims with their own wallet (Claim buttons on the covenant page, or MCP get_claimable then claim_refund / claim_tokens).`,
+      data: { launcher, refundsHeldWei: held.toString(), tokensUnclaimedWei: tokensOpen ? (saleAmount! - saleClaimed!).toString() : '0' },
+    });
+  }
 
   async tick(opts: { force?: boolean } = {}): Promise<TickResult[]> {
     this.nodeChecked ??= assertLocalNodeIfLoopback(this.client, this.cfg.chainId, this.cfg.rpcUrl);
     await this.nodeChecked;
     const { timestamp: now } = await this.svc.chainNow();
     const results: TickResult[] = [];
+    await this.finalizeDue(now).catch((e) => this.log(`finalize scan failed: ${(e as Error).message}`));
     await this.svc.discover().catch(() => undefined);
     for (const ref of this.svc.covenants()) {
       // A wound-down or failed covenant has nothing left for an observation to move: poking it only burns gas.
@@ -291,6 +395,7 @@ export class Keeper {
         const sheet = await this.svc.sheet(ref.vault);
         await this.dispatchTax(ref, sheet.token, now);
         for (const a of alertsFor(sheet, now)) await this.alerter.emit(a);
+        await this.claimReminder(ref, now).catch(() => undefined);
         if (this.declare && sheet.heartbeat.abandonable) {
           const data = encodeFunctionData({ abi: this.svc.abis.vault, functionName: 'declareAbandoned' });
           try {

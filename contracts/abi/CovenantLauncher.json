@@ -6,6 +6,19 @@
   },
   {
     "type": "function",
+    "name": "FINALIZE_GAS_LIMIT",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "LAUNCH_GAS_FLOOR",
     "inputs": [],
     "outputs": [
@@ -149,6 +162,19 @@
         "name": "",
         "type": "string",
         "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "dustSwept",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -423,9 +449,9 @@
             "internalType": "uint32"
           },
           {
-            "name": "minPoolQuote",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "requireGraduation",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
       }
@@ -642,9 +668,9 @@
             "internalType": "uint32"
           },
           {
-            "name": "minPoolQuote",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "requireGraduation",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
       }
@@ -691,6 +717,19 @@
   },
   {
     "type": "function",
+    "name": "refundsClaimed",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "saleAmount",
     "inputs": [],
     "outputs": [
@@ -724,6 +763,26 @@
         "name": "",
         "type": "uint8",
         "internalType": "enum State"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "sweepDust",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "sweepable",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -989,6 +1048,25 @@
   },
   {
     "type": "event",
+    "name": "DustSwept",
+    "inputs": [
+      {
+        "name": "vault",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Finalized",
     "inputs": [
       {
@@ -1133,6 +1211,11 @@
   },
   {
     "type": "error",
+    "name": "NotLaunched",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotRaising",
     "inputs": []
   },
@@ -1148,6 +1231,11 @@
   },
   {
     "type": "error",
+    "name": "NothingToSweep",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "Reentrancy",
     "inputs": []
   },
@@ -1155,6 +1243,22 @@
     "type": "error",
     "name": "RefundUnavailable",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RefundsOutstanding",
+    "inputs": [
+      {
+        "name": "claimed",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "contributors",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

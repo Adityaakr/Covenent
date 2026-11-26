@@ -34,6 +34,10 @@ abstract contract StackBuilder is CommonBase {
     address internal constant BSC_TESTNET_IDENTITY = 0x8004A818BFB912233c491871b3d84c89A494BD9e;
     address internal constant BSC_TESTNET_REPUTATION = 0x8004B663056A597Dffe9eCcC1965A193B7388713;
     address internal constant ATLAS_PROD_SIGNER = 0x59eD4701224fD9e2a85Ef2946c2ab828C1dDC600;
+    /// @dev Flap's name and symbol blocklist, the proxy the Portal's launch facet calls inside `launchTaxTokenV2`
+    ///      (read from launch traces on forks of each chain, 26 Nov 2026; the Portal does not expose it).
+    address internal constant BSC_NAME_SCREEN = 0xfFb69d59f62454f3B8322Bc1a9FCE6E171a5264f;
+    address internal constant BSC_TESTNET_NAME_SCREEN = 0x5CfbE713d070e87F67D1bc84312B7eB8Fe4F2B5E;
 
     struct Net {
         address portal;
@@ -45,6 +49,7 @@ abstract contract StackBuilder is CommonBase {
         address identity;
         address reputation;
         address admin; // Portal admin (the mock's admin, or the live ProxyAdmin owner on a fork)
+        address nameScreen; // Flap's name and symbol blocklist (IFlapNameScreen), 0 to skip the pre-screen
     }
 
     struct Pair {
@@ -75,6 +80,7 @@ abstract contract StackBuilder is CommonBase {
         c.identity = address(identity);
         c.reputation = address(reputation);
         c.admin = admin;
+        c.nameScreen = portal.nameScreen();
     }
 
     /// @notice The live BNB Chain addresses, for a fork.
@@ -88,6 +94,7 @@ abstract contract StackBuilder is CommonBase {
         c.identity = BSC_IDENTITY;
         c.reputation = BSC_REPUTATION;
         c.admin = admin;
+        c.nameScreen = BSC_NAME_SCREEN;
     }
 
     function _deployOracle(address signer) internal returns (CovenantOracle) {
@@ -113,8 +120,9 @@ abstract contract StackBuilder is CommonBase {
             identity: c.identity
         });
         p.vaultFactory = new CovenantVaultFactory(predicted, env);
-        p.launcherFactory =
-            new CovenantLauncherFactory(c.portal, c.guardian, address(p.vaultFactory), c.identity, profile, profileName);
+        p.launcherFactory = new CovenantLauncherFactory(
+            c.portal, c.guardian, address(p.vaultFactory), c.identity, c.nameScreen, profile, profileName
+        );
         require(address(p.launcherFactory) == predicted, "launcher factory address prediction failed");
     }
 

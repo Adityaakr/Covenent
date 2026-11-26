@@ -49,6 +49,7 @@ export const vaultAbi = parseAbi([
   'function trancheAmount(uint256 k) view returns (uint256)',
   'function trancheUnlocked(uint256 k) view returns (bool)',
   // writes
+  'function tokensClaimed(address) view returns (bool)',
   'function claimTokens()',
   'function claimTap()',
   'function lowerTap(uint256 newUsd)',
@@ -93,6 +94,9 @@ export const launcherAbi = parseAbi([
   'function contributions(address) view returns (uint256)',
   'function acceptedOf(address) view returns (uint256)',
   'function allocationOf(address) view returns (uint256)',
+  'function refundOf(address) view returns (uint256)',
+  'function saleDeadline() view returns (uint64)',
+  'function contributorCount() view returns (uint256)',
   'function description() view returns (string)',
   'function contribute() payable',
   'function finalize()',

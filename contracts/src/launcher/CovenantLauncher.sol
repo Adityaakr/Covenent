@@ -17,6 +17,7 @@ import {CovenantTermsLib} from "src/launcher/CovenantTermsLib.sol";
 
 interface ICovenantVaultFunding {
     function fundTreasury(address pool) external payable;
+    function depositRevenue(bytes32 tag) external payable;
 }
 
 string constant COVENANT_TITLE_ZH = unicode"契约发射";
@@ -34,10 +35,15 @@ string constant COVENANT_SUMMARY_EN =
 ///           Q = min(C, cap), q_i = floor(c_i * Q / C), a_i = floor(A * q_i / Q), refund_i = c_i - q_i.
 ///           Pool seed Q_pool = Q * P / A, so the pool opens at the sale price Q / A.
 ///           Treasury T0 = Q - Q_pool, less a dust buffer of one wei per contributor so that the floors in q_i can
-///           never leave the refunds short.
+///           never leave the refunds short. Once every refund has been claimed, anyone can sweep what is left of
+///           the buffer into the vault treasury (`sweepDust`); refunds themselves stay claimable forever.
 ///         Below the minimum, or if the Portal call reverts for any reason, the state is FAILED and every
 ///         commitment refunds in full. A failed launch never traps funds.
-/// @dev Deployed by `CovenantLauncherFactory` as an ERC1967 beacon proxy. Upgrades: Guardian only, via the factory.
+///         Commitments are not capped per account, by design: an oversubscribed raise settles pro rata and the
+///         excess refunds. Refunds are pull payments (`claimRefund`), never pushed.
+/// @dev Deployed by `CovenantLauncherFactory` as an ERC1967 beacon proxy. Upgrades: Flap's Guardian only, via the
+///      factory's beacon. An upgrade replaces this contract's logic, so the BNB it holds for refunds is only as safe
+///      as the Guardian (Flap's Pool Launch spec: the Guardian is the single upgrade authority).
 contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     using SafeTransferLib for address;
 
@@ -69,6 +75,11 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     ///         tell a refused launch from a starved one.
     uint256 public constant LAUNCH_GAS_FLOOR = 15_000_000;
 
+    /// @notice The gas limit to send `finalize` with: the floor above plus what runs before the check, and under
+    ///         2^24 (16,777,216), the most gas BNB testnet accepts in one transaction. Only the gas used is paid
+    ///         (about 5.3M on BNB testnet, 26 Nov 2026). The app, the server and the agents all send this limit.
+    uint256 public constant FINALIZE_GAS_LIMIT = 16_700_000;
+
     /// @notice True only while the Portal launch call runs. The paired vault factory reads it.
     bool public launching;
 
@@ -76,13 +87,19 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     address public pool;
     address public vault;
 
-    uint256[30] private __gap;
+    /// @notice How many contributors have claimed a refund. When it reaches `contributorCount`, nothing is owed.
+    uint256 public refundsClaimed;
+    /// @notice Buffer dust moved to the vault treasury by `sweepDust`.
+    uint256 public dustSwept;
+
+    uint256[28] private __gap;
 
     event Contributed(address indexed account, uint256 amount, uint256 total, uint256 committed);
     event Finalized(State state, uint256 committed, uint256 accepted, uint256 poolQuote, uint256 treasury);
     event Launched(address indexed token, address indexed pool, address indexed vault);
     event LaunchFailed(bytes reason);
     event Refunded(address indexed account, uint256 amount);
+    event DustSwept(address indexed vault, uint256 amount);
 
     error InvalidConfig();
     error SaleClosed();
@@ -95,6 +112,9 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     error RefundUnavailable();
     error NothingToRefund();
     error WrongVault(address vault, address factory);
+    error RefundsOutstanding(uint256 claimed, uint256 contributors);
+    error NothingToSweep();
+    error NotLaunched();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -281,8 +301,32 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
         uint256 amount = refundOf(msg.sender);
         if (amount == 0) revert NothingToRefund();
         refunded[msg.sender] = true;
+        ++refundsClaimed;
         msg.sender.safeTransferETH(amount);
         emit Refunded(msg.sender, amount);
+    }
+
+    /// @notice What `sweepDust` would move now: the launcher's balance once nothing is owed to any contributor,
+    ///         else 0. Nothing is owed when the raise was not oversubscribed (every refund is 0) or when every
+    ///         contributor has claimed (oversubscribed, every refund is at least 1 wei, so every contributor claims).
+    function sweepable() public view returns (uint256) {
+        if (_state != State.ACTIVE) return 0;
+        if (committed > accepted && refundsClaimed < contributorCount) return 0;
+        return address(this).balance;
+    }
+
+    /// @notice Anyone, after launch: move the leftover rounding buffer (at most one wei per contributor) into the
+    ///         vault treasury, where it raises book value. Only once every refund is out, so it never touches one.
+    function sweepDust() external nonReentrant {
+        if (_state != State.ACTIVE) revert NotLaunched();
+        if (committed > accepted && refundsClaimed < contributorCount) {
+            revert RefundsOutstanding(refundsClaimed, contributorCount);
+        }
+        uint256 amount = address(this).balance;
+        if (amount == 0) revert NothingToSweep();
+        dustSwept += amount;
+        ICovenantVaultFunding(vault).depositRevenue{value: amount}("launcher-dust");
+        emit DustSwept(vault, amount);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -6,6 +6,9 @@ import { hasFunction } from '../abi/index.js';
 import { FINALIZE_GAS } from './gas.js';
 import type { CovenantService } from './read.js';
 
+/** The launcher's FINALIZE_GAS_LIMIT, the same value as gas.ts FINALIZE_GAS (one source; this name matches the contract). */
+export const FINALIZE_GAS_LIMIT = FINALIZE_GAS;
+
 /**
  * Unsigned transaction builders. Nothing here signs or holds a key: the caller's wallet (a
  * browser wallet, a local agent key, or the user behind an MCP client) signs and sends.

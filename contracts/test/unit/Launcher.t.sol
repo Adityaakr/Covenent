@@ -12,6 +12,7 @@ import {CovenantTermsLib} from "src/launcher/CovenantTermsLib.sol";
 import {CovenantVault} from "src/vault/CovenantVault.sol";
 import {LauncherFactoryBase} from "src/flap/LauncherFactoryBase.sol";
 import {MockPortal} from "src/mocks/MockFlap.sol";
+import {CovenantProfiles} from "src/launcher/CovenantProfiles.sol";
 
 contract LauncherTest is CovenantTestBase {
     // ── the raise ──────────────────────────────────────────────────────────
@@ -264,7 +265,9 @@ contract LauncherTest is CovenantTestBase {
     function test_factoryPairing_isCheckedAtConstruction() public {
         Profile memory p = prod.launcherFactory.profile();
         vm.expectRevert(abi.encodeWithSelector(CovenantLauncherFactory.NotPaired.selector, address(prod.vaultFactory)));
-        new CovenantLauncherFactory(chain.portal, guardian, address(prod.vaultFactory), chain.identity, p, "x");
+        new CovenantLauncherFactory(
+            chain.portal, guardian, address(prod.vaultFactory), chain.identity, chain.nameScreen, p, "x"
+        );
     }
 
     function test_terms_boundsFromTheDesignDoc() public {
@@ -319,8 +322,13 @@ contract LauncherTest is CovenantTestBase {
         f.checkTerms(t);
 
         t = _terms("b10");
-        t.minRaise = 30 ether; // seeds 7.5 BNB, under the 10 BNB floor guard
-        vm.expectRevert(abi.encodeWithSelector(CovenantTermsLib.PoolSeedBelowFloor.selector, 7.5 ether, 10 ether));
+        t.minRaise = 30 ether; // seeds 7.5 BNB, under Flap's graduation floor at a 15% pool (about 14.29 BNB)
+        (uint256 minRaise, uint256 minSeed,,,) = f.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CovenantLauncherFactory.PoolSeedBelowFlapFloor.selector, 7.5 ether, minSeed, minRaise, true
+            )
+        );
         f.checkTerms(t);
 
         t = _terms("b11");
@@ -343,8 +351,210 @@ contract LauncherTest is CovenantTestBase {
         vm.expectRevert(abi.encodeWithSelector(CovenantTermsLib.BadSaleDuration.selector, 1 hours));
         f.checkTerms(t);
 
+        t = _terms("b15");
+        t.taxDuration = 30 days - 1;
+        vm.expectRevert(abi.encodeWithSelector(CovenantTermsLib.BadTaxDuration.selector, 30 days - 1));
+        f.checkTerms(t);
+
+        t = _terms("b16");
+        t.taxDuration = uint32(100 * 365 days + 1);
+        vm.expectRevert(abi.encodeWithSelector(CovenantTermsLib.BadTaxDuration.selector, 100 * 365 days + 1));
+        f.checkTerms(t);
+
         t = _terms("ok");
         f.checkTerms(t); // the defaults pass
+        assertEq(t.taxDuration, 100 * 365 days, "the default tax runs for the longest the factory allows");
+    }
+
+    // ── audit fixes: refuse at creation what Flap's launch would refuse at finalize ──────────────────────
+
+    /// @dev Flap's launch reverts `BlacklistedNameOrSymbol` for a blocked name or symbol; the factory refuses the
+    ///      raise up front with the same screen, so no money is raised for a launch that cannot happen.
+    function test_create_refusesABlockedNameOrSymbol_beforeAnyMoneyIsRaised() public {
+        CovenantLauncherFactory f = prod.launcherFactory;
+        Terms memory t = _terms("name-bnb");
+        t.name = "bnb";
+        vm.expectRevert(abi.encodeWithSelector(CovenantLauncherFactory.NameOrSymbolBlocked.selector, "bnb"));
+        f.checkTerms(t);
+        uint256 fee = portal.SALT_LOCK_FEE();
+        vm.prank(team);
+        vm.expectRevert(abi.encodeWithSelector(CovenantLauncherFactory.NameOrSymbolBlocked.selector, "bnb"));
+        portal.newLauncher{value: fee}(address(f), abi.encode(t));
+
+        t = _terms("symbol-usdt");
+        t.symbol = "USDT";
+        vm.expectRevert(abi.encodeWithSelector(CovenantLauncherFactory.NameOrSymbolBlocked.selector, "USDT"));
+        f.checkTerms(t);
+
+        t = _terms("name-ok");
+        t.name = "BNB Covenant"; // exact matches only, as on Flap
+        f.checkTerms(t);
+        _create(prod, t);
+    }
+
+    /// @dev A factory without a screen (local chains) still creates; the Portal screens again at launch and a
+    ///      refused launch refunds in full.
+    function test_create_withoutAScreen_theLaunchStillRefusesABlockedName_andRefunds() public {
+        Net memory c = chain;
+        c.nameScreen = address(0);
+        Pair memory p = _deployPair(address(this), c, address(oracle), CovenantProfiles.production(), "no-screen");
+        vm.startPrank(admin);
+        portal.setLauncherFactoryMultiplier(address(p.launcherFactory), 10_000, true);
+        portal.setVaultFactoryMultiplier(address(p.vaultFactory), 10_000, true);
+        vm.stopPrank();
+        Terms memory t = _terms("no-screen");
+        t.symbol = "ETH";
+        CovenantLauncher la = _create(p, t);
+        _contribute(la, alice, 300 ether);
+        _finalize(la);
+        assertEq(uint8(la.state()), uint8(State.FAILED), "the Portal refused the name at launch");
+        uint256 before = alice.balance;
+        vm.prank(alice);
+        la.claimRefund();
+        assertEq(alice.balance - before, 300 ether);
+    }
+
+    /// @dev Flap's floors scale with pool share: $750 x S / P to launch, twice that to graduate (at $700 per BNB:
+    ///      a 15% pool needs 7.14 BNB to launch and 14.29 to graduate, a 5% pool 21.4 and 42.9). The production
+    ///      factory needs the graduation floor, the demo factory the launch floor, both read from the Portal.
+    function test_create_floorScalesWithPoolShare_productionNeedsGraduation() public {
+        CovenantLauncherFactory f = prod.launcherFactory;
+        Terms memory t;
+
+        // 15% pool, 10 BNB seed: launches but would never graduate. Refused by production.
+        t = _terms("floor-15");
+        t.minRaise = 40 ether; // seed 10 BNB
+        _expectFloorRevert(f, t);
+        f.checkTerms(t);
+
+        // 5% pool, 10 BNB seed: would not even launch. Refused.
+        t = _fivePercentPool("floor-5");
+        t.minRaise = 10 ether * uint256(t.saleBps) / t.poolBps; // seed 10 BNB
+        _expectFloorRevert(f, t);
+        f.checkTerms(t);
+
+        // Defaults (200 BNB minimum, 50 BNB seed at 15%) clear the graduation floor.
+        f.checkTerms(_terms("floor-default"));
+
+        // The minimum minRaiseFor reports is exact: it passes, one wei less does not.
+        t = _terms("floor-edge");
+        (uint256 minRaise, uint256 minSeed, uint256 floorUsd, uint256 price, bool graduation) =
+            f.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
+        assertTrue(graduation);
+        assertEq(price, 700 ether);
+        assertEq(floorUsd, 10_000 ether, "$1,500 / 15%");
+        assertEq(minSeed, 14_285_714_285_714_285_715);
+        assertEq(minRaise, minSeed * 4);
+        t.minRaise = minRaise;
+        f.checkTerms(t);
+        t.minRaise = minRaise - 1;
+        _expectFloorRevert(f, t);
+        f.checkTerms(t);
+
+        // The demo profile needs only the launch floor: a 15% pool and a 10 BNB seed pass there.
+        Pair memory demo = _deployPair(address(this), chain, address(oracle), CovenantProfiles.demo(), "demo");
+        vm.prank(admin);
+        portal.setVaultFactoryMultiplier(address(demo.vaultFactory), 10_000, true);
+        t = CovenantProfiles.demoTerms("Covenant Demo", "CVD", _mineSalt(chain.portal, chain.tokenImpl, "d"), team);
+        t.minRaise = 40 ether;
+        demo.launcherFactory.checkTerms(t);
+        (,, uint256 demoFloor,, bool demoGraduation) = demo.launcherFactory.minRaiseFor(t.totalSupply, 6_000, 1_500);
+        assertFalse(demoGraduation);
+        assertEq(demoFloor, 5_000 ether, "$750 / 15%");
+    }
+
+    /// @dev Flap's factory multiplier lowers both floors; the factory reads it live through our vault factory.
+    function test_create_floorFollowsFlapsMultiplier() public {
+        Terms memory t = _terms("floor-mult");
+        t.minRaise = 40 ether; // seed 10 BNB, $7,000: under $10,000 at 1x, over it at 0.5x
+        _expectFloorRevert(prod.launcherFactory, t);
+        prod.launcherFactory.checkTerms(t);
+        vm.prank(admin);
+        portal.setVaultFactoryMultiplier(address(prod.vaultFactory), 5_000, true);
+        prod.launcherFactory.checkTerms(t);
+    }
+
+    function _expectFloorRevert(CovenantLauncherFactory f, Terms memory t) internal {
+        (uint256 minRaise, uint256 minSeed,,, bool graduation) = f.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
+        uint256 seed = t.minRaise * t.poolBps / t.saleBps;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CovenantLauncherFactory.PoolSeedBelowFlapFloor.selector, seed, minSeed, minRaise, graduation
+            )
+        );
+    }
+
+    function _fivePercentPool(bytes32 seed) internal returns (Terms memory t) {
+        t = _terms(seed);
+        t.poolBps = 500;
+        t.saleBps = 7_000; // team stays 25%
+    }
+
+    // ── audit fixes: the rounding buffer ───────────────────────────────────
+
+    /// @dev The one-wei-per-contributor buffer is swept into the treasury once every refund is out, never before.
+    function test_sweepDust_onlyAfterEveryRefund_intoTheTreasury() public {
+        (CovenantLauncher l, CovenantVault v,) = _launchDefault("sweep");
+        assertEq(l.sweepable(), 0, "refunds are owed");
+        vm.expectRevert(abi.encodeWithSelector(CovenantLauncher.RefundsOutstanding.selector, 0, 4));
+        l.sweepDust();
+
+        address[4] memory who = [alice, bob, carol, whale];
+        for (uint256 i; i < 3; ++i) {
+            vm.prank(who[i]);
+            l.claimRefund();
+        }
+        vm.expectRevert(abi.encodeWithSelector(CovenantLauncher.RefundsOutstanding.selector, 3, 4));
+        l.sweepDust();
+        vm.prank(whale);
+        l.claimRefund();
+
+        uint256 dust = address(l).balance;
+        assertGt(dust, 0, "the floors left some of the buffer");
+        assertLe(dust, 4);
+        assertEq(l.sweepable(), dust);
+        uint256 treasury = address(v).balance;
+        uint256 revenue = v.totalRevenue();
+        vm.prank(stranger);
+        l.sweepDust();
+        assertEq(address(l).balance, 0);
+        assertEq(address(v).balance, treasury + dust, "into the treasury");
+        assertEq(v.totalRevenue(), revenue + dust, "recognized as revenue: book value rises");
+        assertEq(l.dustSwept(), dust);
+        vm.expectRevert(CovenantLauncher.NothingToSweep.selector);
+        l.sweepDust();
+    }
+
+    function test_sweepDust_neverBeforeLaunch_andNothingWhenNotOversubscribed() public {
+        CovenantLauncher l = _create(prod, _terms("sweep-raising"));
+        _contribute(l, alice, 300 ether);
+        vm.expectRevert(CovenantLauncher.NotLaunched.selector);
+        l.sweepDust();
+        _finalize(l);
+        assertEq(uint8(l.state()), uint8(State.ACTIVE));
+        assertEq(address(l).balance, 0, "an undersubscribed raise keeps no buffer");
+        vm.expectRevert(CovenantLauncher.NothingToSweep.selector);
+        l.sweepDust();
+
+        CovenantLauncher f = _create(prod, _terms("sweep-failed"));
+        _contribute(f, alice, 10 ether);
+        _finalize(f);
+        assertEq(uint8(f.state()), uint8(State.FAILED));
+        vm.expectRevert(CovenantLauncher.NotLaunched.selector);
+        f.sweepDust();
+    }
+
+    // ── audit fixes: finalize gas ──────────────────────────────────────────
+
+    /// @dev The limit every client sends clears the launch guard with room to spare and fits BNB testnet's 2^24 cap.
+    function test_finalizeGasLimit_clearsTheGuard_andTheTestnetCap() public {
+        CovenantLauncher l = _create(prod, _terms("gas-limit"));
+        _raiseOversubscribed(l);
+        vm.warp(l.saleDeadline());
+        assertLe(l.FINALIZE_GAS_LIMIT(), 1 << 24);
+        assertGe(l.FINALIZE_GAS_LIMIT(), l.LAUNCH_GAS_FLOOR() + 1_000_000);
+        l.finalize{gas: l.FINALIZE_GAS_LIMIT()}();
+        assertEq(uint8(l.state()), uint8(State.ACTIVE));
     }
 
     // ── agent layer: ERC-8004 identity ─────────────────────────────────────

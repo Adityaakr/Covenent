@@ -9,6 +9,7 @@ import {StackBuilder} from "script/lib/StackBuilder.sol";
 import {Terms, State} from "src/vault/CovenantTypes.sol";
 import {CovenantProfiles} from "src/launcher/CovenantProfiles.sol";
 import {CovenantLauncher} from "src/launcher/CovenantLauncher.sol";
+import {CovenantLauncherFactory} from "src/launcher/CovenantLauncherFactory.sol";
 import {CovenantVault} from "src/vault/CovenantVault.sol";
 import {CovenantVaultFactory} from "src/vault/CovenantVaultFactory.sol";
 import {CovenantOracle, IAggregatorV3} from "src/oracle/CovenantOracle.sol";
@@ -34,6 +35,11 @@ interface IRouterLike {
 
 interface ITaxTokenLike {
     function taxProcessor() external view returns (address);
+    function taxExpirationTime() external view returns (uint256);
+}
+
+interface INameScreenLike {
+    function isScamWord(string calldata name, string calldata symbol) external view returns (bool, bool);
 }
 
 interface ITaxProcessorLike {
@@ -65,6 +71,7 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         address reputation;
         address forwardVaultImpl; // 0 when unknown on this chain
         address atlasPushBnbUsd; // Atlas BNB/USD push feed, 0 where none exists (BNB Chain mainnet has none yet)
+        address nameScreen; // Flap's name and symbol blocklist, the one the Portal's launch facet calls
     }
 
     function _env() internal pure virtual returns (ForkEnv memory);
@@ -109,6 +116,7 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         net.router = E.router;
         net.identity = E.identity;
         net.reputation = E.reputation;
+        net.nameScreen = E.nameScreen;
         portal = IPortal(BSC_PORTAL);
         oracle = _deployOracle(vm.addr(atlasKey));
         pairF = _deployPair(address(this), net, address(oracle), CovenantProfiles.production(), "production");
@@ -244,11 +252,14 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         j.l.contribute{value: 600 ether}();
 
         vm.warp(j.l.saleDeadline());
+        uint256 limit = j.l.FINALIZE_GAS_LIMIT();
         uint256 g0 = gasleft();
         vm.prank(keeper);
-        j.l.finalize();
-        emit log_named_uint("finalize gas on the live Portal", g0 - gasleft());
+        j.l.finalize{gas: limit}(); // the limit the app, the server and the agents send
+        uint256 used = g0 - gasleft();
+        emit log_named_uint("finalize gas on the live Portal", used);
         assertEq(uint8(j.l.state()), uint8(State.ACTIVE), "launched through Flap");
+        assertLt(used, limit, "within the limit every client sends");
 
         j.token = j.l.token();
         j.v = CovenantVault(payable(j.l.vault()));
@@ -256,6 +267,11 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         assertEq(pv, address(j.v));
         assertEq(pvf, address(pairF.vaultFactory));
         assertEq(uint16(uint160(j.token)), 0x7777, "vanity address");
+        assertEq(
+            ITaxTokenLike(j.token).taxExpirationTime(),
+            block.timestamp + 100 * 365 days,
+            "the default tax runs 100 years: Flap accepts it"
+        );
         assertEq(IERC20(j.token).totalSupply(), 1_000_000_000 ether);
         assertEq(address(j.v).balance, 375 ether - 4, "treasury in the vault");
         assertEq(
@@ -272,6 +288,16 @@ abstract contract CovenantForkBase is Test, StackBuilder {
             vm.stopPrank();
         }
         assertEq(IERC20(j.token).balanceOf(alice), 6_000_000 ether);
+
+        // Every refund is out: the rest of the rounding buffer goes to the treasury.
+        uint256 dust = address(j.l).balance;
+        assertLe(dust, 4);
+        uint256 treasury = address(j.v).balance;
+        if (dust > 0) {
+            j.l.sweepDust();
+            assertEq(address(j.v).balance, treasury + dust, "dust into the treasury");
+        }
+        assertEq(address(j.l).balance, 0, "nothing left in the launcher");
     }
 
     function _phaseOperate(Journey memory j) internal {
@@ -378,6 +404,137 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         } catch {
             // refused up front (BNB Chain)
         }
+    }
+
+    /// @dev Flap's launch refuses a blocked name or symbol (`BlacklistedNameOrSymbol`); our factory now refuses it at
+    ///      creation with the same live screen, before any money is raised. A normal name still creates.
+    function test_fork_blockedNameOrSymbol_revertsAtCreate_normalNamePasses() public {
+        _open();
+        (bool nameBad, bool symbolBad) = INameScreenLike(E.nameScreen).isScamWord("BNB", "usdt");
+        assertTrue(nameBad && symbolBad, "Flap's live list blocks BNB and USDT");
+
+        uint256 fee = portal.SALT_LOCK_FEE();
+        Terms memory t = _terms("fork-name-bnb", 0);
+        t.name = "BNB";
+        vm.prank(team);
+        vm.expectRevert(abi.encodeWithSelector(CovenantLauncherFactory.NameOrSymbolBlocked.selector, "BNB"));
+        portal.newLauncher{value: fee}(address(pairF.launcherFactory), abi.encode(t));
+
+        t = _terms("fork-symbol-usdt", 0);
+        t.symbol = "usdt";
+        vm.expectRevert(abi.encodeWithSelector(CovenantLauncherFactory.NameOrSymbolBlocked.selector, "usdt"));
+        pairF.launcherFactory.checkTerms(t);
+
+        CovenantLauncher ok = _create(_terms("fork-name-ok", 0));
+        assertEq(uint8(ok.state()), uint8(State.RAISING), "a normal name creates");
+    }
+
+    /// @dev Without the pre-screen, the same blocked name raises money and the live Portal refuses it at finalize:
+    ///      the case the pre-screen now prevents. Funds stay safe either way (full refund).
+    function test_fork_withoutThePrescreen_theLivePortalRefusesTheNameAtFinalize() public {
+        Net memory n = net;
+        n.nameScreen = address(0);
+        Pair memory p = _deployPair(address(this), n, address(oracle), CovenantProfiles.production(), "no-screen");
+        vm.startPrank(admin);
+        portal.setLauncherFactoryMultiplier(address(p.launcherFactory), 10_000, true);
+        portal.setVaultFactoryMultiplier(address(p.vaultFactory), 10_000, true);
+        vm.stopPrank();
+        Terms memory t = _terms("fork-no-screen", 0);
+        t.symbol = "USDT"; // blocked on both chains (ETH and BTC only on testnet, 26 Nov 2026)
+        uint256 fee = portal.SALT_LOCK_FEE();
+        vm.prank(team);
+        CovenantLauncher l =
+            CovenantLauncher(payable(portal.newLauncher{value: fee}(address(p.launcherFactory), abi.encode(t))));
+        vm.prank(alice);
+        l.contribute{value: 300 ether}();
+        vm.warp(l.saleDeadline());
+        vm.recordLogs();
+        l.finalize{gas: l.FINALIZE_GAS_LIMIT()}();
+        assertEq(uint8(l.state()), uint8(State.FAILED), "the Portal refused the launch");
+        bytes memory reason = _launchFailedReason(vm.getRecordedLogs(), address(l));
+        assertEq(bytes4(reason), bytes4(keccak256("BlacklistedNameOrSymbol(string)")), "Flap's name screen");
+        uint256 before = alice.balance;
+        vm.prank(alice);
+        l.claimRefund();
+        assertEq(alice.balance - before, 300 ether, "full refund");
+    }
+
+    /// @dev Flap's floors scale with pool share ($750 x S / P x multiplier at the Portal's BNB price to launch,
+    ///      twice that to graduate), read live. Production needs the graduation floor at creation; the demo profile
+    ///      needs the launch floor, and a demo raise exactly at its reported minimum launches on the live Portal.
+    function test_fork_flapFloor_scalesWithPoolShare_checkedAtCreate() public {
+        _open();
+        CovenantLauncherFactory f = pairF.launcherFactory;
+
+        // 15% pool, 10 BNB seed: Flap would launch it but never graduate it. Refused by production.
+        Terms memory t = _terms("fork-floor-15", 0);
+        t.minRaise = 40 ether;
+        _expectFloorRevert(f, t);
+        f.checkTerms(t);
+
+        // 5% pool, 10 BNB seed: under even the launch floor. Refused.
+        t = _terms("fork-floor-5", 0);
+        t.poolBps = 500;
+        t.saleBps = 7_000;
+        t.minRaise = 140 ether;
+        _expectFloorRevert(f, t);
+        f.checkTerms(t);
+
+        // Defaults: 200 BNB minimum, 50 BNB seed at 15%. Accepted.
+        f.checkTerms(_terms("fork-floor-default", 0));
+
+        // Our minimum is the Portal's: minRaiseFor seeds exactly the floor graduationFloorV2 reports.
+        (uint256 minRaise, uint256 minSeed, uint256 floorUsd, uint256 price, bool graduation) =
+            f.minRaiseFor(1_000_000_000 ether, 6_000, 1_500);
+        assertTrue(graduation);
+        emit log_named_decimal_uint("production minimum raise at a 15% pool, BNB", minRaise, 18);
+        emit log_named_decimal_uint("Portal BNB price, USD", price, 18);
+        assertEq(floorUsd, 10_000 ether, "$1,500 / 15% at 1x (the multiplier _open sets)");
+        assertGe(minSeed * price / 1e18, floorUsd);
+
+        // The demo profile: launch floor only, and the live Portal launches a raise exactly at that minimum.
+        Pair memory demo = _deployPair(address(this), net, address(oracle), CovenantProfiles.demo(), "demo-floor");
+        vm.startPrank(admin);
+        portal.setLauncherFactoryMultiplier(address(demo.launcherFactory), 10_000, true);
+        portal.setVaultFactoryMultiplier(address(demo.vaultFactory), 10_000, true);
+        vm.stopPrank();
+        t = CovenantProfiles.demoTerms("Covenant Floor", "CVFL", _mineSalt(BSC_PORTAL, BSC_TOKEN_IMPL, "floor-demo"), team);
+        t.minRaise = 40 ether; // 10 BNB seed at 15%: over the launch floor
+        demo.launcherFactory.checkTerms(t);
+        (uint256 demoMin,,, , bool demoGraduation) = demo.launcherFactory.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
+        assertFalse(demoGraduation);
+        t.minRaise = demoMin;
+        t.cap = demoMin;
+        uint256 fee = portal.SALT_LOCK_FEE();
+        vm.prank(team);
+        CovenantLauncher l =
+            CovenantLauncher(payable(portal.newLauncher{value: fee}(address(demo.launcherFactory), abi.encode(t))));
+        vm.prank(alice);
+        l.contribute{value: demoMin}();
+        vm.warp(l.saleDeadline());
+        l.finalize{gas: l.FINALIZE_GAS_LIMIT()}();
+        assertEq(uint8(l.state()), uint8(State.ACTIVE), "exactly at the reported minimum, Flap launches");
+    }
+
+    function _expectFloorRevert(CovenantLauncherFactory f, Terms memory t) internal {
+        (uint256 minRaise, uint256 minSeed,,, bool graduation) = f.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CovenantLauncherFactory.PoolSeedBelowFlapFloor.selector,
+                t.minRaise * t.poolBps / t.saleBps,
+                minSeed,
+                minRaise,
+                graduation
+            )
+        );
+    }
+
+    function _launchFailedReason(Vm.Log[] memory logs, address launcher) internal pure returns (bytes memory) {
+        bytes32 topic = keccak256("LaunchFailed(bytes)");
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter == launcher && logs[i].topics[0] == topic) return abi.decode(logs[i].data, (bytes));
+        }
+        revert("LaunchFailed not found");
     }
 
     /// @dev The vault factory refuses a launch from a caller the Portal never recorded as our launcher.
@@ -535,6 +692,7 @@ contract CovenantBSCForkTest is CovenantForkBase {
         e.identity = BSC_IDENTITY;
         e.reputation = BSC_REPUTATION;
         e.forwardVaultImpl = 0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4;
+        e.nameScreen = BSC_NAME_SCREEN;
     }
 }
 
@@ -549,5 +707,6 @@ contract CovenantBSCTestnetForkTest is CovenantForkBase {
         e.identity = BSC_TESTNET_IDENTITY;
         e.reputation = BSC_TESTNET_REPUTATION;
         e.atlasPushBnbUsd = 0x3957d289ee9C38272377786787ea34F9dd29788D; // Atlas BNB/USD push feed, verified 2026-11-26
+        e.nameScreen = BSC_TESTNET_NAME_SCREEN;
     }
 }

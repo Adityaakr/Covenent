@@ -24,8 +24,10 @@ import {IERC8004Reputation} from "src/agent/IERC8004.sol";
 ///   Book value  b = (T - owedTeam) / R,  R = S - balanceOf(DEAD) - lockedTeam.
 ///   Rule 1 tap      accrues on each observation at min(tapUsd / bnbUsd, capBps * T) per 30 days, paused in exit
 ///                   rounds, ended at wind-down. The unclaimed balance never exceeds one period's cap.
-///   Rule 2 unlock   a tranche unlocks after `unlockWindow` of strict time at or above its dollar multiple, after
-///                   the cliff. A strict observation below the multiple resets its counter.
+///   Rule 2 unlock   a tranche unlocks after `unlockWindow` of strict time at or above its multiple, after
+///                   the cliff, with the multiple held both in dollars (Atlas BNB/USD) and in BNB (pool TWAP against
+///                   the BNB sale price, no oracle), so a bad BNB/USD rate alone cannot unlock anything. A strict
+///                   observation below the multiple resets its counter.
 ///   Rule 3 exit     the streak adds time while the pool TWAP is below book and loses the same time while it is at
 ///                   or above book (it decays, it does not reset). It runs on on-chain numbers only: no Atlas, no
 ///                   depth gate. At `exitStreak` a round opens; holders burn tokens for b * (1 - fee).
@@ -34,6 +36,17 @@ import {IERC8004Reputation} from "src/agent/IERC8004.sol";
 ///   Rule 5 report   the team posts reports; a relayer's failed verdict pauses tap accrual until a passing one.
 ///   Agent layer     on abandonment, wind-down and every unlock the vault writes the outcome to the issuer's ERC-8004
 ///                   reputation record (when `agentId != 0`), inside try/catch so it can never block a rule.
+///
+///   Flap's Guardian (Flap's Pool Launch spec, low-risk badge: every permissioned vault function also accepts the
+///   Guardian, and the Guardian is the only upgrade path). What it can do here:
+///     - upgrade this vault's logic through the vault factory's beacon (and the launcher's through its factory);
+///       an upgrade replaces the code that guards the treasury, so the treasury is only as safe as the Guardian;
+///     - call the team functions: `windDown` (ends the tap early and opens fee-free redemption; recorded as a
+///       Guardian wind-down, see `windDownCause`), `claimTap` (pays only the fixed team wallet), `lowerTap`,
+///       `heartbeat` and `postReport`.
+///   What it cannot do: none of its calls count as a heartbeat (it cannot keep a silent team alive), it cannot
+///   raise the tap, change the team wallet or any term, unlock tranches, or send treasury BNB or tokens anywhere
+///   but the fixed team wallet (accrued tap) and redeeming holders, short of an upgrade.
 ///
 /// @dev Revenue is recognized by balance delta against `accounted` (Flap's spec); every outflow decrements it first.
 ///      Deployed by `CovenantVaultFactory` as an ERC1967 beacon proxy keyed by token. Upgrades: Guardian only.
@@ -45,6 +58,9 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     uint256 internal constant PERIOD = 30 days;
     address internal constant DEAD = 0x000000000000000000000000000000000000dEaD;
     uint256 internal constant FEEDBACK_GAS = 500_000;
+    uint8 internal constant WIND_DOWN_TEAM = 1;
+    uint8 internal constant WIND_DOWN_GUARDIAN = 2;
+    uint8 internal constant WIND_DOWN_ABANDONED = 3;
 
     struct Tranche {
         uint128 amount;
@@ -133,7 +149,13 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     uint256 public reportsPosted;
     uint256 public outcomesRecorded;
 
-    uint256[30] private __gap;
+    /// @notice How the covenant ended: 0 not ended, 1 the team wound it down, 2 Flap's Guardian wound it down,
+    ///         3 declared abandoned (anyone, after the heartbeat window).
+    uint8 public windDownCause;
+    /// @notice Who ended it (the team wallet, the Guardian, or whoever declared abandonment).
+    address public windDownBy;
+
+    uint256[29] private __gap;
 
     // ── events (design doc list, plus a few the app needs) ──────────────────
     event TreasuryFunded(uint256 amount, address pair);
@@ -154,6 +176,8 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     event TeamReleased(address indexed to, uint256 amount);
     event Heartbeat(address indexed by, uint256 at);
     event WoundDown(bool abandoned, uint256 forfeitedTap, uint256 burnedTeamTokens);
+    /// @notice Emitted with `WoundDown`: who ended the covenant and how (see `windDownCause`).
+    event WindDownCaused(address indexed by, uint8 cause);
     event ReportPosted(uint256 indexed period, string uri, bytes32 hash);
     event VerdictRecorded(uint256 indexed period, bool passed, bytes32 proofHash);
     event OutcomeRecorded(uint256 indexed agentId, int128 value, string outcome, bool ok);
@@ -496,7 +520,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         uint256 dt = o.elapsed > maxStep ? maxStep : o.elapsed;
         uint256 b = bookValue();
         if (o.trusted && dt > 0) {
-            if (o.strict) _stepTranches(dt, o.twapBnb * o.bnbUsd / WAD);
+            if (o.strict) _stepTranches(dt, o.twapBnb, o.twapBnb * o.bnbUsd / WAD);
             if (s == State.ACTIVE) {
                 // Exit fix 1: the streak decays instead of resetting, so an hour above book cancels an hour
                 // below book, not three days.
@@ -574,15 +598,21 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     }
 
     /// @dev Strict observations only. At or above the multiple adds time, below resets (strict toward the team).
-    function _stepTranches(uint256 dt, uint256 usdPrice) internal {
+    ///      The multiple must hold in dollars (TWAP x the Atlas BNB/USD rate, against the dollar sale price) AND in
+    ///      BNB (the pool TWAP against the BNB sale price Q / A, on-chain numbers only). The BNB leg needs no
+    ///      oracle, so no BNB/USD rate, however wrong, can advance an unlock counter on its own: one signer cannot
+    ///      unlock team tokens early. The dollar leg still lets the team wait out a BNB rally that the token did
+    ///      not share.
+    function _stepTranches(uint256 dt, uint256 twapBnb, uint256 usdPrice) internal {
         uint256 usdSale = usdSalePrice;
         if (usdSale == 0) return;
+        uint256 bnbSale = salePriceBnb;
         bool cliffPassed = block.timestamp >= uint256(launchedAt) + cliff;
         uint256 n = _tranches.length;
         for (uint256 k; k < n; ++k) {
             Tranche storage t = _tranches[k];
             if (t.unlocked) continue;
-            if (usdPrice >= usdSale * t.multiple / 100) {
+            if (usdPrice >= usdSale * t.multiple / 100 && twapBnb >= bnbSale * t.multiple / 100) {
                 t.progress += uint64(dt);
             } else {
                 t.progress = 0;
@@ -663,7 +693,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         _sync();
         uint256 forfeited = owedTeam;
         owedTeam = 0;
-        _windDown(true, forfeited);
+        _windDown(true, forfeited, WIND_DOWN_ABANDONED);
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -706,12 +736,15 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     }
 
     /// @notice Close honestly. Same end state as abandonment, but accrued tap stays claimable.
+    /// @dev Team wallet or Flap's Guardian (Flap's spec: every permissioned function also accepts the Guardian).
+    ///      A Guardian call ends the tap early on any covenant; it moves no funds, and the vault records which of
+    ///      the two called (`windDownCause`, `WindDownCaused`) so the app shows it.
     function windDown() external onlyTeam nonReentrant {
         _tick();
         if (!funded) revert NotLive();
         if (_state == State.WIND_DOWN) revert Ended();
         _sync();
-        _windDown(false, 0);
+        _windDown(false, 0, msg.sender == teamWallet ? WIND_DOWN_TEAM : WIND_DOWN_GUARDIAN);
     }
 
     /// @notice Rule 5: store a report pointer. A heartbeat.
@@ -738,7 +771,9 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         emit Heartbeat(msg.sender, block.timestamp);
     }
 
-    function _windDown(bool abandoned, uint256 forfeited) internal {
+    function _windDown(bool abandoned, uint256 forfeited, uint8 cause) internal {
+        windDownCause = cause;
+        windDownBy = msg.sender;
         uint256 locked = lockedTeam;
         lockedTeam = 0;
         uint256 n = _tranches.length;
@@ -748,6 +783,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         _state = State.WIND_DOWN;
         if (locked > 0) ITokenDock(_getTokenDockRouter()).withdraw(taxToken, locked, DEAD);
         emit WoundDown(abandoned, forfeited, locked);
+        emit WindDownCaused(msg.sender, cause);
         _recordOutcome(abandoned ? int128(-100) : int128(0), abandoned ? "abandoned" : "wound-down");
     }
 

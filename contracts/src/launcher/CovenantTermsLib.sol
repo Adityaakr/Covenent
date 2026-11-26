@@ -13,6 +13,11 @@ library CovenantTermsLib {
     uint256 internal constant MAX_TRANCHES = 8;
     uint256 internal constant MAX_MULTIPLE = 10_000; // 100x
     uint256 internal constant MAX_TAX_BPS = 1_000;
+    /// @dev Flap's Portal accepts any taxDuration from the launch's antiFarmerDuration up to type(uint32).max
+    ///      (probed on forks of both chains, 26 Nov 2026: 0 and 1 s revert "taxDuration < antiFarmerDuration", 1 day
+    ///      to 2^32 - 1 s launch). Our bounds: at least 30 days, at most 100 years (Flap's own tax-token default).
+    uint256 internal constant MIN_TAX_DURATION = 30 days;
+    uint256 internal constant MAX_TAX_DURATION = 100 * 365 days;
     uint256 internal constant MAX_TAP_CAP_BPS = 1_000;
     uint256 internal constant MAX_EXIT_FEE_BPS = 300;
     uint256 internal constant MIN_SALE_BPS = 4_000;
@@ -31,9 +36,9 @@ library CovenantTermsLib {
     error BadSplit(uint256 saleBps, uint256 poolBps, uint256 teamBps);
     error BadTranches();
     error BadRaise(uint256 minRaise, uint256 cap);
-    error PoolSeedBelowFloor(uint256 seed, uint256 floor);
     error BadSaleDuration(uint256 got);
     error BadTax();
+    error BadTaxDuration(uint256 got);
     error BadTeamWallet();
     error BadTap();
     error BadUnlock();
@@ -85,15 +90,18 @@ library CovenantTermsLib {
         }
         if (sum != team) revert BadTranches();
 
-        // Raise. The seed the minimum raise implies must clear Flap's creation floor, or the launch reverts.
+        // Raise. Flap's liquidity floor on the seed this minimum implies is checked live by the factory
+        // (`CovenantLauncherFactory._checkFloor`), against the Portal's own view.
         if (t.minRaise == 0 || t.cap < t.minRaise || t.cap > MAX_CAP) revert BadRaise(t.minRaise, t.cap);
-        uint256 minSeed = t.minRaise * pool / sale;
-        if (minSeed < p.minPoolQuote) revert PoolSeedBelowFloor(minSeed, p.minPoolQuote);
         if (t.saleDuration < p.minSaleDuration || t.saleDuration > p.maxSaleDuration) {
             revert BadSaleDuration(t.saleDuration);
         }
 
         if (t.buyTaxBps > MAX_TAX_BPS || t.sellTaxBps > MAX_TAX_BPS) revert BadTax();
+        // The tax is the treasury's revenue stream: when it ends, the treasury grows only from revenue the issuer
+        // deposits (`CovenantVault.depositRevenue`). Flap also needs it to outlast the anti-farmer window.
+        uint256 td = t.taxDuration;
+        if (td < MIN_TAX_DURATION || td > MAX_TAX_DURATION || td < p.antiFarmerDuration) revert BadTaxDuration(td);
 
         // Rule 1.
         if (t.teamWallet == address(0)) revert BadTeamWallet();

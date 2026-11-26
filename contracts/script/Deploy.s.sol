@@ -87,6 +87,8 @@ contract Deploy is Script, StackBuilder {
         net.reputation = id == 56 ? BSC_REPUTATION : BSC_TESTNET_REPUTATION;
         net.wbnb = id == 56 ? BSC_WBNB : TESTNET_WBNB;
         net.router = id == 56 ? BSC_V2_ROUTER : TESTNET_V2_ROUTER;
+        net.nameScreen = id == 56 ? BSC_NAME_SCREEN : BSC_TESTNET_NAME_SCREEN;
+        require(net.nameScreen.code.length > 0, "Flap's name screen is not deployed here");
         require(net.portal.code.length > 0 && net.dockRouter.code.length > 0, "Flap is not deployed here");
         require(net.identity.code.length > 0 && net.reputation.code.length > 0, "ERC-8004 is not deployed here");
     }
