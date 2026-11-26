@@ -99,6 +99,14 @@ server, a private key: sign in your own wallet.
 
 ## Safety limits
 
+- Provenance: the server answers only for covenants the deployment's factories created (discovered through
+  `launcherFactory.allLaunchers()`, or confirmed by `vaultFactory.launcherOf(vault)` / `launcherFactory.isLauncher`).
+  Any other address, even one that answers every vault view, is refused with a `Next:` hint. Sign only transactions
+  whose `to` is an address `list_covenants` or `get_covenant` returned, or the covenant token for an approval.
+- Approvals are exact: `redeem` asks for `approve(vault, amount)`, never an unlimited allowance.
+- Write tools are annotated `readOnlyHint: false` (and `destructiveHint: true` for `lower_tap`, `wind_down`,
+  `declare_abandoned` and `redeem`): their output is something to sign, so a client asks the user first.
+
 - Chain allowlist: 31337 (local anvil), 56 only on a loopback fork, 97 (BNB testnet); `COVENANT_ALLOWED_CHAINS` narrows it. The RPC's chain id must match the deployment record or every tool refuses.
 - Per-call BNB cap on built transactions (`commit`, `deposit_revenue`): 1 BNB on testnet, 100 on the local mock chain; `COVENANT_MAX_VALUE_BNB` sets it. `get_network` shows the live value.
 - RPC URLs are shown host-only, so a key in a hosted RPC URL never reaches a log or a response.

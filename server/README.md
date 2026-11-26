@@ -147,6 +147,32 @@ RPC URLs printed host-only, and third-party text (token names, descriptions, URI
 `MCP_HTTP_WRITES=1`. The API rate-limits `/tx/*` and `/poke-report` per IP (`API_TX_RATE_PER_MIN`, 60).
 `mcp/SKILL.md` documents the same surface for skill-based agents; `web/public/llms-full.txt` is generated from it.
 
+Hardening from the pre-audit (regressions in `test/unit/preaudit-regressions.test.ts`):
+
+- **Provenance.** `CovenantService.known()` / `resolve()` accept a covenant only from the deployment record,
+  `COVENANT_VAULTS`, factory discovery, or an on-chain factory check (`vaultFactory.launcherOf(vault) != 0`,
+  `launcherFactory.isLauncher`). Reads never add a covenant; an unknown address gets a 404 (API) or an error with a
+  `Next:` hint (MCP), never a sheet or a transaction. The ERC-8004 reputation filter is `vaultFactory.allVaults()`.
+  `redeem` approves exactly the amount.
+- **No secrets out.** A 500 returns `{error: 'internal error', id}` and logs the redacted detail; `/health`, the MCP
+  server and the logs show the RPC host only; the web's `/api/deployment` serves the record's `rpcUrl` only when it is
+  loopback.
+- **Atlas.** The local test signer is used only on a loopback RPC, never on chain 97; when the oracle refuses a
+  report-carrying poke (any reason but `TooSoon`), the keeper sends the bare poke, so the exit rule keeps stepping.
+- **Signing guards.** On chain 56 or 97 a loopback RPC must also answer `web3_clientVersion` as anvil (or hardhat,
+  ganache) before the keeper, issuer, investor or `issuer:register` sign, and before the local faucet pays.
+- **Limits.** Every `/api/*` route has a per-IP limit (`API_RATE_PER_MIN`, 300), the X-Forwarded-For hop used behind a
+  trusted proxy is the last one, caches are bounded, the Atlas report behind `/api/poke-report` is reused for 60 s,
+  and a JSON-RPC batch to `mcp:http` costs one token per message. `mcp:http` refuses browser origins unless listed in
+  `MCP_HTTP_ALLOWED_ORIGINS`.
+- **Issuer agent.** The irreversible pay cut needs both the pool spot and the oracle-observed TWAP within
+  `ISSUER_PAY_CUT_BELOW_PREMIUM_PCT` of book on `ISSUER_PAY_CUT_CONFIRM_TICKS` (3) consecutive ticks; on a public
+  chain it is only recorded as due unless `ISSUER_AUTO_PAY_CUT=1`. On a public chain the issuer and `issuer:register`
+  refuse a loopback or plain-http `API_BASE_URL`, since report URIs and the agentURI go on chain
+  (`COVENANT_ALLOW_LOOPBACK_URIS=1` overrides).
+- **Investor agent.** It signs only `approve(vault, <= amount)` on the covenant token and `redeem` on that vault, with
+  no BNB attached and the wallet's chain id; anything else the MCP server returns is refused.
+
 `pnpm investor` spawns the MCP server over stdio, lists covenants under book, computes the downside of its position, waits if no round is open, and redeems (approval + redeem, signed with its own key) when a round is open and redemption beats the pool by `INVESTOR_MIN_EDGE_PCT`.
 
 ## The contract surface the server reads
