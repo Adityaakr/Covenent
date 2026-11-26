@@ -28,6 +28,7 @@ import { ask, deleteChat, openChat, pick, reset, stop, useAskAI, useAskHistory, 
 import { useSource } from "@/lib/data/hooks";
 import { ProposalCard } from "./ask-cards";
 import { Icon, type IconName } from "./icons";
+import { ThinkingMark } from "./mark";
 import { cx } from "./ui";
 
 export const SUGGEST = ["Raise 3 BNB for my GPU agent", "Should I redeem?", "What can I do with my wallet?", "Mint test USDT"];
@@ -72,7 +73,7 @@ export function AskAI({ initial }: { initial?: string }) {
     <ChatApp className="ask-ai" sidebar={<History activeId={s.chatId} busy={s.busy} />}>
       <header className="ag-head">
         <ChatSidebarTrigger />
-        <span className="ag-head-mark" aria-hidden="true"><Icon name="sparkle" size={15} /></span>
+        <span className="ag-head-mark" aria-hidden="true"><ThinkingMark size={16} still /></span>
         <div className="ag-head-title">
           <h1>Ask AI</h1>
           <p>{model ? `${model} · ` : ""}reads {chain} · drafts transactions you sign</p>
@@ -84,7 +85,7 @@ export function AskAI({ initial }: { initial?: string }) {
       <MessageScroller busy={s.busy} pinKey={userCount} contentClassName="ag-thread">
         {s.items.length === 0 ? (
           <div className="ag-hello">
-            <span className="ag-hello-mark" aria-hidden="true"><Icon name="sparkle" size={22} /></span>
+            <span className="ag-hello-mark" aria-hidden="true"><ThinkingMark size={26} calm /></span>
             <h2>Say what you want in plain words.</h2>
             <p>Ask AI reads covenants, positions and agent decisions from the chain, drafts a covenant or a transaction, simulates it from your wallet and shows you a card. You sign in your own wallet, or you don&apos;t: it never holds a key.</p>
             {status.isLoading ? null : !configured ? <Callout tone="warn">{status.data?.reason ?? "Ask AI is not configured on this site."} The rest of the app works without it.</Callout> : null}
@@ -145,7 +146,7 @@ export function AiTurn({ m, latest, busy, lastQuestion: question }: { m: AiItem;
   const steps = m.tools.length;
   return (
     <Message from="assistant" animateIn>
-      <MessageAvatar><Icon name="sparkle" size={14} /></MessageAvatar>
+      <MessageAvatar><ThinkingMark size={14} still={!m.pending} /></MessageAvatar>
       <MessageContent className="ag-answer">
         <MessageHeader><b>Ask AI</b><span className="faint">{messageTime(m.at)}</span></MessageHeader>
         {m.pending && !m.tools.length && !m.text ? <div className="ag-thinking" role="status"><ThinkingShimmer>Thinking…</ThinkingShimmer></div> : null}

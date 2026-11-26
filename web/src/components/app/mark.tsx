@@ -5,11 +5,13 @@ import { useId, type CSSProperties } from "react";
  * "thinking" loop for loading and agent work: the cut-out dot walks the square's inner corners and comes home while
  * the square breathes and a soft light sweeps across, about 2.8 s a cycle. It draws in currentColor with a true
  * hole, so it sits on any surface (buttons included). Under prefers-reduced-motion it is the still mark.
+ * `calm` is the idle variant for a resting surface (Ask AI's empty state): a slow breath and the dot drifting on a
+ * small orbit, about 6 s a cycle, no light sweep.
  */
-export function ThinkingMark({ size = 16, label, still = false, style }: { size?: number; label?: string; still?: boolean; style?: CSSProperties }) {
+export function ThinkingMark({ size = 16, label, still = false, calm = false, style }: { size?: number; label?: string; still?: boolean; calm?: boolean; style?: CSSProperties }) {
   const id = useId().replace(/:/g, "");
   return (
-    <svg className={still ? "tmark still" : "tmark"} width={size} height={size} viewBox="0 0 22 22" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} focusable="false" style={style}>
+    <svg className={still ? "tmark still" : calm ? "tmark calm" : "tmark"} width={size} height={size} viewBox="0 0 22 22" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} focusable="false" style={style}>
       <defs>
         <mask id={`m${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="22" height="22">
           <rect width="22" height="22" rx="7" fill="#fff" />

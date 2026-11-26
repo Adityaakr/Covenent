@@ -953,7 +953,13 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 @keyframes tm-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.9); } }
 @keyframes tm-walk { 0%, 10% { transform: translate(0, 0); } 28% { transform: translate(-6px, 0); } 48% { transform: translate(-6px, -6px); } 68% { transform: translate(0, -6px); } 86%, 100% { transform: translate(0, 0); } }
 @keyframes tm-sweep { 0%, 15% { transform: translateX(0); } 65%, 100% { transform: translateX(36px); } }
-@media (prefers-reduced-motion: reduce) { .tmark-sweep { display: none; } }
+/* calm: the idle loop for a resting surface (Ask AI's empty state) */
+.tmark.calm .tmark-body { animation: tm-breathe-soft 6s ease-in-out infinite; }
+.tmark.calm .tmark-dot { animation: tm-orbit 6s ease-in-out infinite; }
+.tmark.calm .tmark-sweep { display: none; }
+@keyframes tm-breathe-soft { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.94); } }
+@keyframes tm-orbit { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-1.6px, -1.2px); } 50% { transform: translate(-2.4px, 0.4px); } 75% { transform: translate(-0.8px, 1.4px); } }
+@media (prefers-reduced-motion: reduce) { .tmark-sweep { display: none; } .tmark .tmark-body, .tmark .tmark-dot { animation: none; } }
 .btn .tmark { color: currentColor; }
 .loading-line { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--muted); }
 
