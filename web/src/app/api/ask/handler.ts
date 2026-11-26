@@ -8,6 +8,7 @@ import { isAddress } from "viem";
 import { apiErrorText, DEFAULT_MODEL, LIMITS, parseHistory, runAsk } from "@/lib/ai/agent";
 import { ChainUnavailable, loadContext, type AiContext } from "@/lib/ai/context";
 import { clientIp, rateLimit } from "@/lib/ai/limits";
+import { scrub } from "@/lib/ai/tools";
 import type { AskEvent, AskRequest } from "@/lib/ai/types";
 
 export interface AskDeps {
@@ -53,7 +54,7 @@ export async function askPost(req: Request, deps: AskDeps = {}): Promise<Respons
   try {
     ctx = await (deps.context ?? loadContext)(account);
   } catch (e) {
-    return json(503, { t: "error", code: "chain", message: e instanceof ChainUnavailable ? `The chain is not available: ${e.message}` : "The chain is not available right now." } satisfies AskEvent);
+    return json(503, { t: "error", code: "chain", message: e instanceof ChainUnavailable ? `The chain is not available: ${scrub(e.message)}` : "The chain is not available right now." } satisfies AskEvent);
   }
 
   const anthropic = (deps.anthropic ?? ((k) => new Anthropic({ apiKey: k, maxRetries: 1, timeout: LIMITS.wallClockMs })))(key);

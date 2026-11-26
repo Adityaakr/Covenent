@@ -2,6 +2,7 @@
 
 import { Contracts, EventFeed, IssuerBadge, Overview, RulesModule, StatusStrip, TermsCard, Tranches, TreasuryLedger, TrustPanel } from "@/components/app/covenant";
 import { CovenantPage } from "@/components/app/covenant-page";
+import { AgentDecisions, AgentEconomy } from "@/components/app/agent-decisions";
 import type { Derived } from "@/lib/covenant/derive";
 import type { CovenantView } from "@/lib/covenant/types";
 
@@ -28,6 +29,8 @@ function Sheet({ v, d }: { v: CovenantView; d: Derived }) {
         </div>
         <div className="sections">
           <IssuerBadge v={v} />
+          {v.vault ? <AgentDecisions v={v} /> : null}
+          {v.issuer.kind === "agent" || v.vault ? <AgentEconomy v={v} /> : null}
           <EventFeed v={v} />
           <TermsCard v={v} d={d} />
           <Contracts v={v} />
