@@ -8,8 +8,8 @@ import type { CovenantView } from "@/lib/covenant/types";
 import { useCovenant, useSource } from "@/lib/data/hooks";
 import { ConnectChain } from "./live";
 import { CompactHeader, CovenantHero, CovenantTabs } from "./covenant";
-import { Icon } from "./icons";
 import { Empty, Note, Skeleton } from "./ui";
+import { ThinkingMark } from "./mark";
 
 /**
  * Loads the covenant named in the URL and frames a page: the full cover on the overview, a compact header on the
@@ -61,7 +61,7 @@ function CovenantSkeleton({ full }: { full: boolean }) {
         <Skeleton h={58} r={16} />
         <div className="grid2"><Skeleton h={300} r={18} /><Skeleton h={300} r={18} /></div>
         <div className="rules">{[0, 1, 2, 3, 4].map((k) => <Skeleton key={k} h={220} r={18} />)}</div>
-        <p className="t-xs muted w5 row" style={{ gap: 6 }}><Icon name="refresh" size={13} />Reading the vault…</p>
+        <p className="loading-line"><ThinkingMark size={16} />Reading the vault…</p>
       </div>
     </main>
   );

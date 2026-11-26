@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { CovenantView } from "@/lib/covenant/types";
 import { relative } from "@/lib/covenant/time";
 import { useAsk } from "@/lib/data/ask";
-import { eventStyle } from "./covenant";
+import { eventStyle, tidyDetail } from "./covenant";
 import { Icon } from "./icons";
 import { cx } from "./ui";
+import { ThinkingMark } from "./mark";
 
 /** Issuer-side events the agent itself causes, streamed oldest first like a chat log. */
 const AGENT_EVENTS = new Set(["TapClaimed", "Heartbeat", "ReportPosted", "TapLowered", "RevenueRecognized", "TrancheUnlocked", "OutcomeRecorded", "WoundDown"]);
@@ -41,7 +42,7 @@ export function AgentChat({ v, all }: { v: CovenantView; all: CovenantView[] }) 
   return (
     <section className="chat" aria-label={`${name} console`}>
       <div className="chat-head">
-        <span className="icon-tile sm agent"><Icon name="chat" size={15} /></span>
+        <span className="icon-tile sm agent"><ThinkingMark size={15} still={!live} /></span>
         <div style={{ minWidth: 0 }}><div className="t-s ink w5 trunc">Activity and Ask Covenant</div><div className="t-xs muted w5">The issuer loop&apos;s actions, and answers from the MCP read tools</div></div>
         <span className={cx("badge", live ? "good" : "bad")} style={{ marginLeft: "auto" }}><span className={cx("dot", live && "pulse")} />{live ? "Live" : "Stopped"}</span>
       </div>
@@ -58,7 +59,7 @@ export function AgentChat({ v, all }: { v: CovenantView; all: CovenantView[] }) 
               <span className={cx("msg-av", s.tone || "agent")}><Icon name={s.icon} size={14} /></span>
               <div className="msg-body">
                 <div className="msg-meta"><b>{name}</b><span>{e.name.replace(/([a-z])([A-Z])/g, "$1 $2")}</span><span>·</span><span>{relative(e.at, v.now)}</span></div>
-                <div className="bubble">{e.detail}</div>
+                <div className="bubble" title={e.detail}>{tidyDetail(e.detail)}</div>
               </div>
             </div>
           );
@@ -76,7 +77,7 @@ export function AgentChat({ v, all }: { v: CovenantView; all: CovenantView[] }) 
             <span className="msg-av cov"><Icon name="shieldCheck" size={14} /></span>
             <div className="msg-body">
               <div className="msg-meta"><b>Covenant</b>{m.tool ? <span className="toolcall" title={m.source === "server" ? "Answered by the Covenant server" : "Computed from the vault reads on this page"}><Icon name="bolt" size={11} />{m.tool}</span> : null}</div>
-              {m.pending ? <span className="typing" aria-label="Thinking"><i /><i /><i /></span> : <div className="bubble">{m.text}</div>}
+              {m.pending ? <span className="loading-line" style={{ padding: "4px 0" }}><ThinkingMark size={16} label="Thinking" />Reading the vault…</span> : <div className="bubble">{m.text}</div>}
             </div>
           </div>
         ))}

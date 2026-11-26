@@ -7,6 +7,11 @@ import { Sparkline } from "@/components/app/chart";
 import { Icon } from "@/components/app/icons";
 import { ConnectChain } from "@/components/app/live";
 import { IntentPicker } from "@/components/app/onboarding";
+import { BnbCoin, withBnb } from "@/components/app/bnb";
+import { seedHue } from "@/components/app/bot";
+import { ThinkingMark } from "@/components/app/mark";
+import { chainName } from "@/lib/chain/chains";
+import { duration } from "@/lib/covenant/time";
 import { reopenOnboarding, useIntents, useOnboarded, type Intent } from "@/components/app/prefs";
 import { Empty, SecHead, Skeleton, StateBadge, Ticker, TokenAvatar, cx, seedOf } from "@/components/app/ui";
 import { derive } from "@/lib/covenant/derive";
@@ -32,7 +37,6 @@ export default function DiscoverPage() {
   const intents = useIntents();
   const hour = useSyncExternalStore(subscribeNoop, hourNow, () => -1);
   const launched = list.filter((v) => v.state !== "RAISING" && v.state !== "FAILED");
-  const held = launched.reduce((a, v) => a + v.treasury, 0);
   const under = launched.filter((v) => v.state === "ACTIVE" && derive(v).prem < 0);
   const rounds = list.filter((v) => v.state === "EXIT_ROUND" || v.state === "WIND_DOWN");
   const raising = list.filter((v) => v.state === "RAISING");
@@ -41,20 +45,20 @@ export default function DiscoverPage() {
 
   const sections: Record<Intent, ReactNode> = {
     invest: (
-      <section key="invest" className="stack">
+      <section key="invest" className="stack sect">
         <SecHead title="Raising now" sub="Commitments are uncapped and scale back pro rata above the cap. Under the minimum, everyone is refunded in full." right={<Link className="btn btn-secondary btn-sm" href="/app/covenants">All covenants<Icon name="arrow" size={14} /></Link>} />
         {raising.length ? <div className="cgrid">{raising.map((v, i) => <CovenantCard key={v.id} v={v} i={i} />)}</div>
           : <div className="card"><Empty title="Nothing is raising right now" icon="coins" action={<Link className="btn btn-primary btn-sm" href="/app/create">Launch your autonomous venture</Link>}>New covenants appear here the moment their raise opens.</Empty></div>}
       </section>
     ),
     watch: (
-      <section key="watch" className="stack">
+      <section key="watch" className="stack sect">
         <SecHead title="Under book and in exit rounds" sub="Where the pool trades below what the treasury holds per token. Exit streaks count on-chain numbers only." />
         {under.length + rounds.length ? <WatchList list={[...rounds, ...under]} /> : <div className="card"><Empty title="Every covenant trades above book" icon="shieldCheck">No exit streak is counting and no round is open.</Empty></div>}
       </section>
     ),
     agent: (
-      <section key="agent" className="stack">
+      <section key="agent" className="stack sect">
         <SecHead title="Agent issuers" sub="Ventures run by an ERC-8004 agent: a budget it is held to, with outcomes written to its record." />
         {agents.length ? <div className="cgrid">{agents.map((v, i) => <CovenantCard key={v.id} v={v} i={i} />)}</div> : <div className="card"><Empty title="No agent issuers yet" icon="agent" /></div>}
       </section>
@@ -65,25 +69,19 @@ export default function DiscoverPage() {
   return (
     <main className="page">
       {onboarded === "no" ? <IntentPicker seeds={list.map(seedOf)} /> : null}
-      <section className="dhero rise">
-        <div className="row top between wrap-ok" style={{ gap: 20 }}>
-          <div className="stack-sm" style={{ display: "grid", maxWidth: 640 }}>
-            <span className="eyebrow">The operating stack for autonomous ventures</span>
-            <h1 className="h-hero">{greeting(hour)} <span className="soft">Here is every covenant, and whether its rules are holding.</span></h1>
+      <section className="home-head rise">
+        <div className="home-top">
+          <div style={{ display: "grid", maxWidth: 640 }}>
+            <span className="eyebrow"><ThinkingMark size={15} label="Covenant" />The operating stack for autonomous ventures</span>
+            <h1 className="home-hello">{greeting(hour)}</h1>
+            <p className="t-s muted w5">{online && source.chainId ? <>Every covenant on {withBnb(chainName(source.chainId))}, read from its vault, and whether its rules are holding.</> : "Every covenant, read from its vault, and whether its rules are holding."}</p>
           </div>
           <div className="row" style={{ gap: 8 }}>
-            <button className="btn btn-secondary" onClick={reopenOnboarding}><Icon name="sparkle" size={15} />Personalise</button>
+            <button className="btn btn-ghost" onClick={reopenOnboarding}><Icon name="sparkle" size={15} />Personalise</button>
             <Link className="btn btn-primary" href="/app/create"><Icon name="plus" size={15} />Create a covenant</Link>
           </div>
         </div>
-        {!online && !loading ? null : loading ? <Skeleton h={96} r={18} /> : (
-          <div className="kpis keep2">
-            <Kpi k="BNB under covenant" v={<Ticker value={held} format={(n) => bnb(n)} />} s={`Held by ${launched.length} vault${launched.length === 1 ? "" : "s"}`} />
-            <Kpi k="Under book" v={<Ticker value={under.length} format={(n) => n.toFixed(0)} />} s="Exit streak counting" tone={under.length ? "warn" : undefined} />
-            <Kpi k="Raising now" v={<Ticker value={raising.length} format={(n) => n.toFixed(0)} />} s="Commitments open" />
-            <Kpi k="Agent issuers" v={<Ticker value={agents.length} format={(n) => n.toFixed(0)} />} s="With an ERC-8004 identity" />
-          </div>
-        )}
+        {!online && !loading ? null : loading ? <Skeleton h={132} r={18} /> : <Overview list={list} />}
       </section>
 
       {loading ? <div className="cgrid">{[0, 1, 2].map((k) => <Skeleton key={k} h={300} r={18} />)}</div>
@@ -96,9 +94,6 @@ export default function DiscoverPage() {
   );
 }
 
-function Kpi({ k, v, s, tone }: { k: string; v: ReactNode; s: string; tone?: "warn" }) {
-  return <div className="kpi"><p className="k">{k}</p><div className={cx("v", tone === "warn" && "warn-t")}>{v}</div><div className="s">{s}</div></div>;
-}
 
 function WatchList({ list }: { list: CovenantView[] }) {
   return (
@@ -129,7 +124,7 @@ function RaiseInvite() {
     { icon: "vault" as const, t: "Launch and hold", s: "One transaction seeds the pool and funds the vault." },
   ];
   return (
-    <section className="stack">
+    <section className="stack sect">
       <SecHead title="Launch your autonomous venture" sub="A raise your buyers can price: the five rules are fixed at creation, and only the tap can go down." />
       <div className="hgrid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
         {steps.map((x, i) => (
@@ -148,3 +143,42 @@ function RaiseInvite() {
   );
 }
 
+/** Four overview tiles, each a door to a filtered list. Every figure is a chain read; bars and pips are per covenant. */
+function Overview({ list }: { list: CovenantView[] }) {
+  const launched = list.filter((v) => v.state !== "RAISING" && v.state !== "FAILED");
+  const held = launched.reduce((a, v) => a + v.treasury, 0);
+  const prem = (v: CovenantView) => derive(v).prem;
+  const under = launched.filter((v) => (v.state === "ACTIVE" || v.state === "COOLDOWN") && prem(v) < 0).sort((a, b) => prem(a) - prem(b));
+  const raising = list.filter((v) => v.state === "RAISING");
+  const agents = list.filter((v) => v.issuer.kind === "agent");
+  const first = raising[0];
+  const worst = under[0];
+  return (
+    <div className="ovw">
+      <Link href="/app/covenants" className="ovw-tile rise" style={{ ["--i" as string]: 1 } as CSSProperties}>
+        <span className="ovw-k">BNB under covenant<Icon name="arrowUpRight" size={14} /></span>
+        <span className="ovw-v"><BnbCoin size="0.8em" /><Ticker value={held} format={(n) => bnb(n)} /></span>
+        <span className="ovw-bar" aria-label="Share of BNB held by each vault">{launched.map((v, i) => <i key={v.id} title={`${v.terms.symbol}: ${bnb(v.treasury)} BNB`} style={{ flex: v.treasury / Math.max(held, 1e-9), background: `hsl(${seedHue(seedOf(v))} 70% 56%)`, animationDelay: `${i * 60}ms` }} />)}</span>
+        <span className="ovw-s">Held by {launched.length} vault{launched.length === 1 ? "" : "s"}</span>
+      </Link>
+      <Link href="/app/covenants?state=under" className="ovw-tile rise" style={{ ["--i" as string]: 2 } as CSSProperties}>
+        <span className="ovw-k">Under book<Icon name="arrowUpRight" size={14} /></span>
+        <span className={cx("ovw-v", under.length > 0 && "warn")}><Ticker value={under.length} format={(n) => n.toFixed(0)} /></span>
+        <span className="ovw-pips" aria-label="Each launched covenant against its book value">{launched.map((v, i) => <i key={v.id} className={v.state === "WIND_DOWN" ? "closed" : prem(v) < 0 ? "under" : ""} title={`${v.terms.symbol}: ${signedPct(prem(v))} against book`} style={{ animationDelay: `${i * 50}ms` }} />)}</span>
+        <span className="ovw-s trunc">{worst ? <><span className="ink">{worst.terms.symbol}</span> {signedPct(prem(worst))} · {nextEvent(worst, derive(worst)).text}</> : "Every live covenant trades above book"}</span>
+      </Link>
+      <Link href="/app/covenants?state=raising" className="ovw-tile rise" style={{ ["--i" as string]: 3 } as CSSProperties}>
+        <span className="ovw-k">Raising now<Icon name="arrowUpRight" size={14} /></span>
+        <span className="ovw-v"><Ticker value={raising.length} format={(n) => n.toFixed(0)} /></span>
+        <span className="ovw-bar" aria-label="Committed against the cap">{first ? <i style={{ width: `${Math.min(100, (first.raise.committed / Math.max(first.terms.cap, 1e-9)) * 100)}%`, background: "var(--accent)" }} /> : null}</span>
+        <span className="ovw-s trunc">{first ? <><span className="ink">{first.terms.symbol}</span> {bnb(first.raise.committed, 0)} of {bnb(first.terms.cap, 0)} BNB · closes in {duration(Math.max(0, first.raise.deadline - first.now), 1)}</> : "No raise open right now"}</span>
+      </Link>
+      <Link href="/app/covenants?issuer=agent" className="ovw-tile rise" style={{ ["--i" as string]: 4 } as CSSProperties}>
+        <span className="ovw-k">Agent issuers<Icon name="arrowUpRight" size={14} /></span>
+        <span className="ovw-v"><Ticker value={agents.length} format={(n) => n.toFixed(0)} /></span>
+        <span className="ovw-bots">{agents.slice(0, 7).map((v) => <TokenAvatar key={v.id} seed={seedOf(v)} size={22} />)}</span>
+        <span className="ovw-s">of {list.length} covenant{list.length === 1 ? "" : "s"} · ERC-8004 identities</span>
+      </Link>
+    </div>
+  );
+}

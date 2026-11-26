@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type CSSProperties } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type CSSProperties } from "react";
 import { Sparkline } from "@/components/app/chart";
 import { CovenantCard, IssuerChip, nextEvent } from "@/components/app/covenant";
 import { Icon } from "@/components/app/icons";
@@ -10,30 +10,41 @@ import { ConnectChain } from "@/components/app/live";
 import { Empty, Segmented, Skeleton, StateBadge, TokenAvatar, cx, seedOf } from "@/components/app/ui";
 import { derive } from "@/lib/covenant/derive";
 import { DAY } from "@/lib/covenant/time";
-import type { CovenantState } from "@/lib/covenant/types";
+import type { CovenantState, CovenantView } from "@/lib/covenant/types";
 import { useCovenants } from "@/lib/data/hooks";
 import { bnb, price, signedPct } from "@/lib/format";
 import { BnbCoin } from "@/components/app/bnb";
 
-type Filter = "all" | "raising" | "active" | "exit" | "closed";
+type Filter = "all" | "raising" | "active" | "under" | "exit" | "closed";
 const MATCH: Record<Filter, (s: CovenantState) => boolean> = {
   all: () => true,
   raising: (s) => s === "RAISING",
   active: (s) => s === "ACTIVE" || s === "COOLDOWN",
+  under: (s) => s === "ACTIVE" || s === "COOLDOWN",
   exit: (s) => s === "EXIT_ROUND",
   closed: (s) => s === "WIND_DOWN" || s === "FAILED",
 };
 
+/** Filters come from the URL (?state=under, ?issuer=agent), so the overview tiles on Discover link straight in. */
 export default function CovenantsPage() {
+  return <Suspense fallback={<main className="page"><Skeleton h={360} r={18} /></main>}><Covenants /></Suspense>;
+}
+
+function Covenants() {
+  const params = useSearchParams();
+  const fromUrl = (params.get("state") ?? "all") as Filter;
   const { list: all, source, loading: reading, error } = useCovenants();
   const online = source.mode === "live";
   const list = online ? all.filter((v) => v.source === "live") : [];
   const loading = source.mode === "checking" || (online && reading);
   const router = useRouter();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(fromUrl in MATCH ? fromUrl : "all");
+  const [issuer, setIssuer] = useState<"agent" | "human" | null>(params.get("issuer") === "agent" ? "agent" : params.get("issuer") === "human" ? "human" : null);
   const [q, setQ] = useState("");
-  const shown = list.filter((v) => MATCH[filter](v.state) && (!q || `${v.terms.name} ${v.terms.symbol}`.toLowerCase().includes(q.toLowerCase())));
-  const count = (f: Filter) => list.filter((v) => MATCH[f](v.state)).length;
+  const isUnder = (v: CovenantView) => derive(v).prem < 0;
+  const pass = (v: CovenantView, f: Filter) => MATCH[f](v.state) && (f !== "under" || isUnder(v));
+  const shown = list.filter((v) => pass(v, filter) && (!issuer || v.issuer.kind === issuer) && (!q || `${v.terms.name} ${v.terms.symbol}`.toLowerCase().includes(q.toLowerCase())));
+  const count = (f: Filter) => list.filter((v) => pass(v, f)).length;
 
   return (
     <main className="page">
@@ -48,14 +59,15 @@ export default function CovenantsPage() {
       <div className="fbar">
         <Segmented label="Filter by state" value={filter} onChange={setFilter} options={[
           { value: "all", label: `All ${count("all")}` }, { value: "raising", label: `Raising ${count("raising")}` }, { value: "active", label: `Active ${count("active")}` },
-          { value: "exit", label: `Exit round ${count("exit")}` }, { value: "closed", label: `Closed ${count("closed")}` },
+          { value: "under", label: `Under book ${count("under")}` }, { value: "exit", label: `Exit round ${count("exit")}` }, { value: "closed", label: `Closed ${count("closed")}` },
         ]} />
+        {issuer ? <button className="btn btn-secondary btn-sm" onClick={() => setIssuer(null)} aria-label="Clear the issuer filter">{issuer === "agent" ? "Agent issuers" : "Human teams"}<Icon name="x" size={13} /></button> : null}
         <label className="search-field"><Icon name="search" size={15} /><input className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or ticker" aria-label="Search covenants" /></label>
       </div>
 
       {error ? <p className="t-s down w5">Reading the chain failed: {error}</p> : null}
       {loading ? <Skeleton h={360} r={18} /> : !online ? <ConnectChain source={source} /> : shown.length === 0 ? (
-        <div className="card"><Empty title={list.length ? "No covenant matches" : "No covenants yet"} icon="layers" action={list.length ? <button className="btn btn-secondary btn-sm" onClick={() => { setFilter("all"); setQ(""); }}>Clear filters</button> : <Link className="btn btn-primary btn-sm" href="/app/create">Launch your autonomous venture</Link>}>{list.length ? "Try another state or search." : source.reason}</Empty></div>
+        <div className="card"><Empty title={list.length ? "No covenant matches" : "No covenants yet"} icon="layers" action={list.length ? <button className="btn btn-secondary btn-sm" onClick={() => { setFilter("all"); setIssuer(null); setQ(""); }}>Clear filters</button> : <Link className="btn btn-primary btn-sm" href="/app/create">Launch your autonomous venture</Link>}>{list.length ? "Try another state or search." : source.reason}</Empty></div>
       ) : (
         <>
           <div className="cgrid only-narrow">{shown.map((v, i) => <CovenantCard key={v.id} v={v} i={i} />)}</div>

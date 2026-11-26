@@ -10,7 +10,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useSource, type SourceStatus } from "@/lib/data/hooks";
 import { Icon } from "./icons";
-import { Skeleton, TokenAvatar } from "./ui";
+import { TokenAvatar } from "./ui";
+import { ThinkingMark } from "./mark";
 
 export function useLive(): { live: boolean; checking: boolean; source: SourceStatus } {
   const source = useSource();
@@ -33,7 +34,7 @@ export function CopyCode({ text }: { text: string }) {
 export function ConnectChain({ source, title = "Connect to the local chain" }: { source: SourceStatus; title?: string }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
-  if (source.mode === "checking") return <Skeleton h={300} r={22} />;
+  if (source.mode === "checking") return <p className="loading-line"><ThinkingMark size={16} />Looking for the local chain…</p>;
   return (
     <section className="connect rise" aria-label={title}>
       <div className="connect-l">
@@ -43,7 +44,7 @@ export function ConnectChain({ source, title = "Connect to the local chain" }: {
         <p className="t-s muted w5" style={{ maxWidth: "52ch" }}>Every figure here is read from the contracts or the Covenant server, so nothing shows until they answer. <span className="ink">{source.reason}.</span></p>
         <div className="row wrap-ok" style={{ gap: 8, marginTop: 4 }}>
           <button className="btn btn-primary" disabled={busy} onClick={() => { setBusy(true); void qc.invalidateQueries({ queryKey: ["source"] }).finally(() => setTimeout(() => setBusy(false), 600)); }}>
-            {busy ? <span className="spin" /> : <Icon name="refresh" size={15} />}Check again
+            {busy ? <ThinkingMark size={16} /> : <Icon name="refresh" size={15} />}Check again
           </button>
           <Link className="btn btn-secondary" href="/features"><Icon name="book" size={15} />How it works</Link>
         </div>

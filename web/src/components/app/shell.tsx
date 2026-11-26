@@ -13,6 +13,7 @@ import { Icon, Mark, type IconName } from "./icons";
 import { hidePromo, reopenOnboarding, setCollapsed, useCollapsed, usePromoHidden } from "./prefs";
 import { CoverCut, Skeleton, TokenAvatar, coverVars, cx, seedOf } from "./ui";
 import { withBnb } from "@/components/app/bnb";
+import { ThinkingMark } from "./mark";
 
 const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = [
   { href: "/app", label: "Discover", icon: "compass", exact: true },
@@ -352,7 +353,7 @@ function Toasts() {
         const href = t.hash && t.chainId ? explorerTx(t.chainId, t.hash) : null;
         return (
           <div key={t.id} className="toast" role="status">
-            <span className={cx("toast-ic", t.status)}>{t.status === "pending" ? <span className="spin" /> : <Icon name={t.status === "done" ? "check" : "alert"} size={16} />}</span>
+            <span className={cx("toast-ic", t.status)}>{t.status === "pending" ? <ThinkingMark size={16} /> : <Icon name={t.status === "done" ? "check" : "alert"} size={16} />}</span>
             <div style={{ minWidth: 0 }}>
               <div className="t">{t.title}{t.status === "done" ? " confirmed" : t.status === "error" ? " failed" : ""}</div>
               {t.detail ? <div className="d anywhere">{t.detail}</div> : null}

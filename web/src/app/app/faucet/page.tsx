@@ -11,6 +11,7 @@ import { useSource } from "@/lib/data/hooks";
 import { requestFunds, useBalances, useFaucetStatus, useSwap } from "@/lib/data/faucet";
 import { short } from "@/lib/format";
 import { BnbCoin, withBnb } from "@/components/app/bnb";
+import { ThinkingMark } from "@/components/app/mark";
 
 /*
  * Get test funds: local dev chain only. The server sends test BNB from an anvil account and mints Demo USDC; the
@@ -23,8 +24,8 @@ export default function FaucetPage() {
       <div className="sec-head">
         <div className="stack-sm" style={{ display: "grid", maxWidth: 700 }}>
           <span className="eyebrow">Local chain · test funds</span>
-          <h1 className="h-page">Get test funds. <span className="soft">Dev chain only, worthless anywhere else.</span></h1>
-          <p className="lede">Test BNB from one of anvil&apos;s public accounts and Demo USDC minted by the dev stack, sent to the connected wallet. Raises are in BNB, as Flap requires; dUSDC funds a wallet and swaps to BNB on the local PancakeSwap pool.</p>
+          <h1 className="h-page">Get test funds</h1>
+          <p className="lede">For the local dev chain only, worthless anywhere else. Test BNB from one of anvil&apos;s public accounts and Demo USDC minted by the dev stack, sent to the connected wallet. Raises are in BNB, as Flap requires; dUSDC funds a wallet and swaps to BNB on the local PancakeSwap pool.</p>
         </div>
       </div>
       {src.mode === "live" ? <Funds /> : <ConnectChain source={src} />}
@@ -106,7 +107,7 @@ function Funds() {
               </div>
             </div>
             <button className="btn btn-primary btn-xl btn-block" disabled={busy !== null || Boolean(off) || !status.data} onClick={() => void getFunds()}>
-              {busy === "funds" ? <><span className="spin" />Sending…</> : !wallet.address ? <><Icon name="wallet" size={16} />Connect to get test funds</> : <><Icon name="drop" size={16} />Get test funds</>}
+              {busy === "funds" ? <><ThinkingMark size={16} />Sending…</> : !wallet.address ? <><Icon name="wallet" size={16} />Connect to get test funds</> : <><Icon name="drop" size={16} />Get test funds</>}
             </button>
             {msg ? <div className={msg.tone === "good" ? "mint-ok" : "mint-err"} role={msg.tone === "good" ? "status" : "alert"}><Icon name={msg.tone === "good" ? "check" : "alert"} size={16} /><span className="anywhere">{msg.text}</span></div> : null}
           </div>
@@ -135,7 +136,7 @@ function Funds() {
                   </div>
                 </div>
                 <p className="t-xs muted w5">{quote === null ? "The pool quotes as you type." : "Quoted by the local pool's router."}</p>
-                <button className="btn btn-secondary btn-lg btn-block" disabled={busy !== null || !wallet.address || !(Number(amount) > 0)} onClick={() => void doSwap()}>{busy === "swap" ? <><span className="spin" />Swapping…</> : <><Icon name="swap" size={15} />Approve and swap</>}</button>
+                <button className="btn btn-secondary btn-lg btn-block" disabled={busy !== null || !wallet.address || !(Number(amount) > 0)} onClick={() => void doSwap()}>{busy === "swap" ? <><ThinkingMark size={16} />Swapping…</> : <><Icon name="swap" size={15} />Approve and swap</>}</button>
               </>
             )}
           </div>

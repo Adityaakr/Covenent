@@ -67,7 +67,7 @@ export default function DemoPage() {
       <div className="sec-head">
         <div className="stack-sm" style={{ display: "grid" }}>
           <span className="eyebrow">Demo script · three minutes</span>
-          <h1 className="h-page">The covenant story, <span className="soft">scene by scene.</span></h1>
+          <h1 className="h-page">The covenant story, scene by scene</h1>
         </div>
         <div className="row" style={{ gap: 8 }}>
           <span className="t-xs muted w5 hide-sm num">{i + 1} / {STEPS.length}</span>

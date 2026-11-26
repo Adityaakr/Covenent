@@ -20,13 +20,13 @@ function Sheet({ v, d }: { v: CovenantView; d: Derived }) {
 
       <RulesModule v={v} d={d} />
 
-      <div className="grid-main">
-        <div className="stack">
+      <div className="grid-main" style={{ columnGap: 40 }}>
+        <div className="sections">
           {launched ? <Tranches v={v} /> : null}
           {launched ? <TreasuryLedger v={v} d={d} /> : null}
           <TrustPanel v={v} />
         </div>
-        <div className="stack">
+        <div className="sections">
           <IssuerBadge v={v} />
           <EventFeed v={v} />
           <TermsCard v={v} d={d} />

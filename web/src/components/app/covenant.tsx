@@ -749,6 +749,8 @@ const EVT: Record<string, { tone: string; icon: IconName }> = {
   Abandoned: { tone: "bad", icon: "heart" },
 };
 export function eventStyle(name: string) { return EVT[name] ?? { tone: "", icon: "activity" as IconName }; }
+/** Event details with full addresses and hashes shortened, so a line reads at a glance. */
+export function tidyDetail(s: string) { return s.replace(/0x[0-9a-fA-F]{40,64}/g, (a) => `${a.slice(0, 6)}…${a.slice(-4)}`); }
 
 export function EventFeed({ v, limit = 10 }: { v: CovenantView; limit?: number }) {
   const shown: FeedEvent[] = [];
@@ -769,7 +771,7 @@ export function EventFeed({ v, limit = 10 }: { v: CovenantView; limit?: number }
               <span className={cx("feed-ic", s.tone)}><Icon name={s.icon} size={14} /></span>
               <div style={{ minWidth: 0, paddingTop: 3 }}>
                 <div className="row between" style={{ gap: 8 }}><span className="ev">{e.name.replace(/([a-z])([A-Z])/g, "$1 $2")}</span><span className="t-xs faint w5" style={{ whiteSpace: "nowrap" }} title={dateTime(e.at)}>{relative(e.at, v.now)}</span></div>
-                <div className="det">{e.detail}</div>
+                <div className="det" title={e.detail}>{tidyDetail(e.detail)}</div>
               </div>
             </div>
           );

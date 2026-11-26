@@ -83,7 +83,7 @@ function Redeem({ v, d }: { v: CovenantView; d: Derived }) {
         </div>
       </div>
 
-      <div className="stack sticky">
+      <div className="sections sticky">
         <div className="card">
           <div className="card-head"><h3 className="h-card">Redeem or sell on the pool</h3></div>
           <div className="card-body cmp">

@@ -38,8 +38,8 @@ function Raise({ v, d }: { v: CovenantView; d: Derived }) {
   const whoW = v.issuer.kind === "agent" ? "agent" : "team";
 
   return (
-    <div className="grid-side">
-      <div className="stack">
+    <div className="grid-side" style={{ columnGap: 36 }}>
+      <div className="sections">
         <div className="card card-pad stack" style={{ gap: 20 }}>
           <div className="row between wrap-ok">
             <span className="lbl">{open ? "Committed so far" : "Raise result"}</span>

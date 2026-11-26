@@ -16,6 +16,7 @@ import { DAY, span } from "@/lib/covenant/time";
 import type { Address, Terms } from "@/lib/covenant/types";
 import { useSource } from "@/lib/data/hooks";
 import { bnb, bps, multiple, pct, price, tokens, usd } from "@/lib/format";
+import { ThinkingMark } from "@/components/app/mark";
 
 type Mine = { state: "idle" | "mining" | "found"; tries: number; rate: number; salt?: `0x${string}`; address?: Address; ms?: number };
 
@@ -172,7 +173,8 @@ export default function CreatePage() {
       <div className="sec-head">
         <div className="stack-sm" style={{ display: "grid" }}>
           <span className="eyebrow">Create a covenant</span>
-          <h1 className="h-page">Write the covenant. <span className="soft">Nothing can be edited later except lowering the tap.</span></h1>
+          <h1 className="h-page">Write the covenant</h1>
+          <p className="lede">Nothing can be edited later except lowering the tap.</p>
         </div>
         <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}><span className="dot" />{src.mode === "live" ? "Creates on the local chain" : src.mode === "checking" ? "Checking the local chain" : "Offline: connect to create"}</span>
       </div>
@@ -299,7 +301,7 @@ export default function CreatePage() {
                       <p className="t-xs muted w5 num">{mine.tries.toLocaleString("en-US")} tries · {Math.round(mine.rate).toLocaleString("en-US")}/s · about 65,536 on average</p>
                     </>
                   ) : <p className="t-xs muted w5">The app predicts the token&apos;s clone address from the Portal and the tax token implementation, in a background worker.</p>}
-                  <button className="btn btn-secondary" onClick={startMining} disabled={mine.state === "mining"}><Icon name="sparkle" size={15} />{mine.state === "found" ? "Mine again" : mine.state === "mining" ? "Mining…" : "Mine a 7777 salt"}</button>
+                  <button className="btn btn-secondary" onClick={startMining} disabled={mine.state === "mining"}><Icon name="sparkle" size={15} />{mine.state === "found" ? "Mine again" : mine.state === "mining" ? <><ThinkingMark size={15} />Mining…</> : "Mine a 7777 salt"}</button>
                 </div>
                 {problems.length ? <Problems list={problems} /> : null}
                 {src.mode !== "live" ? <Note tone="warn" icon="alert"><b>Not connected to the local chain.</b> {src.reason}. Start the stack with <span className="mono">scripts/dev-all.sh</span>; creating sends the transaction there.</Note> : null}
@@ -312,7 +314,7 @@ export default function CreatePage() {
             <button className="btn btn-ghost" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}><Icon name="back" size={15} />Back</button>
             {last ? (
               <button className="btn btn-primary btn-lg" disabled={problems.length > 0 || mine.state !== "found" || busy || src.mode !== "live"} onClick={() => void create()}>
-                {busy ? <><span className="spin" />Creating…</> : mine.state !== "found" ? "Mine a salt to create" : <><Icon name="rocket" size={15} />Create covenant</>}
+                {busy ? <><ThinkingMark size={16} />Creating…</> : mine.state !== "found" ? "Mine a salt to create" : <><Icon name="rocket" size={15} />Create covenant</>}
               </button>
             ) : <button className="btn btn-primary" onClick={() => { if (here.length && !tried.includes(step)) setTried([...tried, step]); else setStep(step + 1); }}>{here.length && tried.includes(step) ? "Continue anyway" : "Continue"}<Icon name="arrow" size={15} /></button>}
           </div>
