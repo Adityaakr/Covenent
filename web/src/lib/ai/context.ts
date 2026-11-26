@@ -30,7 +30,7 @@ export interface AiContext {
 
 /*
  * Provenance: a covenant is only ever a launcher the deployment record names or one our launcher factories list in
- * allLaunchers() (and whose terms() reads). find() resolves only among those, so an address the model or a user
+ * allLaunchers() (and that read as a covenant). find() resolves only among those, so an address the model or a user
  * types never becomes a covenant, and a transfer target (pay_agent_usdc) is always such a covenant's team wallet.
  */
 
