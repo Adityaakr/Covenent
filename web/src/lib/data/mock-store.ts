@@ -181,3 +181,27 @@ export function mockAct(id: string, action: string, arg?: number): Hash {
   emit({ ...s, views: { ...s.views, [id]: v } });
   return tx;
 }
+
+/** Create a new RAISING covenant on the mock layer from a terms form, and return its id. */
+export function mockCreate(terms: CovenantView["terms"], issuer: CovenantView["issuer"], token?: `0x${string}`): string {
+  const s = get();
+  const base = s.views.harbor!;
+  const now = base.now;
+  let id = terms.symbol.toLowerCase().replace(/[^a-z0-9]/g, "") || "new";
+  while (s.views[id]) id += "x";
+  const v: CovenantView = {
+    ...structuredClone(base),
+    id,
+    terms,
+    issuer: { ...issuer, outcomes: [...issuer.outcomes, { covenant: terms.symbol, outcome: "active", at: now, detail: "This covenant, raising" }] },
+    launcher: hexFrom(++txn, 40) as `0x${string}`,
+    token,
+    state: "RAISING",
+    raise: { committed: 0, contributors: 0, deadline: now + terms.saleDuration, finalized: false },
+    events: [{ at: now, name: "LauncherCreated", detail: `${terms.name} created with fixed terms`, tx: hexFrom(++txn) as Hash }],
+    position: { committed: 0, accepted: 0, refund: 0, allocation: 0, tokensClaimed: false, refundClaimed: false, balance: 0 },
+    lastHeartbeat: now,
+  };
+  emit({ ...s, views: { ...s.views, [id]: v } });
+  return id;
+}

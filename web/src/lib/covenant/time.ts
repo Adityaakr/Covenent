@@ -26,6 +26,7 @@ export function days(seconds: number, digits = 1): string {
 /** "6 days ago", "in 12 days", relative to `now`. */
 export function relative(t: number, now: number): string {
   const d = t - now;
+  if (Math.abs(d) < 60) return "just now";
   const s = duration(Math.abs(d), 1);
   const words = s.replace(/(\d+)d/, (_, n) => `${n} day${n === "1" ? "" : "s"}`).replace(/(\d+)h/, (_, n) => `${n} hour${n === "1" ? "" : "s"}`).replace(/(\d+)m$/, (_, n) => `${n} min`).replace(/(\d+)s$/, (_, n) => `${n} s`);
   return d >= 0 ? `in ${words}` : `${words} ago`;

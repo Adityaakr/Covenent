@@ -75,7 +75,8 @@ export function useCovenants(): CovenantsResult {
     return { list: live.data ?? [], source: src, loading: live.isLoading, error: live.error ? (live.error as Error).message : undefined };
   }
   const order = ["lumen", "scout", "harbor", "moss", "fern"];
-  return { list: order.map((id) => mock.views[id]!).filter(Boolean), source: src, loading: false };
+  const extra = Object.keys(mock.views).filter((k) => !order.includes(k));
+  return { list: [...extra, ...order].map((id) => mock.views[id]!).filter(Boolean), source: src, loading: false };
 }
 
 export function useCovenant(id: string): { view?: CovenantView; source: SourceStatus; loading: boolean; error?: string } {
