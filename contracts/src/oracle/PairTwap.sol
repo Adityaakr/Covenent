@@ -54,6 +54,14 @@ library PairTwap {
         return FixedPointMathLib.fullMulDiv(avgQ112, 1e18, Q112);
     }
 
+    /// @notice The pool's BNB reserve at `price` (BNB per token, 1e18) on its own invariant: sqrt(k * price) with
+    ///         k = tokenReserve * quoteReserve. A swap never lowers k, so with a time-weighted `price` a sale and buyback
+    ///         inside one block cannot make the pool look shallow. sqrt is taken per factor so nothing overflows.
+    function quoteAt(Reading memory r, uint256 price) internal pure returns (uint256) {
+        return FixedPointMathLib.sqrt(r.tokenReserve) * FixedPointMathLib.sqrt(r.quoteReserve)
+            * FixedPointMathLib.sqrt(price) / 1e9;
+    }
+
     /// @notice Spot price from reserves, BNB per token in 1e18.
     function spot(Reading memory r) internal pure returns (uint256) {
         if (r.tokenReserve == 0) return 0;

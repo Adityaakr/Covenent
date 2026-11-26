@@ -442,12 +442,13 @@ export function createMcpServer(deps: McpDeps): McpServer {
         w ? svc.position(r, w) : Promise.resolve(null),
         svc.chainNow(),
       ]);
-      const [nextPoke, unlocked] = r.vault
+      const [nextPoke, nextRatePoke, unlocked] = r.vault
         ? await Promise.all([
             cfg.oracle ? svc.tryRead<bigint>(cfg.oracle, svc.abis.oracle, 'nextPokeAt', [r.vault]) : Promise.resolve(null),
+            cfg.oracle ? svc.tryRead<bigint>(cfg.oracle, svc.abis.oracle, 'nextRatePokeAt', [r.vault]) : Promise.resolve(null),
             svc.tryRead<bigint>(r.vault, svc.abis.vault, 'unlockedUnreleased'),
           ])
-        : [null, null];
+        : [null, null, null];
       const plan = planActions({
         covenant: r.vault ?? r.launcher ?? covenant,
         now: sheet?.readAt ?? now.timestamp,
@@ -456,6 +457,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
         sheet,
         position,
         nextPokeAt: nextPoke === null ? null : Number(nextPoke),
+        nextRatePokeAt: nextRatePoke === null ? null : Number(nextRatePoke),
         unlockedUnreleasedWei: unlocked === null ? null : unlocked.toString(),
       });
       return ok({ covenant: r, wallet: w, state: sheet?.state ?? raise?.state ?? 'UNKNOWN', chainTime: sheet?.readAt ?? now.timestamp, ...plan });
@@ -623,7 +625,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
   writeTool(
     'finalize',
     'Finalize a raise',
-    `finalize() on the launcher once the sale deadline has passed: launches the token and funds the vault, or fails the raise below its minimum (full refunds). Anyone may send it. The transaction carries gas ${FINALIZE_GAS}: the launch refuses less than 15M.`,
+    `finalize() on the launcher once the sale deadline has passed: launches the token and funds the vault, or fails the raise below its minimum (full refunds). Anyone may send it. The transaction carries gas ${FINALIZE_GAS} (Flap's 15M cap): the launcher needs 12M left before the launch.`,
     { ...covenantArg, ...fromArg },
     async ({ covenant, from }) => {
       const r = await resolve(covenant);
@@ -668,7 +670,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
   writeTool(
     'poke',
     'Poke the oracle',
-    'CovenantOracle.poke(vault): record a price observation. A signed BNB/USD report is appended when one is available (Atlas API key, or the local test signer on a local chain); on BNB testnet without a key it is a plain poke and the oracle reads the Atlas push feed. Anyone may send it; the oracle refuses pokes closer together than its minimum interval.',
+    'CovenantOracle.poke(vault): record a price observation. A signed BNB/USD report is appended when one is available (Atlas API key, or the local test signer on a local chain); on BNB testnet without a key it is a plain poke and the oracle reads the Atlas push feed. Anyone may send it; the oracle refuses a poke without a rate within its minimum interval of the previous poke, and a poke with a rate within that interval of the previous poke with a rate (so a plain poke never blocks a report).',
     { ...covenantArg, ...fromArg },
     async ({ covenant, from }) => {
       const v = needVault(await resolve(covenant));

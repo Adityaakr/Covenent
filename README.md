@@ -98,9 +98,9 @@ Terms are fixed at creation. Only the tap can change later, and only downwards.
 | Split | 60% sale, 15% pool, 25% team | Exit round, cooldown | 7 days, 14 days |
 | Team tranches | 5% at 2x, 10% at 4x, 10% at 8x | Exit fee | 1% (0 at wind-down) |
 | Raise | min 200 BNB, cap 500 BNB, 4-day sale | Heartbeat window | 45 days |
-| Trading tax | 1% buy, 1% sell, 30 days, net of Flap's ~10% fee to the vault | Poke spacing | at least 1 hour |
+| Trading tax | 1% buy, 1% sell, 100 years, net of Flap's ~10% fee to the vault | Poke spacing | at least 1 hour (plain and report-carrying pokes on separate clocks) |
 | Tap | $30,000 per 30 days, capped at 4% of the treasury | Most time one poke adds | 6 hours |
-| Cliff, unlock window | 6 months, 30 trusted days | Production pool-seed floor | 10 BNB |
+| Cliff, unlock window | 6 months, 30 continuous strict days | Pool-seed floor | 1.5x Flap's live graduation floor (21.4 BNB seed, 85.7 BNB minimum raise at a 15% pool and $700 per BNB); demo factory: 1.5x the creation floor |
 
 A demo factory pair runs the same rules on minute timers (`CovenantProfiles.demo`): a 3-minute exit streak, 5-minute
 round, 10-minute heartbeat and 20-second pokes.
@@ -317,7 +317,7 @@ Every covenant tool takes `covenant`: the vault, token, launcher or pool address
 | `get_events` | read | `covenant`, `kind?`, `limit?` | The ledger, newest first |
 | `simulate_transaction` | read | `to`, `data`, `value_wei?`, `gas?`, `from?` | eth_call with the Covenant revert reason decoded |
 | `commit` | write | `covenant`, `amount_bnb`, `from?` | `contribute()`, with the pro-rata outcome if the raise closed now |
-| `finalize` | write | `covenant`, `from?` | `finalize()` with gas 16,700,000 (the launch refuses less than 15M) |
+| `finalize` | write | `covenant`, `from?` | `finalize()` with gas 15,000,000 (Flap's cap; the launcher needs 12M left before the launch) |
 | `claim_tokens` | write | `covenant`, `from?` | `claimTokens()` |
 | `claim_refund` | write | `covenant`, `from?` | `claimRefund()` |
 | `redeem` | write | `covenant`, `wallet`, `tokens?` or `tokens_wei?`, `slippage_bps?` | Approval as a prerequisite, then `redeem(amount, minOut)`. Only in `EXIT_ROUND` or `WIND_DOWN` |
@@ -523,17 +523,30 @@ otherwise. After changing a contract, run `scripts/dev-abi.sh` to re-export the 
   short of an upgrade.
 - **One Atlas signer, and whoever pokes.** The rate prices the dollar tap, which never exceeds its cap of the treasury
   per 30 days. It cannot unlock team tokens on its own: a tranche also needs the multiple in BNB from the pool's own
-  TWAP, with no oracle. Whoever pokes decides whether a report rides along, so a poke without one resets the unlock
-  counters, a rate older than `staleAfter` stops pricing the tap (the tap pauses, it never falls back to its cap), and
-  the dollar sale price is fixed at launch from the push feed, or ratchets only upward for a short window.
-- **Refused at creation, not at finalize.** The launcher factory screens the name and symbol against Flap's blocklist
-  and checks the minimum raise against Flap's live liquidity floor for the chosen pool share (graduation floor in
-  production), so no raise collects money for a launch Flap would refuse. The trading tax runs 30 days to 100 years
-  (default 100); after it ends the treasury grows only from issuer revenue (`depositRevenue`).
+  TWAP, with no oracle. Whoever pokes decides whether a report rides along, so a poke without one never adds unlock
+  time and resets every counter whose multiple it finds missed at the last rate; a poke with a report waits only for
+  the previous poke with a report, so nobody can block it; unlock time must be continuous strict time (no interval over
+  6 hours); with no new rate the tap keeps the dollar budget at the last verified rate (never the cap alone); and the
+  dollar sale price is fixed at launch from the push feed, or ratchets only upward for a short window.
+- **Refused at creation, not at finalize.** The launcher factory screens the name and symbol with Flap's anti-scam
+  module (`isScamWord`; a module that does not answer refuses creation too), refuses tax terms the Portal refuses (the
+  higher rate under 1% or either over 10%, a tax shorter than the 1-day anti-farmer window), and needs the minimum
+  raise's pool seed to clear 1.5x Flap's live graduation floor for the chosen pool share (the demo factory: 1.5x
+  the creation floor, so its tokens launch but may not graduate; the margin covers Flap's BNB price or multiplier
+  moving before finalize). On BNB Chain and testnet the factories accept only
+  Flap's own Portal, Guardian, Token Dock router and name screen. The trading tax runs 30 days to 100 years (default
+  100); after it ends the tap is paid only from the treasury, so book value only falls unless the issuer deposits
+  revenue (`depositRevenue`). The vault's `description()` says so, with the date.
 - **The raise.** No per-wallet cap, by design: above the cap commitments are scaled back pro rata and the excess
   refunds. Refunds and tokens are pull payments; the leftover rounding buffer (at most one wei per contributor) is
-  swept into the treasury once every refund is claimed. `finalize()` must be sent with a gas limit of 16.7M (every
-  client does); about 5 to 7M is used.
+  swept into the treasury once every refund is claimed.
+- **Finalize gas: set the gas limit explicitly, to 15M.** `finalize()` refuses to try the launch with less than 12M
+  gas left (`LAUNCH_GAS_FLOOR`, well above what a Pool Launch costs, so a starved launch is never mistaken for a
+  refused one: a call short of gas reverts and the raise stays open), and a wallet's gas estimate does not see that
+  check. Every caller sends an explicit gas limit of 15,000,000, the launcher's `FINALIZE_GAS_LIMIT` (the most Flap's
+  vault SDK and flap.sh send on BNB Chain; also in the launcher's `description()` as `finalizeGasLimit`). A 15M
+  transaction has about 14.9M left at the check. The app, the API and MCP (`gas` field), the keeper, the agents and
+  the scripts all send it. About 5.5M is used on BNB testnet and 7M on BNB Chain.
 - **Four.meme Lite vault.** `CovenantLiteVault` is outside Flap's audit scope: it never touches Flap's Portal or
   Guardian and needs its own review. Its tap is bounded like Covenant's: at most 10% per period of 30 to 90 days.
 - **Reports and abandonment.** Reports are write-once per period and verdicts count per period. A team past its
@@ -550,9 +563,11 @@ otherwise. After changing a contract, run `scripts/dev-abi.sh` to re-export the 
   treasury to holders.
 - **What it does not protect.** The floor starts below the sale price and falls as the team spends. The treasury is
   BNB, so its dollar value moves. Holders get exit, not voice.
-- **Flap's review (26 Nov 2026).** Findings and fixes: name screen and floor at creation, finalize gas, tax
-  duration, Guardian wind-down disclosure, the Atlas unlock guard, the dust sweep; see the Security notes above and
-  [docs/DEPLOY.md](docs/DEPLOY.md#redeploy-with-the-audit-fixes-26-nov-2026).
+- **Flap's review (26 Nov 2026) and pre-audit re-review (F1 to F8).** Findings and fixes: name screen and floor at
+  creation (graduation floor with a 1.5x margin), Flap's tax rules at creation, the unlock counter and poke gap (no
+  hidden dips, no blocked reports), the tap's dollar budget at the last rate, Flap's addresses checked per chain,
+  finalize gas, the post-tax disclosure, Guardian wind-down disclosure, the dust sweep; see the Security notes above,
+  [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md) and [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Before mainnet:** Flap's factory audit, an independent review of the vault, launcher and oracle, Atlas production
   credentials, and legal review of redemption rights ([checklist](docs/DEPLOY.md#mainnet-checklist-from-the-design-document)).
 

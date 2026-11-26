@@ -29,11 +29,16 @@ import {CovenantVaultDisplay} from "src/vault/CovenantVaultDisplay.sol";
 ///
 ///   Book value  b = (T - owedTeam) / R,  R = S - balanceOf(DEAD) - lockedTeam.
 ///   Rule 1 tap      accrues on each observation at min(tapUsd / bnbUsd, capBps * T) per 30 days, paused in exit
-///                   rounds, ended at wind-down. The unclaimed balance never exceeds one period's cap.
-///   Rule 2 unlock   a tranche unlocks after `unlockWindow` of strict time at or above its multiple, after
+///                   rounds, ended at wind-down. bnbUsd is the verified rate that rides along, else the last verified
+///                   rate, however old (the dollar budget always binds; the cap never pays alone). No rate ever, no
+///                   tap. The unclaimed balance never exceeds one period's cap.
+///   Rule 2 unlock   a tranche unlocks after `unlockWindow` of continuous strict time at or above its multiple, after
 ///                   the cliff, with the multiple held both in dollars (Atlas BNB/USD) and in BNB (pool TWAP against
 ///                   the BNB sale price, no oracle), so a bad BNB/USD rate alone cannot unlock anything. A strict
-///                   observation below the multiple resets its counter.
+///                   observation below the multiple, or more than `maxStep` after the previous one, resets its
+///                   counter. An observation without a rate never adds time and resets every counter it finds
+///                   below the multiple at the last verified rate (all of them if that rate is over `maxStep` old),
+///                   so no dip can be hidden from the counters by poking without a report.
 ///   Rule 3 exit     the streak adds time while the pool TWAP is below book and loses the same time while it is at
 ///                   or above book (it decays, it does not reset). It runs on on-chain numbers only: no Atlas, no
 ///                   depth gate. At `exitStreak` a round opens; holders burn tokens for b * (1 - fee).
@@ -546,12 +551,8 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
 
         uint256 dt = o.elapsed > maxStep ? maxStep : o.elapsed;
         uint256 b = bookValue();
+        if (o.strict || (o.trusted && dt > 0)) _observeTranches(o);
         if (o.trusted && dt > 0) {
-            // H-1: whoever pokes decides whether a verified rate rides along, so a trusted observation without one
-            // counts against unlocking (it resets the counters) instead of being skipped. Withholding reports while
-            // the price is under a multiple can then only delay an unlock, never earn one.
-            if (o.strict) _stepTranches(dt, o.twapBnb, o.twapBnb * o.bnbUsd / WAD);
-            else _resetTranches();
             if (s == State.ACTIVE) {
                 // Exit fix 1: the streak decays instead of resetting, so an hour above book cancels an hour
                 // below book, not three days.
@@ -585,9 +586,10 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
 
     /// @dev Tap accrual over the vault's own clock since the last accrual, excluding the most recent exit round,
     ///      capped at `maxStep`. Rate: min(dollar budget at BNB/USD, capBps of the free treasury) per 30 days.
-    ///      BNB/USD is the strict observation's, else the last strict one while it is at most `staleAfter` old
-    ///      (M-1). With no fresh rate nothing accrues: a cap-only fallback would let whoever pokes turn the dollar
-    ///      budget into the cap by withholding reports, so an Atlas outage pauses the tap instead of raising it.
+    ///      BNB/USD is the verified rate that rides along, else the last verified one however old (Flap re-review F5:
+    ///      the dollar budget keeps binding at the last known rate when no report lands; the tap never falls back to
+    ///      the cap alone). A report always gets through (the oracle's rate gap), so withholding reports cannot keep
+    ///      the rate stale while anyone brings one. With no verified rate ever, nothing accrues.
     function _accrueTap(Observation calldata o) internal {
         uint256 from = lastTapAt;
         uint256 to = block.timestamp;
@@ -596,7 +598,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         if (s != State.ACTIVE && s != State.COOLDOWN) return;
         if (disclosurePaused || to <= from) return;
 
-        uint256 ref = o.strict ? o.bnbUsd : freshBnbUsd();
+        uint256 ref = o.atlas ? o.bnbUsd : lastBnbUsd;
         if (ref == 0) return;
         uint256 owed = owedTeam;
         uint256 amt = CovenantVaultDisplay.tapAmount(
@@ -618,24 +620,36 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         emit TapAccrued(amt, owed + amt);
     }
 
-    /// @dev Strict observations only. At or above the multiple adds time, below resets (strict toward the team).
-    ///      The multiple must hold in dollars (TWAP x the Atlas BNB/USD rate, against the dollar sale price) AND in
-    ///      BNB (the pool TWAP against the BNB sale price Q / A, on-chain numbers only). The BNB leg needs no
-    ///      oracle, so no BNB/USD rate, however wrong, can advance an unlock counter on its own: one signer cannot
-    ///      unlock team tokens early. The dollar leg still lets the team wait out a BNB rally that the token did
-    ///      not share.
-    function _stepTranches(uint256 dt, uint256 twapBnb, uint256 usdPrice) internal {
-        uint256 usdSale = usdSalePrice;
-        if (usdSale == 0) return;
-        uint256 mask = CovenantVaultDisplay.stepTranches(
+    /// @dev Rule 2 on one observation (Flap re-review F4/F5; H-1). The multiple must hold in dollars (TWAP x BNB/USD
+    ///      against the dollar sale price) AND in BNB (the pool TWAP against the BNB sale price Q / A, on-chain only),
+    ///      so no BNB/USD rate, however wrong, can advance a counter on its own.
+    ///        strict: the window since the previous poke with a rate (at least the poke gap long) adds its length
+    ///                while the multiple holds over it, and over the window since the previous poke of any kind when
+    ///                that one is at least the gap long too; otherwise the counter resets. A window longer than
+    ///                `maxStep` resets too: unlock time must be continuous strict time.
+    ///        not strict: never adds. Each counter resets when the TWAP since the previous poke misses its multiple
+    ///                at the last verified rate; every counter resets when that rate is more than `maxStep` old.
+    ///                Withholding reports can then neither hide a dip nor earn time, and a poke at a price that holds
+    ///                the multiple changes nothing. Pool depth plays no part here: a price at any multiple implies a
+    ///                deep pool, and a same-block sale must not be able to wipe the counters (re-review NEW-1).
+    function _observeTranches(Observation calldata o) internal {
+        bool fresh = block.timestamp - lastStrictAt <= maxStep;
+        uint256 mask = CovenantVaultDisplay.observeTranches(
             _tranches,
-            dt,
-            twapBnb,
-            usdPrice,
-            usdSale,
-            salePriceBnb,
-            block.timestamp >= uint256(launchedAt) + cliff,
-            unlockWindow
+            CovenantVaultDisplay.UnlockInput({
+                strict: o.strict,
+                rateElapsed: o.rateElapsed,
+                rateTwap: o.rateTwapBnb,
+                elapsed: o.elapsed,
+                twap: o.twapBnb,
+                rate: o.strict ? o.bnbUsd : (fresh ? lastBnbUsd : 0),
+                usdSale: usdSalePrice,
+                bnbSale: salePriceBnb,
+                minGap: minPokeGap,
+                maxStep: maxStep,
+                cliffPassed: block.timestamp >= uint256(launchedAt) + cliff,
+                window: unlockWindow
+            })
         );
         if (mask == 0) return;
         uint256 n = _tranches.length;
@@ -648,11 +662,6 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
             emit TrancheUnlocked(k, amt, t.multiple);
             _recordOutcome(int128(uint128(t.multiple)), "unlock");
         }
-    }
-
-    /// @dev H-1: a trusted observation with no verified rate (or a shallow pool) resets every locked tranche.
-    function _resetTranches() internal {
-        CovenantVaultDisplay.resetTranches(_tranches);
     }
 
     /// @dev Records a verified BNB/USD rate (1e18 USD per BNB) and, M-2, the dollar sale price: set by the first
@@ -671,14 +680,6 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
             usdSalePrice = usd;
             emit UsdSalePriceSet(usd, rate);
         }
-    }
-
-    /// @notice The last verified BNB/USD (1e18) if it is at most `staleAfter` old, else 0 (M-1: a stale rate never
-    ///         prices the tap).
-    function freshBnbUsd() public view returns (uint256) {
-        uint256 at = lastStrictAt;
-        if (at == 0 || block.timestamp - at > staleAfter) return 0;
-        return lastBnbUsd;
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -948,6 +949,8 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     function description() public view override returns (string memory) {
         return CovenantVaultDisplay.describe(
             CovenantVaultDisplay.Snapshot({
+                launcher: launcher,
+                launchedAt: launchedAt,
                 state: state(),
                 treasury: address(this).balance,
                 book: bookValue(),

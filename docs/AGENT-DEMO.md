@@ -44,7 +44,7 @@ The server lists 27 tools (`get_network`, `list_covenants`, `get_covenant`, `get
       97
     ],
     "maxValuePerCallBnb": "1",
-    "finalizeGas": "16700000"
+    "finalizeGas": "15000000"
   }
 }
 ```
@@ -266,7 +266,7 @@ The server lists 27 tools (`get_network`, `list_covenants`, `get_covenant`, `get
   "open": false,
   "finalizeDue": false,
   "launchGasFloor": "15000000",
-  "finalizeGas": "16700000"
+  "finalizeGas": "15000000"
 }
 ```
 

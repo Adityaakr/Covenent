@@ -15,12 +15,13 @@ const factoryAbi = (baked as unknown as { abis: Record<string, Abi> }).abis.Cove
 
 // Flap audit flag 2: the app sends finalize() with an explicit limit, the launcher's own FINALIZE_GAS_LIMIT.
 describe("finalize gas", () => {
-  it("matches the launcher contract, clears the 15M guard and fits BNB testnet's 2^24 cap", () => {
+  it("matches the launcher contract, clears its 12M guard and stays within Flap's 15M gas cap", () => {
     const sol = readFileSync(path.join(repo, "contracts/src/launcher/CovenantLauncher.sol"), "utf8");
     const limit = BigInt(sol.match(/FINALIZE_GAS_LIMIT = ([\d_]+);/)![1]!.replaceAll("_", ""));
+    const floor = BigInt(sol.match(/LAUNCH_GAS_FLOOR = ([\d_]+);/)![1]!.replaceAll("_", ""));
     expect(FINALIZE_GAS).toBe(limit);
-    expect(FINALIZE_GAS).toBeGreaterThanOrEqual(16_000_000n);
-    expect(FINALIZE_GAS).toBeLessThanOrEqual(1n << 24n);
+    expect(FINALIZE_GAS).toBeGreaterThanOrEqual(floor + 2_500_000n);
+    expect(FINALIZE_GAS).toBeLessThanOrEqual(15_000_000n);
   });
   it("the finalize action passes it to the wallet", () => {
     const src = readFileSync(path.join(repo, "web/src/lib/data/actions.ts"), "utf8");

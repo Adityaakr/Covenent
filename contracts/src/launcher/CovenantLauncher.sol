@@ -5,6 +5,7 @@ import {Initializable} from "@openzeppelin-contracts-upgradeable/proxy/utils/Ini
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {LibString} from "solady/utils/LibString.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import {IPortalTypes, IPortal} from "src/flap/IPortal.sol";
 import {LauncherBase} from "src/flap/LauncherBase.sol";
@@ -14,6 +15,12 @@ import {LauncherDescription, LauncherHelper} from "src/flap/LauncherHelper.sol";
 
 import {Terms, Profile, State} from "src/vault/CovenantTypes.sol";
 import {CovenantTermsLib} from "src/launcher/CovenantTermsLib.sol";
+import {FlapChain} from "src/launcher/IFlapPreflight.sol";
+
+/// @notice Local stand-in Portals name their token implementation (Flap's chains use `FlapChain.TAX_TOKEN_IMPL`).
+interface ITokenImplSource {
+    function tokenImpl() external view returns (address);
+}
 
 interface ICovenantVaultFunding {
     function fundTreasury(address pool) external payable;
@@ -70,15 +77,19 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     uint256 public poolQuote; // Q_pool (0 unless launched)
     uint256 public treasuryForwarded; // T0
 
-    /// @notice Gas `finalize` needs before it tries the launch: about twice what a Pool Launch costs (the whole
-    ///         finalize measured 6.96M gas against Flap's live Portal on a BNB Chain fork), so the try/catch can
-    ///         tell a refused launch from a starved one.
-    uint256 public constant LAUNCH_GAS_FLOOR = 15_000_000;
+    /// @notice Gas `finalize` needs left before it tries the launch: well above what a Pool Launch costs (the whole
+    ///         finalize measured 6.95M gas against Flap's live Portal on a BNB Chain fork, 5.5M on BNB testnet), so the
+    ///         launch can never run out of gas and the try/catch only ever sees a real refusal. A launch that does run
+    ///         out leaves at most 1/64 of this behind, under the `g / 8` test after the catch, so a starved call
+    ///         reverts outright instead of failing the raise. A wallet's gas estimate does not see this check, so
+    ///         every caller sets the gas limit explicitly: `FINALIZE_GAS_LIMIT`.
+    uint256 public constant LAUNCH_GAS_FLOOR = 12_000_000;
 
-    /// @notice The gas limit to send `finalize` with: the floor above plus what runs before the check, and under
-    ///         2^24 (16,777,216), the most gas BNB testnet accepts in one transaction. Only the gas used is paid
-    ///         (about 5.3M on BNB testnet, 26 Nov 2026). The app, the server and the agents all send this limit.
-    uint256 public constant FINALIZE_GAS_LIMIT = 16_700_000;
+    /// @notice The gas limit to send `finalize` with: 15,000,000, the most Flap's vault SDK and flap.sh send on BNB
+    ///         Chain. A transaction with exactly this limit has about 14.9M left at the check, 2.9M over the floor.
+    ///         Only the gas used is paid. The app, the API and MCP (`gas` field), the keeper, the agents and the
+    ///         scripts all send this limit; it is also in `description()` as `finalizeGasLimit`.
+    uint256 public constant FINALIZE_GAS_LIMIT = 15_000_000;
 
     /// @notice True only while the Portal launch call runs. The paired vault factory reads it.
     bool public launching;
@@ -167,6 +178,33 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
         return _profile;
     }
 
+    /// @notice The minimum raise, BNB in wei (also in `terms()`; flat for Flap's UI).
+    function minRaise() external view returns (uint256) {
+        return _terms.minRaise;
+    }
+
+    /// @notice The raise cap, BNB in wei (also in `terms()`; flat for Flap's UI).
+    function cap() external view returns (uint256) {
+        return _terms.cap;
+    }
+
+    /// @notice The token address this launch produces, known before the launch: the Portal deploys Flap's tax token
+    ///         as an EIP-1167 clone of its implementation with the salt this launcher locked. Equal to `token` once
+    ///         launched (fork-tested against the live Portal on both chains). Zero on a local chain whose stand-in
+    ///         Portal does not name its implementation.
+    /// @return the token address, ending in 7777
+    function expectedToken() external view returns (address) {
+        address impl = FlapChain.taxTokenImpl();
+        if (impl == address(0)) {
+            try ITokenImplSource(hub).tokenImpl() returns (address i) {
+                impl = i;
+            } catch {
+                return address(0);
+            }
+        }
+        return Clones.predictDeterministicAddress(impl, _terms.salt, hub);
+    }
+
     /// @notice RAISING, FAILED or ACTIVE (launched). After launch the vault carries the covenant's state.
     function state() external view returns (State) {
         return _state;
@@ -249,7 +287,7 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     ///         Portal and forwards the treasury to the vault in one transaction. If the Portal refuses the launch,
     ///         the raise stays RAISING until `saleDeadline + launchRetryWindow` (L-5: a transient refusal, such as a
     ///         factory Flap has not enabled yet, must not fail it for good) and anyone may retry; a refusal after
-    ///         that window ends in FAILED and every commitment refunds in full. Send with `FINALIZE_GAS_LIMIT`.
+    ///         that window ends in FAILED and every commitment refunds in full. Send with `FINALIZE_GAS_LIMIT` (15M).
     function finalize() external nonReentrant {
         if (_state != State.RAISING) revert NotRaising();
         if (block.timestamp < saleDeadline) revert SaleOpen();
@@ -451,6 +489,8 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
             LibString.toString(t.exitFeeBps),
             '","heartbeat":"',
             LibString.toString(t.heartbeat),
+            '","finalizeGasLimit":"',
+            LibString.toString(FINALIZE_GAS_LIMIT),
             '"}'
         );
         return string.concat(string(base), a, b);

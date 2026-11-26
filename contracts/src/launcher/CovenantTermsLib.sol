@@ -13,6 +13,10 @@ library CovenantTermsLib {
     uint256 internal constant MAX_TRANCHES = 8;
     uint256 internal constant MAX_MULTIPLE = 10_000; // 100x
     uint256 internal constant MAX_TAX_BPS = 1_000;
+    /// @dev Flap's Portal refuses a launch whose higher tax rate is under 1%: `InvalidTaxBps(max(buy, sell))`, probed on
+    ///      forks of both chains (re-review, 26 Nov 2026): 1/0, 50/0 and 99/99 bps refused; 100/0, 0/100, 100/1 and
+    ///      50/100 launch. A rate of 0 is allowed on one side.
+    uint256 internal constant MIN_TAX_BPS = 100;
     /// @dev Flap's Portal accepts any taxDuration from the launch's antiFarmerDuration up to type(uint32).max
     ///      (probed on forks of both chains, 26 Nov 2026: 0 and 1 s revert "taxDuration < antiFarmerDuration", 1 day
     ///      to 2^32 - 1 s launch). Our bounds: at least 30 days, at most 100 years (Flap's own tax-token default).
@@ -98,12 +102,13 @@ library CovenantTermsLib {
             revert BadSaleDuration(t.saleDuration);
         }
 
-        // Flap's launch refuses a tax rate above 10% and a launch with no tax at all (`InvalidTaxBps`, read on forks of
-        // both chains): at least one rate must be set.
+        // Flap's launch refuses a tax rate above 10% and a launch whose higher rate is under 1% (`InvalidTaxBps`, read
+        // on forks of both chains), so 0% / 0% and 0.5% / 0% are refused here, before any money is raised.
         if (t.buyTaxBps > MAX_TAX_BPS || t.sellTaxBps > MAX_TAX_BPS) revert BadTax();
-        if (t.buyTaxBps == 0 && t.sellTaxBps == 0) revert BadTax();
+        if ((t.buyTaxBps > t.sellTaxBps ? t.buyTaxBps : t.sellTaxBps) < MIN_TAX_BPS) revert BadTax();
         // The tax is the treasury's revenue stream: when it ends, the treasury grows only from revenue the issuer
-        // deposits (`CovenantVault.depositRevenue`). Flap also needs it to outlast the anti-farmer window.
+        // deposits (`CovenantVault.depositRevenue`). Flap also needs it to outlast the anti-farmer window
+        // (`taxDuration < antiFarmerDuration` reverts the launch), which the profile passes to the Portal.
         uint256 td = t.taxDuration;
         if (td < MIN_TAX_DURATION || td > MAX_TAX_DURATION || td < p.antiFarmerDuration) revert BadTaxDuration(td);
 

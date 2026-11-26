@@ -75,7 +75,7 @@ and a Host allowlist on loopback. `MCP_HTTP_HOST`, `MCP_HTTP_PORT`, `MCP_HTTP_AL
 | `get_events` | read | the ledger newest first (raise, tax, tap, redeem, observation, state, team) |
 | `simulate_transaction` | read | eth_call any transaction and decode the Covenant revert reason |
 | `commit` | write | `contribute()` with BNB attached; pro-rata preview |
-| `finalize` | write | `finalize()` after the deadline, with the 16.7M gas limit the launch needs |
+| `finalize` | write | `finalize()` after the deadline, with the 15M gas limit the launch needs (Flap's cap) |
 | `claim_tokens`, `claim_refund` | write | take the sale allocation; take the unaccepted (or failed-raise) BNB back |
 | `redeem` | write | approval prerequisite + `redeem(amount, minOut)`; only in EXIT_ROUND or WIND_DOWN |
 | `poke`, `declare_abandoned`, `release_team`, `deposit_revenue` | write, anyone | observe the price, open a silent team's treasury, release unlocked team tokens, add revenue |
@@ -85,7 +85,7 @@ and a Host allowlist on loopback. `MCP_HTTP_HOST`, `MCP_HTTP_PORT`, `MCP_HTTP_AL
 
 ```json
 {
-  "unsignedTransaction": { "chainId": 97, "to": "0x…", "data": "0x…", "value": "0", "from": "0x…|null", "gas": "16700000 (finalize only)", "functionName": "…", "description": "…", "prerequisites": [] },
+  "unsignedTransaction": { "chainId": 97, "to": "0x…", "data": "0x…", "value": "0", "from": "0x…|null", "gas": "15000000 (finalize only)", "functionName": "…", "description": "…", "prerequisites": [] },
   "simulation": { "ok": true, "from": "0x…", "blockNumber": "…", "gasEstimate": "…", "error": null, "errorArgs": [], "note": "…" },
   "howToSend": "…",
   "note": "…"
@@ -122,7 +122,7 @@ server, a private key: sign in your own wallet.
 
 **Before funding a raise.** `get_raise` (open? how full? when does it close?) → `get_terms` → `get_issuer` (if `agentId` is set, check `ownerMatchesTeam` and the reputation summary, counted only from covenant vaults) → `get_downside` with `tokens` set to your expected allocation: the worst case is `redeemNowWei` if a round opens, falling along `floorPath` as the team spends. Then `commit {covenant, amount_bnb, from}` and check `simulation.ok`.
 
-**After the deadline.** `get_actions` shows `finalize` available to anyone; `finalize` returns the transaction with `gas: "16700000"`. Afterwards `claim_tokens` (launched) or `claim_refund` (failed, or oversubscribed).
+**After the deadline.** `get_actions` shows `finalize` available to anyone; `finalize` returns the transaction with `gas: "15000000"`. Afterwards `claim_tokens` (launched) or `claim_refund` (failed, or oversubscribed).
 
 **Holding through a slide.** `list_covenants {under_book_only: true}` → `get_status` shows `exit.streakSeconds` of `exit.targetSeconds`. If no round is open there is nothing to do but `poke` (anyone may, once per interval; `get_actions` says when). When `state` is `EXIT_ROUND` or `WIND_DOWN`, compare `redeemNowWei` with `sellOnPoolWei` from `get_downside`; if redeeming pays more, `redeem {covenant, wallet}` and sign the approval, then the redeem.
 

@@ -8,6 +8,7 @@ import {IPortalTypes, IPortal} from "src/flap/IPortal.sol";
 import {DirectLaunchVaultFactoryBase} from "src/flap/DirectLaunchVaultFactoryBase.sol";
 import {Distribution, DistributionTarget} from "src/flap/Distribution.sol";
 import {VaultDataSchema, FieldDescriptor, FactoryPolicy} from "src/flap/IVaultSchemas.sol";
+import {LaunchVaultAddresses} from "src/flap/LaunchVaultAddresses.sol";
 
 import {Terms, VaultEnv, ICovenantLauncher} from "src/vault/CovenantTypes.sol";
 import {CovenantVault} from "src/vault/CovenantVault.sol";
@@ -27,6 +28,8 @@ import {CovenantVault} from "src/vault/CovenantVault.sol";
 ///              supply, salt, pool tokens, pool BNB, tax rates and duration, no creator buy;
 ///           5. quote is native BNB and the single fee slot is VAULT at 10000 bps;
 ///           6. `distribution.target == VAULT`, `amount == A + E` and `poolToken + amount == totalSupply`.
+///         On BNB Chain and BNB testnet the Portal, the Guardian and the Token Dock router given at construction must
+///         be Flap's own (`LaunchVaultAddresses`), so no deployment there can name others; every vault inherits them.
 ///         Upgrades: Guardian only, through the beacon. No other privileged function.
 contract CovenantVaultFactory is DirectLaunchVaultFactoryBase {
     address public immutable beacon;
@@ -49,6 +52,8 @@ contract CovenantVaultFactory is DirectLaunchVaultFactoryBase {
     error FeeSlotsMismatch();
     error LaunchParamsMismatch(uint256 field);
     error DistributionMismatch();
+    /// @dev On BNB Chain or BNB testnet, `given` is not Flap's address for that role.
+    error NotFlapAddress(address given, address expected);
 
     event FlapVaultImplementationUpgraded(address implementation);
     event CovenantVaultCreated(address indexed vault, address indexed token, address indexed launcher);
@@ -58,6 +63,12 @@ contract CovenantVaultFactory is DirectLaunchVaultFactoryBase {
             revert ZeroAddress();
         }
         if (env_.dockRouter == address(0) || env_.oracle == address(0)) revert ZeroAddress();
+        // On Flap's chains (a local fork of BNB Chain reports 56 too) these are Flap's, never a deployer's choice.
+        if (block.chainid == 56 || block.chainid == 97) {
+            _expect(env_.hub, LaunchVaultAddresses.hub());
+            _expect(env_.guardian, LaunchVaultAddresses.guardian());
+            _expect(env_.dockRouter, LaunchVaultAddresses.tokenDockRouter());
+        }
         launcherFactory = launcherFactory_;
         hub = env_.hub;
         guardian = env_.guardian;
@@ -66,6 +77,10 @@ contract CovenantVaultFactory is DirectLaunchVaultFactoryBase {
         reputationRegistry = env_.reputation;
         identityRegistry = env_.identity;
         beacon = address(new UpgradeableBeacon(address(this), address(new CovenantVault())));
+    }
+
+    function _expect(address given, address expected) private pure {
+        if (given != expected) revert NotFlapAddress(given, expected);
     }
 
     function _getHub() internal view override returns (address) {

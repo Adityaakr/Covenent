@@ -41,7 +41,7 @@ library CovenantProfiles {
         p.maxStep = 60;
         p.staleAfter = 1 hours;
         p.antiFarmerDuration = 1 days;
-        p.requireGraduation = false; // creation floor only: a demo token may launch without graduating
+        p.requireGraduation = false; // Flap's creation floor with the 1.5x margin: a demo token launches, it may not graduate
         p.launchRetryWindow = 10 minutes;
     }
 

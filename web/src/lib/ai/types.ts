@@ -17,7 +17,7 @@ export interface UnsignedTx {
   from: Address | null;
   functionName: string;
   description: string;
-  /** explicit gas limit when the call needs one (finalize() refuses less than 15M) */
+  /** explicit gas limit when the call needs one (finalize() is sent with 15M; it needs 12M left at its check) */
   gas?: string;
 }
 

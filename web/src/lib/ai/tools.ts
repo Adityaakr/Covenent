@@ -22,8 +22,8 @@ import type { CovenantView, Terms } from "@/lib/covenant/types";
 import type { AiContext } from "./context";
 import type { ChoiceSet, Proposal, ProposalKind, Simulation, UnsignedTx } from "./types";
 
-/** finalize() refuses less than 15M gas; BNB testnet refuses more than 2^24 per transaction (lib/data/actions.ts). */
-export const FINALIZE_GAS = 16_700_000n;
+/** finalize() is sent with 15M gas (Flap's cap); the launcher needs 12M left at its check (lib/chain/gas.ts). */
+export const FINALIZE_GAS = 15_000_000n;
 /** Flap's testnet Portal refuses a pool unless seed x 700 >= 750 / pool share (docs/DEPLOY.md, measured 26 Nov 2026). */
 export const FLAP_TESTNET_SEED_PER_SHARE = 750 / 700;
 const REVENUE_TAG = keccak256(toHex("issuer-revenue"));
@@ -429,7 +429,7 @@ export const TOOLS: ToolDef[] = [
         { label: "Factory", value: demo ? "demo (timers in minutes)" : "production (timers in days)" },
       ];
       const risks = [
-        "Finalizing the raise needs a 16.7M gas limit (the launcher refuses less than 15M); anyone can finalize once the sale closes.",
+        "Finalizing the raise needs a 15M gas limit (the launcher needs 12M left before the launch); anyone can finalize once the sale closes.",
         ...(ctx.chainId === 97 ? [`Flap's testnet floor: the raise must reach ${n6(floor.minRaiseBnb, 4)} BNB with this split, or the launch fails and everyone is refunded.`] : []),
         "Below the minimum raise the covenant ends FAILED and every commitment is refundable.",
         "The rules are fixed at creation: the tap can be lowered, never raised.",
@@ -470,7 +470,7 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "finalize",
-    description: "Close a raise whose sale window has ended (finalize()): launches the Flap pool and funds the vault, or marks it FAILED below the minimum. Anyone can send it; needs a 16.7M gas limit.",
+    description: "Close a raise whose sale window has ended (finalize()): launches the Flap pool and funds the vault, or marks it FAILED below the minimum. Anyone can send it; needs a 15M gas limit.",
     schema: z.object({ covenant: covenantRef }),
     async run(ctx, input) {
       const v = await ctx.find(String(input.covenant));

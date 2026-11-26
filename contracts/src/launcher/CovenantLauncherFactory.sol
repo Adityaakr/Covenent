@@ -7,11 +7,12 @@ import {UpgradeableBeacon} from "solady/utils/UpgradeableBeacon.sol";
 import {LauncherFactoryBase} from "src/flap/LauncherFactoryBase.sol";
 import {LauncherDataSchema, FieldDescriptor} from "src/flap/IVaultSchemas.sol";
 import {IPortalTypes} from "src/flap/IPortal.sol";
+import {LaunchVaultAddresses} from "src/flap/LaunchVaultAddresses.sol";
 
 import {Terms, Profile} from "src/vault/CovenantTypes.sol";
 import {CovenantTermsLib} from "src/launcher/CovenantTermsLib.sol";
 import {CovenantLauncher} from "src/launcher/CovenantLauncher.sol";
-import {IFlapLaunchFloor, IFlapNameScreen} from "src/launcher/IFlapPreflight.sol";
+import {IFlapLaunchFloor, IFlapNameScreen, FlapChain} from "src/launcher/IFlapPreflight.sol";
 import {IERC8004Identity} from "src/agent/IERC8004.sol";
 
 interface IPairedVaultFactory {
@@ -25,18 +26,33 @@ interface IPairedVaultFactory {
 ///
 ///         `newLauncher(creator, abi.encode(Terms))` is Portal-only (`LauncherFactoryBase.onlyHub`). It rejects,
 ///         before deploying, everything Flap's launch would refuse later, so no raise opens that cannot launch:
-///           - non-canonical data and terms outside the design document's bounds (`CovenantTermsLib`);
-///           - a name or symbol on Flap's blocklist (the same `isScamWord` the launch facet calls);
-///           - a minimum raise whose pool seed misses Flap's liquidity floor, read live from the Portal's
-///             `graduationFloorV2` with our vault factory, so Flap's multiplier and BNB price apply. The production
-///             profile needs the graduation floor (twice the creation floor), the demo profile the creation floor;
+///           - non-canonical data and terms outside the design document's bounds (`CovenantTermsLib`), including
+///             Flap's tax rules: the higher of the two rates at least 1% (at most 10%), and a tax duration of at
+///             least the profile's `antiFarmerDuration`;
+///           - a name or symbol on Flap's blocklist: `isScamWord(name, symbol)` on Flap's anti-scam module, the one
+///             the launch facet calls. On Flap's chains the module is fixed (`FlapChain.nameScreen`) and a screen
+///             that does not answer refuses creation too;
+///           - a minimum raise whose pool seed misses Flap's floor with a safety margin: the seed less
+///             `FLOOR_MARGIN_BPS` must still meet the floor in `graduationFloorV2(...)`, read live with the Portal's BNB
+///             price and our vault factory's multiplier. The production profile needs the graduation floor
+///             (`meetsFloor`, twice the creation floor; the token is marked graduated at launch), the demo profile the
+///             creation floor (`meetsCreateFloor`; a demo token launches, it may not graduate). The Portal reads its
+///             price and the multiplier again at finalize, so the margin absorbs a one-third fall in its BNB price (or
+///             a 1.5x higher multiplier) during the sale;
 ///           - an `agentId` the team wallet does not own in the ERC-8004 IdentityRegistry.
-///         The Portal checks the floor and the names again at launch (its quote price or list can change during
-///         the sale); a launch it refuses ends FAILED with every commitment refundable.
+///         The Portal checks the floor and the names again at launch; a launch it refuses ends FAILED with every
+///         commitment refundable.
+///
+///         On BNB Chain and BNB testnet the Portal, the Guardian and the name screen given at construction must be
+///         Flap's own (`LaunchVaultAddresses`, `FlapChain`), so a deployment cannot name others.
 ///
 ///         Two factories exist: the production one and a demo one with the same rules and bounds in minutes.
 ///         The difference is only the `Profile` given at construction. Upgrades: Guardian only, via the beacon.
 contract CovenantLauncherFactory is LauncherFactoryBase {
+    /// @notice The safety margin on Flap's floor, bps of the floor: the minimum raise's pool seed must be at least 1.5x
+    ///         the floor the Portal reports at creation (graduation floor in production, creation floor in the demo).
+    uint256 public constant FLOOR_MARGIN_BPS = 15_000;
+
     address public immutable hub;
     address public immutable guardian;
     address public immutable beacon;
@@ -44,8 +60,8 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
     /// @notice ERC-8004 IdentityRegistry. Zero disables agent-bound covenants (agentId must then be 0).
     address public immutable identityRegistry;
     /// @notice Flap's name and symbol blocklist (`IFlapNameScreen`), the contract the Portal's launch facet calls.
-    ///         The Portal does not expose its address, so it is fixed here per chain. Zero skips the pre-screen
-    ///         (local chains); the Portal still screens at launch.
+    ///         The Portal does not expose its address, so it is fixed per chain (`FlapChain.nameScreen`, checked at
+    ///         construction). Zero skips the pre-screen, on local chains only.
     address public immutable nameScreen;
 
     Profile internal _profile;
@@ -62,9 +78,13 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
     error AgentNotOwnedByTeam(uint256 agentId, address owner, address teamWallet);
     error NoCode(address account);
     error NameOrSymbolBlocked(string word);
+    /// @dev Flap's name screen reverted: creation is refused, since the Portal's launch would call it too.
+    error NameScreenUnavailable();
+    /// @dev On BNB Chain or BNB testnet, `given` is not Flap's address for that role.
+    error NotFlapAddress(address given, address expected);
     error QuoteNotEnabled();
-    /// @dev The minimum raise seeds `seed` BNB; Flap's floor (graduation or creation, per `graduation`) needs
-    ///      `minSeed`, which takes a minimum raise of `minRaise` at these sale and pool shares.
+    /// @dev The minimum raise seeds `seed` BNB; Flap's floor (graduation or creation, per `graduation`) with the safety
+    ///      margin needs `minSeed`, which takes a minimum raise of `minRaise` at these sale and pool shares.
     error PoolSeedBelowFlapFloor(uint256 seed, uint256 minSeed, uint256 minRaise, bool graduation);
 
     event CovenantCreated(
@@ -84,6 +104,12 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
         if (hub_ == address(0) || guardian_ == address(0) || vaultFactory_ == address(0)) {
             revert ZeroAddress();
         }
+        // On Flap's chains every Flap address is Flap's own, never a deployer's choice.
+        if (FlapChain.isFlapChain()) {
+            _expect(hub_, LaunchVaultAddresses.hub());
+            _expect(guardian_, LaunchVaultAddresses.guardian());
+            _expect(nameScreen_, FlapChain.nameScreen());
+        }
         if (IPairedVaultFactory(vaultFactory_).launcherFactory() != address(this)) revert NotPaired(vaultFactory_);
         if (nameScreen_ != address(0) && nameScreen_.code.length == 0) revert NoCode(nameScreen_);
         hub = hub_;
@@ -94,6 +120,10 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
         _profile = profile_;
         profileName = profileName_;
         beacon = address(new UpgradeableBeacon(address(this), address(new CovenantLauncher())));
+    }
+
+    function _expect(address given, address expected) private pure {
+        if (given != expected) revert NotFlapAddress(given, expected);
     }
 
     function _getHub() internal view override returns (address) {
@@ -130,27 +160,36 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
     }
 
     /// @notice The smallest minimum raise this factory accepts for a split, from Flap's live floor: the pool seed
-    ///         `minRaise * poolBps / saleBps` must reach `minSeed`, the BNB worth `floorUsd` at Flap's
-    ///         `quotePriceUsd`. `graduation` says which floor this factory's profile applies.
+    ///         `minRaise * poolBps / saleBps` must reach `minSeed`, the BNB worth `floorUsd` x `marginBps` / 10000 at
+    ///         Flap's `quotePriceUsd`. `graduation` says which floor this factory's profile applies.
     /// @param totalSupply S, tokens with 18 decimals
     /// @param saleBps A / S in bps
     /// @param poolBps P / S in bps
     /// @return minRaise the smallest accepted minimum raise, BNB in wei
     /// @return minSeed the pool seed that takes, BNB in wei
-    /// @return floorUsd Flap's floor for this split, USD 1e18
+    /// @return floorUsd Flap's floor for this split, USD 1e18, before the margin
     /// @return quotePriceUsd the Portal's BNB price, USD 1e18
-    /// @return graduation true when this profile needs the graduation floor
+    /// @return graduation true when this profile needs the graduation floor (production), false the creation floor
+    /// @return marginBps the safety margin on the floor, bps (`FLOOR_MARGIN_BPS`)
     function minRaiseFor(uint256 totalSupply, uint16 saleBps, uint16 poolBps)
         external
         view
-        returns (uint256 minRaise, uint256 minSeed, uint256 floorUsd, uint256 quotePriceUsd, bool graduation)
+        returns (
+            uint256 minRaise,
+            uint256 minSeed,
+            uint256 floorUsd,
+            uint256 quotePriceUsd,
+            bool graduation,
+            uint256 marginBps
+        )
     {
         if (saleBps == 0 || poolBps == 0) revert InvalidData();
         IFlapLaunchFloor.GraduationFloorResultV2 memory r;
         (r, quotePriceUsd) = _floor(0, totalSupply * poolBps / CovenantTermsLib.BPS, totalSupply);
         graduation = _profile.requireGraduation;
+        marginBps = FLOOR_MARGIN_BPS;
         floorUsd = graduation ? r.floorUsdWad : r.createFloorUsdWad;
-        minSeed = _divUp(floorUsd * 1e18, quotePriceUsd);
+        minSeed = _minSeed(floorUsd, quotePriceUsd);
         minRaise = _divUp(minSeed * saleBps, poolBps);
     }
 
@@ -175,27 +214,43 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
     }
 
     /// @dev Flap refuses a launch whose name or symbol is on its blocklist (`BlacklistedNameOrSymbol`), so refuse the
-    ///      raise now rather than at finalize. A screen that cannot answer (reverts) does not block creation: the
-    ///      Portal screens again at launch, and a refused launch refunds every commitment.
+    ///      raise now rather than at finalize. A screen that does not answer refuses creation as well: the Portal's
+    ///      launch calls the same module, so a raise opened past it might never launch.
     function _checkName(Terms memory t) internal view {
         address screen = nameScreen;
-        if (screen == address(0)) return;
-        try IFlapNameScreen(screen).isScamWord(t.name, t.symbol) returns (bool nameBlocked, bool symbolBlocked) {
-            if (nameBlocked) revert NameOrSymbolBlocked(t.name);
-            if (symbolBlocked) revert NameOrSymbolBlocked(t.symbol);
-        } catch {}
+        if (screen == address(0)) return; // local chains only (never on BNB Chain or BNB testnet, see constructor)
+        bool nameBlocked;
+        bool symbolBlocked;
+        try IFlapNameScreen(screen).isScamWord(t.name, t.symbol) returns (bool n, bool s) {
+            (nameBlocked, symbolBlocked) = (n, s);
+        } catch {
+            revert NameScreenUnavailable();
+        }
+        if (nameBlocked) revert NameOrSymbolBlocked(t.name);
+        if (symbolBlocked) revert NameOrSymbolBlocked(t.symbol);
     }
 
-    /// @dev The pool seed of the smallest raise that can settle, `minRaise * P / A`, must clear Flap's floor for this
-    ///      split, read live (BNB price and our vault factory's multiplier are Flap's). A larger raise only adds seed.
+    /// @dev The pool seed of the smallest raise that can settle, `minRaise * P / A`, less the safety margin, must
+    ///      meet Flap's floor for this split as the Portal itself judges it (`meetsFloor` in production,
+    ///      `meetsCreateFloor` in the demo), read live with Flap's BNB price and our vault factory's multiplier. A
+    ///      larger raise only adds seed.
     function _checkFloor(Terms memory t) internal view {
         uint256 seed = t.minRaise * t.poolBps / t.saleBps;
-        (IFlapLaunchFloor.GraduationFloorResultV2 memory r, uint256 price) =
-            _floor(seed, t.totalSupply * t.poolBps / CovenantTermsLib.BPS, t.totalSupply);
+        (IFlapLaunchFloor.GraduationFloorResultV2 memory r, uint256 price) = _floor(
+            seed * CovenantTermsLib.BPS / FLOOR_MARGIN_BPS,
+            t.totalSupply * t.poolBps / CovenantTermsLib.BPS,
+            t.totalSupply
+        );
         bool graduation = _profile.requireGraduation;
         if (graduation ? r.meetsFloor : r.meetsCreateFloor) return;
-        uint256 minSeed = _divUp((graduation ? r.floorUsdWad : r.createFloorUsdWad) * 1e18, price);
+        uint256 minSeed = _minSeed(graduation ? r.floorUsdWad : r.createFloorUsdWad, price);
         revert PoolSeedBelowFlapFloor(seed, minSeed, _divUp(minSeed * t.saleBps, t.poolBps), graduation);
+    }
+
+    /// @dev The smallest seed s whose margin-less part q = floor(s * 10000 / FLOOR_MARGIN_BPS) meets the floor the way
+    ///      the Portal compares it (q * price / 1e18 >= floorUsd): q >= ceil(floorUsd * 1e18 / price).
+    function _minSeed(uint256 floorUsd, uint256 price) internal pure returns (uint256) {
+        return _divUp(_divUp(floorUsd * 1e18, price) * FLOOR_MARGIN_BPS, CovenantTermsLib.BPS);
     }
 
     function _floor(uint256 poolQuote, uint256 poolToken, uint256 totalSupply)
@@ -260,12 +315,12 @@ contract CovenantLauncherFactory is LauncherFactoryBase {
         f[7] = FieldDescriptor("trancheBps", "uint16[]", "Team tranche sizes in bps of supply", 0);
         f[8] = FieldDescriptor("trancheMultiple", "uint16[]", "Tranche price multiples, 200 = 2x the sale price", 0);
         f[9] = FieldDescriptor(
-            "minRaise", "uint256", "Minimum raise in BNB; its pool seed must clear Flap's floor (see minRaiseFor)", 18
+            "minRaise", "uint256", "Minimum raise in BNB; its pool seed must clear 1.5x Flap's floor (minRaiseFor)", 18
         );
         f[10] = FieldDescriptor("cap", "uint256", "Raise cap in BNB", 18);
         f[11] = FieldDescriptor("saleDuration", "uint32", "Sale window in seconds", 0);
-        f[12] = FieldDescriptor("buyTaxBps", "uint16", "Buy tax in bps", 0);
-        f[13] = FieldDescriptor("sellTaxBps", "uint16", "Sell tax in bps", 0);
+        f[12] = FieldDescriptor("buyTaxBps", "uint16", "Buy tax in bps (<= 1000; the higher rate >= 100)", 0);
+        f[13] = FieldDescriptor("sellTaxBps", "uint16", "Sell tax in bps (<= 1000; the higher rate >= 100)", 0);
         f[14] = FieldDescriptor("taxDuration", "uint32", "Tax duration in seconds (30 days to 100 years)", 0);
         f[15] = FieldDescriptor("teamWallet", "address", "Team wallet: receives the tap and unlocked tranches", 0);
         f[16] = FieldDescriptor("tapUsdPer30d", "uint256", "Team budget in USD per 30 days", 18);

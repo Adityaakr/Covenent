@@ -98,7 +98,7 @@ function CovenantCreate() {
   const bnbUsd = rateQ.data ?? undefined;
   const budget = bnbUsd ? tapPer30d(t.tapUsdPer30d, bnbUsd, atCap.T0, t.tapCapBps) : null;
   // Flap's liquidity floor for this split, read live from the Portal through the factory (minRaiseFor): the pool seed
-  // of the minimum raise must clear it, or the factory refuses the terms. Production needs the graduation floor.
+  // of the minimum raise must clear the graduation floor with the factory's safety margin, or the factory refuses it.
   const floorQ = useQuery({
     queryKey: ["flap-floor", src.chainId, factory, t.totalSupply, t.saleBps, t.poolBps],
     enabled: src.mode === "live" && Boolean(src.client),
@@ -124,8 +124,11 @@ function CovenantCreate() {
     if (t.exitFeeBps > BOUNDS.exitFeeBpsMax) p.push([3, "Exit fee must be at most 3%"]);
     if (!demo && (t.heartbeat < BOUNDS.heartbeatMin || t.heartbeat > BOUNDS.heartbeatMax)) p.push([3, "Heartbeat must be 14 to 90 days"]);
     if (!(t.minRaise > 0) || t.cap < t.minRaise) p.push([1, "The cap must be at least the minimum"]);
-    if (floor && t.minRaise < floor.minRaise) p.push([1, `At a ${bps(t.poolBps)} pool, Flap's ${floor.graduation ? "graduation" : "launch"} floor needs a minimum raise of at least ${bnb(floor.minRaise, 2)} BNB`]);
+    if (floor && t.minRaise < floor.minRaise) p.push([1, `At a ${bps(t.poolBps)} pool, Flap's ${floor.graduation ? "graduation" : "launch"} floor${floor.marginBps > 10_000 ? ` with the ${floor.marginBps / 10_000}x safety margin` : ""} needs a minimum raise of at least ${bnb(floor.minRaise, 2)} BNB`]);
     if (t.taxDuration < BOUNDS.taxDurationMin || t.taxDuration > BOUNDS.taxDurationMax) p.push([3, "The tax must run from 30 days to 100 years"]);
+    // Flap's Portal refuses a launch whose higher tax rate is under 1% (InvalidTaxBps), and any rate over 10%
+    if (Math.max(t.buyTaxBps, t.sellTaxBps) < BOUNDS.taxBpsMinOfHigher) p.push([3, "The higher of the buy and sell tax must be at least 1% (Flap refuses less)"]);
+    if (Math.max(t.buyTaxBps, t.sellTaxBps) > BOUNDS.taxBpsMax) p.push([3, "Each tax rate must be at most 10%"]);
     if (!/^0x[0-9a-fA-F]{40}$/.test(t.teamWallet)) p.push([0, "Team wallet must be an address"]);
     if (issuerKind === "agent" && !(Number(agentId) > 0)) p.push([0, "Agent id must be a registered ERC-8004 id"]);
     return p;
@@ -278,7 +281,7 @@ function CovenantCreate() {
                 </div>
                 {floor ? (
                   <div className="tile row between wrap-ok" style={{ gap: 12 }}>
-                    <span className="t-s muted w5" style={{ flex: "1 1 260px" }}>Flap&apos;s {floor.graduation ? "graduation" : "launch"} floor at a <span className="num">{bps(t.poolBps)}</span> pool: a pool seed of <span className="num">{bnb(floor.minSeed, 2)}</span> BNB (<span className="num">{usd(floor.floorUsd)}</span> at Flap&apos;s <span className="num">{usd(floor.priceUsd)}</span> per BNB). {floor.graduation ? "At the graduation floor Flap marks the token graduated at launch." : "The demo factory only needs the launch floor; the token may launch without graduating."}</span>
+                    <span className="t-s muted w5" style={{ flex: "1 1 260px" }}>Flap&apos;s {floor.graduation ? "graduation" : "launch"} floor at a <span className="num">{bps(t.poolBps)}</span> pool is <span className="num">{usd(floor.floorUsd)}</span> of pool seed at Flap&apos;s <span className="num">{usd(floor.priceUsd)}</span> per BNB.{floor.marginBps > 10_000 ? <> The factory asks for <span className="num">{floor.marginBps / 10_000}x</span> that, a pool seed of <span className="num">{bnb(floor.minSeed, 2)}</span> BNB, because Flap reads its BNB price and multiplier again at finalize.</> : <> A pool seed of <span className="num">{bnb(floor.minSeed, 2)}</span> BNB.</>} {floor.graduation ? "At the graduation floor Flap marks the token graduated at launch." : "This factory only needs the launch floor; the token may launch without graduating."}</span>
                     <span className="t-s ink w5 num">Minimum raise ≥ {bnb(floor.minRaise, 2)} BNB</span>
                   </div>
                 ) : src.mode === "live" && floorQ.isFetching ? <p className="t-xs muted w5">Reading Flap&apos;s floor for this split…</p> : null}
@@ -313,7 +316,7 @@ function CovenantCreate() {
                   <Field label="Heartbeat" hint={demo ? "minutes" : "days, 14 to 90"}><Num value={t.heartbeat / UNIT} onChange={(n) => set("heartbeat", n * UNIT)} unit={unit} /></Field>
                   <Field label="Trading tax runs for" hint="years after launch, 30 days to 100"><Num value={+taxYears.toFixed(4)} onChange={(n) => set("taxDuration", Math.round(n * 365 * DAY))} unit="years" /></Field>
                 </div>
-                <Note icon="coins"><b>Trading tax: {bps(t.buyTaxBps)} buy, {bps(t.sellTaxBps)} sell, for {longSpan(t.taxDuration)} after launch.</b> It is the treasury&apos;s revenue stream. Flap&apos;s tax processor sells the collected tax in chunks of about {usd(FLAP_TAX.chunkUsd)}, at most once every {FLAP_TAX.minGapSeconds} seconds, on sells into the main pool, and Flap&apos;s protocol fee takes about {bps(FLAP_TAX.protocolFeeBps)} first, so the vault receives about {bps(10_000 - FLAP_TAX.protocolFeeBps)}. When the tax ends, the treasury grows only from revenue the {issuerKind === "agent" ? "agent" : "team"} sends to the vault.</Note>
+                <Note icon="coins"><b>Trading tax: {bps(t.buyTaxBps)} buy, {bps(t.sellTaxBps)} sell, for {longSpan(t.taxDuration)} after launch.</b> It is the treasury&apos;s revenue stream. Flap&apos;s tax processor sells the collected tax in chunks of about {usd(FLAP_TAX.chunkUsd)}, at most once every {FLAP_TAX.minGapSeconds} seconds, on sells into the main pool, and Flap&apos;s protocol fee takes about {bps(FLAP_TAX.protocolFeeBps)} first, so the vault receives about {bps(10_000 - FLAP_TAX.protocolFeeBps)}. When the tax ends, the tap is paid only from the treasury, so book value only falls unless the {issuerKind === "agent" ? "agent" : "team"} deposits revenue into the vault. The higher of the two rates must be at least 1%: Flap refuses less.</Note>
                 <Note tone="good"><b>Exit rule, as fixed after review.</b> The streak decays instead of resetting (an hour above book takes an hour off), compares on-chain numbers only, and never waits on pool depth or Atlas. Depth and Atlas guard team unlocks.</Note>
               </>
             ) : (

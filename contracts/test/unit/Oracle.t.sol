@@ -36,6 +36,10 @@ contract ObservationSink {
         last = o;
         ++count;
     }
+
+    function lastObservation() external view returns (Observation memory) {
+        return last;
+    }
 }
 
 /// @notice Atlas report fixtures (signature, staleness, drift, replay), the push-feed fallback, the TWAP and the
@@ -61,7 +65,7 @@ contract OracleTest is CovenantTestBase {
     }
 
     function _last() internal view returns (Observation memory o) {
-        (o.elapsed, o.twapBnb, o.bnbUsd, o.trusted, o.strict, o.atlas, o.deep, o.spotBnb) = sink.last();
+        o = sink.lastObservation();
     }
 
     // ── Atlas pull reports ─────────────────────────────────────────────────
@@ -160,20 +164,18 @@ contract OracleTest is CovenantTestBase {
 
         feed.set(601_25000000, block.timestamp - 10 minutes);
         o2.poke(address(s2));
-        (,, uint256 usd,,, bool atlas,,) = s2.last();
-        assertTrue(atlas);
-        assertEq(usd, 601.25 ether, "8 decimals scaled to 18");
+        Observation memory ob = s2.lastObservation();
+        assertTrue(ob.atlas);
+        assertEq(ob.bnbUsd, 601.25 ether, "8 decimals scaled to 18");
 
         vm.warp(block.timestamp + 2 hours);
         o2.poke(address(s2));
-        (,, usd,,, atlas,,) = s2.last();
-        assertFalse(atlas, "a push answer older than its max age does not count");
+        assertFalse(s2.lastObservation().atlas, "a push answer older than its max age does not count");
 
         feed.set(-1, block.timestamp);
         vm.warp(block.timestamp + 1 hours);
         o2.poke(address(s2));
-        (,,,,, atlas,,) = s2.last();
-        assertFalse(atlas, "a non-positive answer does not count");
+        assertFalse(s2.lastObservation().atlas, "a non-positive answer does not count");
     }
 
     // ── TWAP and the gate ──────────────────────────────────────────────────

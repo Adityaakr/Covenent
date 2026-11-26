@@ -32,8 +32,10 @@ export interface PlanInput {
   raise: RaiseView | null;
   sheet: CovenantSheet | null;
   position: Position | null;
-  /** CovenantOracle.nextPokeAt(vault), when the oracle has it */
+  /** CovenantOracle.nextPokeAt(vault), when the oracle has it: the next poke without a rate */
   nextPokeAt: number | null;
+  /** CovenantOracle.nextRatePokeAt(vault), when the oracle has it: the next poke with a rate (plain pokes never move it) */
+  nextRatePokeAt?: number | null;
   /** CovenantVault.unlockedUnreleased(), wei */
   unlockedUnreleasedWei: string | null;
 }
@@ -130,7 +132,9 @@ export function planActions(p: PlanInput): { actions: ActionOption[]; summary: s
             : 'Redemption is open, but this wallet holds no tokens.',
       ...(redeemOpen && held > 0n && p.wallet ? { args: { ...c, wallet: p.wallet } } : {}),
     });
-    const pokeReady = live && (p.nextPokeAt === null || p.now >= p.nextPokeAt);
+    const plainReady = p.nextPokeAt === null || p.now >= p.nextPokeAt;
+    const rateReady = p.nextRatePokeAt !== undefined && p.nextRatePokeAt !== null && p.now >= p.nextRatePokeAt;
+    const pokeReady = live && (plainReady || rateReady);
     out.push({
       tool: 'poke',
       available: pokeReady,
@@ -139,9 +143,11 @@ export function planActions(p: PlanInput): { actions: ActionOption[]; summary: s
         ? terminal
           ? 'The covenant is wound down: observations no longer change anything.'
           : `No observations in state ${state}.`
-        : pokeReady
+        : plainReady
           ? 'A price observation can be recorded now; it steps the exit streak (and, with a fresh BNB/USD rate, the tap rate and unlocks).'
-          : `The oracle accepts the next poke ${when(p.nextPokeAt!, p.now)}.`,
+          : pokeReady
+            ? `A poke with a BNB/USD rate (Atlas report or fresh push round) can be recorded now; a plain poke waits until ${when(p.nextPokeAt!, p.now)}.`
+            : `The oracle accepts the next poke ${when(p.nextPokeAt!, p.now)}.`,
     });
     out.push({
       tool: 'declare_abandoned',

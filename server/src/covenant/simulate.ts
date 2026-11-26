@@ -9,7 +9,7 @@ const ERROR_HINTS: Record<string, string> = {
   NotRaising: 'the raise was already finalized',
   ZeroContribution: 'the commitment is zero',
   LaunchInProgress: 'the launch is in progress',
-  InsufficientGas: 'not enough gas: finalize needs the full gas limit attached (15M+)',
+  InsufficientGas: 'not enough gas: finalize needs the full 15M gas limit attached (12M left at its check)',
   RefundUnavailable: 'refunds open only after the raise is finalized',
   NothingToRefund: 'this wallet has nothing to refund (nothing unaccepted, or already refunded)',
   NothingToClaim: 'nothing to claim for this wallet (no allocation, already claimed, or nothing accrued)',

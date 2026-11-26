@@ -142,7 +142,7 @@ describe('Covenant MCP server', () => {
     expect(results.declare_abandoned!.simulation.ok).toBe(false);
     expect(results.declare_abandoned!.note).toMatch(/Not due/);
     expect(results.finalize!.unsignedTransaction.gas).toBe(FINALIZE_GAS.toString());
-    expect(results.finalize!.howToSend).toMatch(/gas limit 16700000/);
+    expect(results.finalize!.howToSend).toMatch(/gas limit 15000000/);
     expect(results.commit!.simulation.from).toBe(addr(KEYS.buyer3));
   });
 

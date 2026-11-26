@@ -147,7 +147,7 @@ contract Demo is Script, StackBuilder, LocalJson {
     function _finalize() internal {
         CovenantLauncher l = CovenantLauncher(payable(L.demo.launcher));
         vm.startBroadcast(_key(IDX_KEEPER));
-        l.finalize{gas: 20_000_000}();
+        l.finalize{gas: l.FINALIZE_GAS_LIMIT()}(); // 15M, Flap's cap; the launcher needs 12M left at its check
         vm.stopBroadcast();
         require(l.state() == State.ACTIVE, "the launch did not go through");
         L.demo.vault = l.vault();

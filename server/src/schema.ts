@@ -194,7 +194,7 @@ const UnsignedTxBase = z.object({
   from: Address.nullable(),
   functionName: z.string(),
   description: z.string(),
-  /** gas limit to send with, decimal; set only when an estimate is not enough (finalize needs 15M+ before the launch) */
+  /** gas limit to send with, decimal; set only when an estimate is not enough (finalize is sent with 15M; it needs 12M left before the launch) */
   gas: Wei.optional(),
 });
 export const UnsignedTx = UnsignedTxBase.extend({

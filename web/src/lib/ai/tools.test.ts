@@ -76,12 +76,11 @@ describe("Ask AI transaction builders", () => {
     expect(nobody.txs[0]!.simulation.ok).toBeNull();
   });
 
-  it("finalize: carries a gas limit of at least 15.5M", async () => {
+  it("finalize: carries Flap's 15M gas limit", async () => {
     const v = view({ raise: { committed: 4, contributors: 3, deadline: 1_799_999_000, finalized: false } });
     const p = await proposal("finalize", { covenant: "SCOUT" }, context([v]));
     expect(BigInt(p.txs[0]!.gas!)).toBe(FINALIZE_GAS);
-    expect(FINALIZE_GAS).toBeGreaterThanOrEqual(15_500_000n);
-    expect(FINALIZE_GAS).toBeLessThanOrEqual(16_777_216n);
+    expect(FINALIZE_GAS).toBe(15_000_000n);
   });
 
   it("redeem: approves exactly the amount, never unlimited, then redeem(amount, minOut)", async () => {

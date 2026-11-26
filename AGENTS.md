@@ -96,8 +96,8 @@ The server must allow the web origin in `CORS_ORIGINS`.
 - **Vendored code is unchanged.** Do not edit `contracts/src/flap/` or `contracts/src/vendor/`. Wrap or extend instead.
 - **Flap constraints.** The token address must end in `7777`: the web mines the salt in a worker
   (`web/src/lib/chain/salt.worker.ts`). The launcher's `description()` must stay under 4 KB, because past that the
-  Portal stores an empty string. `finalize()` needs at least 15M gas. In fork tests, use plain numbered accounts, not
-  `makeAddr`.
+  Portal stores an empty string. `finalize()` is sent with a 15M gas limit (Flap's cap; it needs 12M left at its
+  check). In fork tests, use plain numbered accounts, not `makeAddr`.
 - **Fork log ranges.** On a fork, read logs from `deployedAtBlock + 1`. Ranges at or below the fork block hit the
   upstream public RPC.
 - **Next.js 16 has breaking changes.** Read the relevant guide in `web/node_modules/next/dist/docs/` before writing

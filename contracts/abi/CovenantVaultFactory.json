@@ -568,6 +568,22 @@
   },
   {
     "type": "error",
+    "name": "NotFlapAddress",
+    "inputs": [
+      {
+        "name": "given",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "expected",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "NotFromLauncherFactory",
     "inputs": [
       {
@@ -623,6 +639,17 @@
         "name": "expected",
         "type": "uint8",
         "internalType": "enum DistributionTarget"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedChain",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ]
   },

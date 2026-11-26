@@ -57,6 +57,9 @@ export const BOUNDS = {
   minPokeGap: HOUR,
   taxDurationMin: 30 * DAY,
   taxDurationMax: 100 * 365 * DAY,
+  // Flap's Portal refuses a launch whose higher tax rate is under 1% (InvalidTaxBps) and any rate over 10%
+  taxBpsMinOfHigher: 100,
+  taxBpsMax: 1000,
 };
 
 /** Flap's tax processing, as Flap describes it and as read on chain 97 (26 Nov 2026), for honest tax copy. */

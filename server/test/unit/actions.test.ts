@@ -41,7 +41,7 @@ describe('planActions', () => {
     const { by, summary } = plan({ raise: raise('RAISING', now - 1) });
     expect(by.commit!.available).toBe(false);
     expect(by.finalize!).toMatchObject({ available: true, signer: 'anyone' });
-    expect(by.finalize!.why).toMatch(/16700000 gas/);
+    expect(by.finalize!.why).toMatch(/15000000 gas/);
     expect(summary).toMatch(/finalize \(anyone\)/);
   });
   it('a failed raise: refunds', () => {
@@ -59,6 +59,14 @@ describe('planActions', () => {
     const team = plan({ sheet: sheet('ACTIVE'), wallet: TEAM, position: pos({ wallet: TEAM, isTeamWallet: true }) });
     expect(team.by.claim_tap!.available).toBe(true);
     expect(team.by.heartbeat!.available).toBe(true);
+  });
+  it('Flap re-review F5: a plain poke just landed, a poke with a rate can still go now', () => {
+    const { by } = plan({ sheet: sheet('ACTIVE'), nextPokeAt: now + 3_000, nextRatePokeAt: now - 1 });
+    expect(by.poke!.available).toBe(true);
+    expect(by.poke!.why).toMatch(/with a BNB\/USD rate/);
+    expect(by.poke!.why).toMatch(/plain poke waits/);
+    const neither = plan({ sheet: sheet('ACTIVE'), nextPokeAt: now + 30, nextRatePokeAt: now + 20 });
+    expect(neither.by.poke!.available).toBe(false);
   });
   it('exit round with tokens: redeem', () => {
     const { by } = plan({ sheet: sheet('EXIT_ROUND'), position: pos({ tokenBalanceWei: '100' }) });

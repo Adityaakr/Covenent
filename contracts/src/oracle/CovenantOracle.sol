@@ -28,9 +28,17 @@ interface IAggregatorV3 {
 ///         Trust gate, with the three exit-rule fixes:
 ///           trusted = the pool TWAP is valid. That is all the exit streak needs: pool price and book value are
 ///                     both on-chain, so the exit works with no Atlas report and in a pool of any depth.
-///           strict  = trusted-or-first AND a verified fresh BNB/USD AND the pool's BNB reserve is at least half its
-///                     launch seed. Only strict observations price the dollar tap and move the unlock counters.
+///           strict  = a valid rate window (or the first poke) AND a verified fresh BNB/USD AND the pool is deep: its
+///                     BNB reserve at the window's TWAP on its own invariant, sqrt(k x TWAP), is at least half its launch
+///                     seed (a swap cannot lower k, so a same-block sale cannot fake a shallow pool). Only strict
+///                     observations add unlock time.
 ///         Atlas status (Consensus Score) is not readable on-chain yet, so it is not part of the gate.
+///
+///         Poke gap (Flap re-review F5). Two points per vault: the last poke of any kind, and the last poke that
+///         carried a verified rate. A poke without a rate needs `minPokeGap` since the last poke of any kind; a poke
+///         with a rate needs `minPokeGap` since the last poke with a rate only. So nobody can use up the slot of a
+///         report-carrying poke by poking without one first, and every unlock window is at least the gap long (a
+///         one-block price move cannot fill it).
 contract CovenantOracle is PullOracleConsumerStandard {
     /// @notice Atlas feed id of BNB/USD, from Atlas onboarding.
     bytes4 public immutable BNB_USD_FEED;
@@ -51,6 +59,16 @@ contract CovenantOracle is PullOracleConsumerStandard {
     }
 
     mapping(address vault => Point) public points;
+
+    /// @notice F5: the last poke of each vault that carried a verified rate (or its first poke): the start of the
+    ///         next unlock window and the gap a report-carrying poke waits for.
+    struct RatePoint {
+        uint256 cumulative;
+        uint32 timestamp;
+        uint64 pokedAt;
+    }
+
+    mapping(address vault => RatePoint) public ratePoints;
 
     event Poked(
         address indexed vault,
@@ -107,27 +125,43 @@ contract CovenantOracle is PullOracleConsumerStandard {
         Point memory pt = points[vault];
         PairTwap.Reading memory r = PairTwap.read(pair, token);
 
+        uint64 ts;
+        (o.atlas, o.bnbUsd, ts) = _readBnbUsd();
+
         if (pt.initialized) {
+            RatePoint memory rp = ratePoints[vault];
             uint32 elapsed;
+            uint32 rateElapsed;
             unchecked {
                 elapsed = r.timestamp - pt.timestamp;
+                rateElapsed = r.timestamp - rp.timestamp;
             }
-            if (elapsed < minGap) revert TooSoon(uint256(pt.pokedAt) + minGap);
+            if (o.atlas) {
+                // F5: a poke with a verified rate waits only for the previous poke with one.
+                if (rateElapsed < minGap) revert TooSoon(uint256(rp.pokedAt) + minGap);
+                o.rateElapsed = rateElapsed;
+                o.rateTwapBnb = PairTwap.average(rp.cumulative, r.cumulative, rateElapsed);
+            } else if (elapsed < minGap) {
+                revert TooSoon(uint256(pt.pokedAt) + minGap);
+            }
             o.elapsed = elapsed;
-            o.twapBnb = PairTwap.average(pt.cumulative, r.cumulative, elapsed);
+            o.twapBnb = PairTwap.average(pt.cumulative, r.cumulative, elapsed); // 0 in the same second: untrusted
             o.trusted = o.twapBnb > 0;
         }
         o.spotBnb = PairTwap.spot(r);
-        o.deep = r.quoteReserve * 2 >= seed;
+        // Depth at the time-weighted price on the pool's invariant, so a same-block sale cannot fake a shallow pool
+        // (re-review NEW-1); the first poke has no window and reads the reserve itself.
+        o.deep = _depth(r, o.rateTwapBnb > 0 ? o.rateTwapBnb : o.twapBnb) * 2 >= seed;
 
-        uint64 ts;
-        (o.atlas, o.bnbUsd, ts) = _readBnbUsd();
         if (o.atlas) {
             if (ts < pt.atlasTimestamp) revert ReplayedReport(ts, pt.atlasTimestamp);
             pt.atlasTimestamp = ts;
         }
-        o.strict = o.atlas && o.deep && (o.trusted || !pt.initialized);
+        o.strict = o.atlas && o.deep && (o.rateTwapBnb > 0 || !pt.initialized);
 
+        if (o.atlas || !pt.initialized) {
+            ratePoints[vault] = RatePoint(r.cumulative, r.timestamp, uint64(block.timestamp));
+        }
         pt.cumulative = r.cumulative;
         pt.timestamp = r.timestamp;
         pt.pokedAt = uint64(block.timestamp);
@@ -143,7 +177,7 @@ contract CovenantOracle is PullOracleConsumerStandard {
         return ok ? p : 0;
     }
 
-    /// @notice The earliest time `vault` can be poked again (0 if never poked).
+    /// @notice The earliest time `vault` can be poked again without a rate (0 if never poked).
     /// @param vault a covenant vault
     /// @return unix seconds
     function nextPokeAt(address vault) external view returns (uint256) {
@@ -151,6 +185,16 @@ contract CovenantOracle is PullOracleConsumerStandard {
         if (!pt.initialized) return 0;
         (,,, uint32 minGap,) = ICovenantVaultOracle(vault).oracleConfig();
         return uint256(pt.pokedAt) + minGap;
+    }
+
+    /// @notice The earliest time `vault` can be poked with a verified rate (pull report or fresh push round), 0 if
+    ///         never poked. Pokes without a rate do not move it (F5).
+    /// @param vault a covenant vault
+    /// @return unix seconds
+    function nextRatePokeAt(address vault) external view returns (uint256) {
+        if (!points[vault].initialized) return 0;
+        (,,, uint32 minGap,) = ICovenantVaultOracle(vault).oracleConfig();
+        return uint256(ratePoints[vault].pokedAt) + minGap;
     }
 
     /// @notice What a poke would see right now, without an Atlas rate: TWAP since the last poke, spot, depth.
@@ -175,8 +219,13 @@ contract CovenantOracle is PullOracleConsumerStandard {
             twapBnb = PairTwap.average(pt.cumulative, r.cumulative, elapsed);
         }
         spotBnb = PairTwap.spot(r);
-        deep = r.quoteReserve * 2 >= seed;
+        deep = _depth(r, twapBnb) * 2 >= seed;
         quoteReserve = r.quoteReserve;
+    }
+
+    /// @dev The pool's BNB reserve at `twap` on its invariant (`PairTwap.quoteAt`), or the reserve itself without one.
+    function _depth(PairTwap.Reading memory r, uint256 twap) internal pure returns (uint256) {
+        return twap == 0 ? r.quoteReserve : PairTwap.quoteAt(r, twap);
     }
 
     /// @dev Pull report first (the signed payload trails the 36 bytes of `poke(address)`), push feed second.

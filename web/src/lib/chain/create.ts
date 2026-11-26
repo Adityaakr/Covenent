@@ -105,17 +105,19 @@ export interface FlapFloor {
   /** Flap's floor in USD and the BNB price the Portal uses for it */
   floorUsd: number;
   priceUsd: number;
-  /** true: the graduation floor (production); false: the launch floor (demo factory) */
+  /** true: the graduation floor (every factory since Flap's re-review); false: the launch floor (older demo factory) */
   graduation: boolean;
+  /** the factory's safety margin on the floor, bps (15000 = 1.5x); 10000 for factories without one */
+  marginBps: number;
 }
 
 /** The factory's minRaiseFor view: Flap's live floor for a split, read from the Portal through the factory. */
 export async function flapFloor(client: PublicClient, tg: CreateTargets, totalSupply: number, saleBps: number, poolBps: number): Promise<FlapFloor | null> {
   if (!tg.factory || !tg.factoryAbi || !fn(tg.factoryAbi, "minRaiseFor") || saleBps <= 0 || poolBps <= 0) return null;
   try {
-    const r = (await client.readContract({ address: tg.factory, abi: tg.factoryAbi, functionName: "minRaiseFor", args: [parseEther(String(totalSupply)), saleBps, poolBps] })) as readonly [bigint, bigint, bigint, bigint, boolean];
+    const r = (await client.readContract({ address: tg.factory, abi: tg.factoryAbi, functionName: "minRaiseFor", args: [parseEther(String(totalSupply)), saleBps, poolBps] })) as readonly [bigint, bigint, bigint, bigint, boolean, bigint?];
     const n = (x: bigint) => Number(formatEther(x));
-    return { minRaise: n(r[0]), minSeed: n(r[1]), floorUsd: n(r[2]), priceUsd: n(r[3]), graduation: r[4] };
+    return { minRaise: n(r[0]), minSeed: n(r[1]), floorUsd: n(r[2]), priceUsd: n(r[3]), graduation: r[4], marginBps: r[5] !== undefined ? Number(r[5]) : 10_000 };
   } catch {
     return null;
   }

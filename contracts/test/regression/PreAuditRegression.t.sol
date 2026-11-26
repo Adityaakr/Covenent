@@ -72,10 +72,14 @@ contract PreAuditRegressionTest is CovenantTestBase {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // M-1: a stale BNB/USD stops pricing the tap after `staleAfter`
+    // M-1: withholding reports can no longer keep a stale BNB/USD pricing the tap
     // ═════════════════════════════════════════════════════════════════════
 
-    function test_M1_staleBnbUsd_expires_andStopsPricingTheTap() public {
+    /// @dev The report's attacker poked without a rate to keep the $600 rate while BNB rose to $1,200. Since Flap's
+    ///      re-review (F5) a report-carrying poke waits only for the previous report-carrying poke, so the keeper's
+    ///      report lands right after the attacker's bare poke and the tap follows the fresh rate. (With no report at
+    ///      all, the tap keeps the dollar budget at the last verified rate: `FlapReReview.test_F5_*`.)
+    function test_M1_withheldReports_cannotKeepTheRateStale() public {
         (, CovenantVault honest,) = _live("m1-honest");
         (, CovenantVault gamed,) = _live("m1-gamed");
         _poke(honest, BNB_USD);
@@ -90,15 +94,16 @@ contract PreAuditRegressionTest is CovenantTestBase {
         for (uint256 i; i < 4 * 30; ++i) {
             vm.warp(block.timestamp + 6 hours);
             _poke(honest, 1_200 ether);
-            _poke(gamed, 0); // never attach a rate again
+            vm.prank(stranger);
+            oracle.poke(address(gamed)); // the attacker pokes first, without a rate
+            _poke(gamed, 1_200 ether); // the keeper's report still lands, in the same block
         }
         uint256 h = honest.owedTeam() - h0;
         uint256 g = gamed.owedTeam() - g0;
         assertApproxEqRel(h, 2.5 ether, 1e15, "honest: $3,000 at $1,200 over 30 days");
-        // The $600 rate prices the tap only while it is at most 14 days old: 14/30 of 5 BNB, then nothing.
-        assertLe(g, uint256(5 ether) * 14 days / 30 days + 1e15, "the stale rate expired after staleAfter");
-        assertEq(gamed.freshBnbUsd(), 0, "a 30-day-old rate is not fresh");
-        assertEq(honest.freshBnbUsd(), 1_200 ether);
+        // Only the attacker's first bare poke is priced at the old $600 (6 hours of 720): under 1% more.
+        assertApproxEqRel(g, h, 1e16, "the report still prices the tap");
+        assertEq(gamed.lastBnbUsd(), 1_200 ether, "the fresh rate is recorded");
     }
 
     // ═════════════════════════════════════════════════════════════════════

@@ -176,8 +176,6 @@ export interface CovenantView {
   bands: Band[];
   events: FeedEvent[];
   position?: Position;
-  /** the vault's freshBnbUsd(): the last verified BNB/USD if it is still fresh, else 0 (tap paused); null when unknown */
-  freshBnbUsd?: number | null;
   /** the vault's usdSalePrice(): the dollar sale price per token, fixed at launch (unlock multiples are of this); null when unset or unknown */
   usdSalePrice?: number | null;
   /** when Flap's tax token stops charging tax (launch + taxDuration), unix seconds; null before launch or unknown */

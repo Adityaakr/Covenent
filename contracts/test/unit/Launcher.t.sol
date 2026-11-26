@@ -350,8 +350,8 @@ contract LauncherTest is CovenantTestBase {
         f.checkTerms(t);
 
         t = _terms("b10");
-        t.minRaise = 30 ether; // seeds 7.5 BNB, under Flap's graduation floor at a 15% pool (about 14.29 BNB)
-        (uint256 minRaise, uint256 minSeed,,,) = f.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
+        t.minRaise = 30 ether; // seeds 7.5 BNB, under 1.5x Flap's graduation floor at a 15% pool (about 21.43 BNB)
+        (uint256 minRaise, uint256 minSeed,,,,) = f.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
         vm.expectRevert(
             abi.encodeWithSelector(
                 CovenantLauncherFactory.PoolSeedBelowFlapFloor.selector, 7.5 ether, minSeed, minRaise, true
@@ -443,8 +443,9 @@ contract LauncherTest is CovenantTestBase {
     }
 
     /// @dev Flap's floors scale with pool share: $750 x S / P to launch, twice that to graduate (at $700 per BNB:
-    ///      a 15% pool needs 7.14 BNB to launch and 14.29 to graduate, a 5% pool 21.4 and 42.9). The production
-    ///      factory needs the graduation floor, the demo factory the launch floor, both read from the Portal.
+    ///      a 15% pool needs 7.14 BNB to launch and 14.29 to graduate, a 5% pool 21.4 and 42.9). Production needs the
+    ///      graduation floor with the 1.5x safety margin (21.43 BNB at 15%, 64.3 at 5%), the demo factory the creation
+    ///      floor with the same margin, both read from the Portal.
     function test_create_floorScalesWithPoolShare_productionNeedsGraduation() public {
         CovenantLauncherFactory f = prod.launcherFactory;
         Terms memory t;
@@ -466,12 +467,13 @@ contract LauncherTest is CovenantTestBase {
 
         // The minimum minRaiseFor reports is exact: it passes, one wei less does not.
         t = _terms("floor-edge");
-        (uint256 minRaise, uint256 minSeed, uint256 floorUsd, uint256 price, bool graduation) =
+        (uint256 minRaise, uint256 minSeed, uint256 floorUsd, uint256 price, bool graduation, uint256 margin) =
             f.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
         assertTrue(graduation);
+        assertEq(margin, 15_000, "1.5x");
         assertEq(price, 700 ether);
         assertEq(floorUsd, 10_000 ether, "$1,500 / 15%");
-        assertEq(minSeed, 14_285_714_285_714_285_715);
+        assertEq(minSeed, 21_428_571_428_571_428_573, "1.5 x 14.2857 BNB, rounded up");
         assertEq(minRaise, minSeed * 4);
         t.minRaise = minRaise;
         f.checkTerms(t);
@@ -479,22 +481,27 @@ contract LauncherTest is CovenantTestBase {
         _expectFloorRevert(f, t);
         f.checkTerms(t);
 
-        // The demo profile needs only the launch floor: a 15% pool and a 10 BNB seed pass there.
+        // The demo profile needs Flap's creation floor with the same 1.5x margin ($7,500 at 15%, a 10.71 BNB seed): a
+        // 10 BNB seed is refused there too.
         Pair memory demo = _deployPair(address(this), chain, address(oracle), CovenantProfiles.demo(), "demo");
         vm.prank(admin);
         portal.setVaultFactoryMultiplier(address(demo.vaultFactory), 10_000, true);
         t = CovenantProfiles.demoTerms("Covenant Demo", "CVD", _mineSalt(chain.portal, chain.tokenImpl, "d"), team);
         t.minRaise = 40 ether;
+        _expectFloorRevert(demo.launcherFactory, t);
         demo.launcherFactory.checkTerms(t);
-        (,, uint256 demoFloor,, bool demoGraduation) = demo.launcherFactory.minRaiseFor(t.totalSupply, 6_000, 1_500);
+        (uint256 demoMin,, uint256 demoFloor,, bool demoGraduation, uint256 demoMargin) =
+            demo.launcherFactory.minRaiseFor(t.totalSupply, 6_000, 1_500);
         assertFalse(demoGraduation);
-        assertEq(demoFloor, 5_000 ether, "$750 / 15%");
+        assertEq(demoMargin, 15_000);
+        assertEq(demoFloor, 5_000 ether, "the creation floor, $750 / 15%");
+        assertApproxEqAbs(demoMin * 2, minRaise, 10, "half the production minimum");
     }
 
     /// @dev Flap's factory multiplier lowers both floors; the factory reads it live through our vault factory.
     function test_create_floorFollowsFlapsMultiplier() public {
         Terms memory t = _terms("floor-mult");
-        t.minRaise = 40 ether; // seed 10 BNB, $7,000: under $10,000 at 1x, over it at 0.5x
+        t.minRaise = 45 ether; // seed 11.25 BNB, $7,875: under 1.5 x $10,000 at 1x, over 1.5 x $5,000 at 0.5x
         _expectFloorRevert(prod.launcherFactory, t);
         prod.launcherFactory.checkTerms(t);
         vm.prank(admin);
@@ -503,7 +510,7 @@ contract LauncherTest is CovenantTestBase {
     }
 
     function _expectFloorRevert(CovenantLauncherFactory f, Terms memory t) internal {
-        (uint256 minRaise, uint256 minSeed,,, bool graduation) = f.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
+        (uint256 minRaise, uint256 minSeed,,, bool graduation,) = f.minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
         uint256 seed = t.minRaise * t.poolBps / t.saleBps;
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -574,14 +581,15 @@ contract LauncherTest is CovenantTestBase {
 
     // ── audit fixes: finalize gas ──────────────────────────────────────────
 
-    /// @dev The limit every client sends clears the launch guard with room to spare and fits BNB testnet's 2^24 cap.
-    function test_finalizeGasLimit_clearsTheGuard_andTheTestnetCap() public {
+    /// @dev The limit every client sends is Flap's 15M gas cap (vault SDK, flap.sh) and clears the launch guard with
+    ///      room to spare: a transaction with exactly that limit (less the 21,064 intrinsic gas) launches.
+    function test_finalizeGasLimit_clearsTheGuard_withinFlapsCap() public {
         CovenantLauncher l = _create(prod, _terms("gas-limit"));
         _raiseOversubscribed(l);
         vm.warp(l.saleDeadline());
-        assertLe(l.FINALIZE_GAS_LIMIT(), 1 << 24);
-        assertGe(l.FINALIZE_GAS_LIMIT(), l.LAUNCH_GAS_FLOOR() + 1_000_000);
-        l.finalize{gas: l.FINALIZE_GAS_LIMIT()}();
+        assertEq(l.FINALIZE_GAS_LIMIT(), 15_000_000, "Flap's cap on BNB Chain");
+        assertGe(l.FINALIZE_GAS_LIMIT(), l.LAUNCH_GAS_FLOOR() + 2_500_000);
+        l.finalize{gas: l.FINALIZE_GAS_LIMIT() - 21_064}();
         assertEq(uint8(l.state()), uint8(State.ACTIVE));
     }
 

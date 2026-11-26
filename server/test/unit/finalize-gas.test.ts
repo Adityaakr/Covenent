@@ -17,17 +17,17 @@ const LAUNCHER: Address = '0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E';
 const FACTORY: Address = '0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48';
 const KEEPER: Address = '0x749fd77172C2F1d213405B0E1005030e3C739add';
 
-// Flap audit flag 2: finalize() refuses to try the launch with less than 15M gas left, so every caller sends an
-// explicit limit instead of trusting an estimate.
+// Flap audit flag 2 / re-review F7: finalize() refuses to try the launch with less than 12M gas left, so every caller
+// sends an explicit limit instead of trusting an estimate: 15M, the most Flap's vault SDK and flap.sh send.
 describe('finalize gas limit', () => {
-  it('matches the launcher contract and clears the guard under the BNB testnet 2^24 cap', () => {
+  it("matches the launcher contract, clears the guard and stays within Flap's 15M cap", () => {
     const src = readFileSync(path.join(ROOT, 'contracts/src/launcher/CovenantLauncher.sol'), 'utf8');
     const limit = src.match(/FINALIZE_GAS_LIMIT = ([\d_]+);/)?.[1]?.replaceAll('_', '');
     const floor = src.match(/LAUNCH_GAS_FLOOR = ([\d_]+);/)?.[1]?.replaceAll('_', '');
     expect(limit).toBeDefined();
     expect(BigInt(limit!)).toBe(FINALIZE_GAS_LIMIT);
-    expect(FINALIZE_GAS_LIMIT).toBeGreaterThanOrEqual(BigInt(floor!) + 1_000_000n);
-    expect(FINALIZE_GAS_LIMIT).toBeLessThanOrEqual(1n << 24n);
+    expect(FINALIZE_GAS_LIMIT).toBeGreaterThanOrEqual(BigInt(floor!) + 2_500_000n);
+    expect(FINALIZE_GAS_LIMIT).toBeLessThanOrEqual(15_000_000n);
   });
 
   it('the unsigned finalize() the API and MCP hand out carries it', async () => {

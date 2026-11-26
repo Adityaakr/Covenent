@@ -19,7 +19,7 @@ import { useWallet } from "@/components/providers";
 import { useSource } from "./hooks";
 import { planRedeem } from "./redeem-plan";
 
-// finalize() is sent with an explicit gas limit (lib/chain/gas.ts): an estimate can fall short of its 15M launch guard.
+// finalize() is sent with an explicit gas limit (lib/chain/gas.ts): an estimate does not see its 12M launch guard.
 
 export type ActionName =
   | "commit" | "finalize" | "claimTokens" | "claimRefund" | "poke" | "redeem"
@@ -87,7 +87,7 @@ export function useActions(view?: CovenantView) {
       let hash: Hash;
       switch (action) {
         case "commit": hash = await write(view.launcher, L, ["contribute", "commit"], [], wei(arg ?? 0)); break;
-        // finalize() requires a 15M gas floor before the Flap launch (a starved launch must not fail a healthy raise)
+        // finalize() requires 12M gas left before the Flap launch (a starved launch must not fail a healthy raise); 15M sent
         case "finalize": {
           const fn = pickFn(L, "finalize");
           if (!view.launcher || !L || !fn) throw new Error("finalize is not in the loaded ABI");

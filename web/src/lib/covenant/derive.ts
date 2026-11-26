@@ -14,7 +14,9 @@ export function derive(v: CovenantView) {
   const prem = premium(v.poolPrice, book);
   const startRatio = startingFloorRatio(t.saleBps, t.poolBps);
   const salePrice = raise.salePrice;
-  const bnbUsd = v.freshBnbUsd !== undefined && v.freshBnbUsd !== null ? v.freshBnbUsd : v.trust.bnbUsd || 0;
+  // The vault prices the tap at the last verified BNB/USD however old (Flap re-review F5: the dollar budget always
+  // binds; no rate ever, no tap).
+  const bnbUsd = v.trust.bnbUsd || 0;
   const budget = tapPer30d(t.tapUsdPer30d, bnbUsd || null, v.treasury, t.tapCapBps);
   // the vault's own figure (free treasury, i.e. net of owed tap) when the chain gave one
   const cap30 = v.tap.capPer30d ?? tapCap30d(v.treasury, t.tapCapBps);

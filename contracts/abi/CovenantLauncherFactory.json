@@ -124,6 +124,19 @@
   },
   {
     "type": "function",
+    "name": "FLOOR_MARGIN_BPS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "allLaunchers",
     "inputs": [],
     "outputs": [
@@ -511,6 +524,11 @@
         "name": "graduation",
         "type": "bool",
         "internalType": "bool"
+      },
+      {
+        "name": "marginBps",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -912,10 +930,31 @@
   },
   {
     "type": "error",
+    "name": "NameScreenUnavailable",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NoCode",
     "inputs": [
       {
         "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotFlapAddress",
+    "inputs": [
+      {
+        "name": "given",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "expected",
         "type": "address",
         "internalType": "address"
       }
@@ -984,6 +1023,17 @@
     "type": "error",
     "name": "QuoteNotEnabled",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedChain",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

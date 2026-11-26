@@ -82,9 +82,9 @@ export function tapCap30d(treasury: number, capBps: number): number {
 }
 
 /**
- * Tap budget per 30 days in BNB: the dollar budget at the Atlas rate, capped as a share of the treasury.
- * With no fresh verified BNB/USD the tap pauses (the vault has no cap-only fallback: a poker could otherwise reach the
- * cap by withholding reports).
+ * Tap budget per 30 days in BNB: the dollar budget at the Atlas rate, capped as a share of the treasury. The vault uses
+ * the last verified BNB/USD however old (the dollar budget always binds, it never falls back to the cap alone); with no
+ * verified rate ever, nothing accrues.
  */
 export function tapPer30d(tapUsd: number, bnbUsd: number | null, treasury: number, capBps: number): { bnb: number; binding: "usd" | "cap" | "paused" } {
   const cap = tapCap30d(treasury, capBps);

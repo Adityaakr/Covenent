@@ -156,20 +156,39 @@ export class Keeper {
 
   private async lastPokeOnChain(vault: Address): Promise<number | null> {
     const oracle = this.cfg.oracle;
-    if (oracle && !hasFunction(this.svc.abis.oracle, 'lastPokeAt') && hasFunction(this.svc.abis.oracle, 'points')) {
-      // real CovenantOracle: points(vault) -> (cumulative, timestamp, atlasTimestamp, pokedAt, initialized)
+    if (!oracle) return null;
+    // Real CovenantOracle first: points(vault) -> (cumulative, timestamp, atlasTimestamp, pokedAt, initialized). The
+    // merged ABI also names the older lastPokeAt(vault) (fallback entries), so try points before it.
+    if (hasFunction(this.svc.abis.oracle, 'points')) {
       try {
         const p = (await this.client.readContract({ address: oracle, abi: this.svc.abis.oracle, functionName: 'points', args: [vault] })) as readonly unknown[];
         return p[4] ? Number(p[3]) : null;
       } catch {
-        return null;
+        // not the real oracle: fall through
       }
     }
-    if (!oracle || !hasFunction(this.svc.abis.oracle, 'lastPokeAt')) return null;
+    if (!hasFunction(this.svc.abis.oracle, 'lastPokeAt')) return null;
     try {
       return Number(
         await this.client.readContract({ address: oracle, abi: this.svc.abis.oracle, functionName: 'lastPokeAt', args: [vault] }),
       );
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * When the oracle last accepted a poke that carried a verified rate (Flap re-review F5): ratePoints(vault) ->
+   * (cumulative, timestamp, pokedAt). A poke with a rate waits only for the previous one with a rate, so a poke
+   * without a report (anyone's, every hour) must not make this keeper skip its report. null on an oracle without it.
+   */
+  private async lastRatePokeOnChain(vault: Address): Promise<number | null> {
+    const oracle = this.cfg.oracle;
+    if (!oracle || !hasFunction(this.svc.abis.oracle, 'ratePoints')) return null;
+    try {
+      const p = (await this.client.readContract({ address: oracle, abi: this.svc.abis.oracle, functionName: 'ratePoints', args: [vault] })) as readonly unknown[];
+      const at = Number(p[2]);
+      return at > 0 ? at : null;
     } catch {
       return null;
     }
@@ -193,6 +212,18 @@ export class Keeper {
     return hash;
   }
 
+  /** Whether the oracle's push feed has a fresh round right now (CovenantOracle.pushBnbUsd() > 0). */
+  private async pushIsFresh(): Promise<boolean> {
+    const oracle = this.cfg.oracle;
+    if (!oracle || !hasFunction(this.svc.abis.oracle, 'pushBnbUsd')) return false;
+    try {
+      const r = (await this.client.readContract({ address: oracle, abi: this.svc.abis.oracle, functionName: 'pushBnbUsd' })) as bigint;
+      return r > 0n;
+    } catch {
+      return false;
+    }
+  }
+
   async report(): Promise<AtlasReport | null> {
     try {
       return await fetchBnbUsdReport(this.cfg.atlas, this.client);
@@ -206,11 +237,24 @@ export class Keeper {
     const vault = ref.vault;
     if (!this.cfg.oracle) return { vault, action: 'skipped', reason: 'oracle address unknown' };
     if (await this.resolvePending(vault, now)) return { vault, action: 'pending', tx: this.rec(vault).pending?.hash };
-    const last = (await this.lastPokeOnChain(vault)) ?? this.rec(vault).lastPokeAt ?? 0;
-    if (!force && last && now - last < this.cfg.keeper.pokeIntervalSeconds) {
-      return { vault, action: 'skipped', reason: `not due (${now - last}s since last poke, interval ${this.cfg.keeper.pokeIntervalSeconds}s)` };
+    const interval = this.cfg.keeper.pokeIntervalSeconds;
+    const lastAny = (await this.lastPokeOnChain(vault)) ?? this.rec(vault).lastPokeAt ?? 0;
+    const dueAny = !lastAny || now - lastAny >= interval;
+    // Flap re-review F5: a poke with a verified rate waits only for the previous one with a rate, so someone else's
+    // poke without a report (even every hour) must not make this keeper skip its report. Oracles without the rate
+    // point fall back to the last poke of any kind.
+    const lastRate = await this.lastRatePokeOnChain(vault);
+    const dueRate = lastRate !== null && now - lastRate >= interval;
+    if (!force && !dueAny && !dueRate) {
+      const last = lastRate ?? lastAny;
+      return { vault, action: 'skipped', reason: `not due (${now - last}s since last poke, interval ${interval}s)` };
     }
     const rep = await this.report();
+    // Only the rate-carrying poke is due: worth sending only if a rate rides along (a pull report, or a fresh push
+    // round the oracle reads itself); a plain poke would be refused, or would only repeat the one that just landed.
+    if (!force && !dueAny && !rep && !(await this.pushIsFresh())) {
+      return { vault, action: 'skipped', reason: `not due (${now - lastAny}s since a plain poke, and no rate to bring)` };
+    }
     const data = pokeCalldata(this.svc.abis.oracle, vault, rep?.extraData);
     try {
       const tx = await this.send(vault, 'poke', this.cfg.oracle, data, now);
@@ -291,9 +335,9 @@ export class Keeper {
 
   private nodeChecked?: Promise<void>;
   /**
-   * Settle every raise past its sale deadline that nobody has finalized yet. finalize() needs a gas limit above its
-   * 15M launch guard and BNB testnet caps a transaction at 2^24, so it is sent with FINALIZE_GAS_LIMIT (16.7M); the
-   * gas actually used is about 5 to 7M. A raise below its minimum settles as FAILED, which opens full refunds.
+   * Settle every raise past its sale deadline that nobody has finalized yet. finalize() needs 12M gas left at its
+   * launch guard, so it is sent with FINALIZE_GAS_LIMIT (15M, Flap's cap on BNB Chain); the gas actually used is
+   * about 5.5 to 7M. A raise below its minimum settles as FAILED, which opens full refunds.
    */
   async finalizeDue(now: number): Promise<FinalizeResult[]> {
     if (!this.finalizeRaises) return [];

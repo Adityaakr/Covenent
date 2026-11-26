@@ -70,9 +70,10 @@ struct Profile {
     uint32 maxStep; // the most time one observation can add to any counter or to the tap
     uint32 staleAfter; // a verified BNB/USD prices the tap for this long; also the dollar sale price's ratchet window
     uint32 antiFarmerDuration; // passed to Flap's launch
-    // Which of Flap's two liquidity floors the minimum raise's pool seed must clear at creation, read live from the
-    // Portal (`graduationFloorV2`): true = the graduation floor (twice the creation floor; the token is marked
-    // graduated at launch), false = the creation floor only (the demo profile, so testnet demos stay cheap).
+    // Which of Flap's two liquidity floors the minimum raise's pool seed must clear at creation, with the factory's
+    // safety margin (`FLOOR_MARGIN_BPS`, 1.5x), read live from the Portal (`graduationFloorV2`): true = the graduation
+    // floor (twice the creation floor; the token is marked graduated at launch), false = the creation floor (the demo
+    // profile, so a testnet demo fits a few tBNB; the token launches but may not graduate).
     bool requireGraduation;
     // L-5: after a refused launch, how long past the sale deadline `finalize` may be retried before the raise ends
     // FAILED (a transient refusal, such as a factory Flap has not enabled yet, must not fail the raise for good)
@@ -90,17 +91,23 @@ struct Tranche {
 /// @notice One observation the oracle sends to a vault.
 /// @dev Exit-rule fixes: `trusted` only says the pool TWAP is valid (on-chain numbers only). The exit streak runs on
 ///      every trusted observation, with or without Atlas and whatever the pool depth. `strict` additionally needs a
-///      verified, fresh BNB/USD rate and a pool holding at least half its launch seed; only strict observations move
-///      the unlock counters and price the dollar tap.
+///      verified, fresh BNB/USD rate and a pool holding at least half its launch seed; only strict observations add
+///      unlock time.
+///      Two windows (Flap re-review F4/F5): `elapsed`/`twapBnb` run from the previous poke of any kind and feed the
+///      exit streak; `rateElapsed`/`rateTwapBnb` run from the previous poke that carried a verified rate and feed the
+///      unlock counters. A poke with a rate waits only for the previous poke with a rate, so a poke without one can
+///      never use up its slot, and every strict window is at least the poke gap long.
 struct Observation {
-    uint32 elapsed; // seconds since this vault's previous observation (0 on the first)
+    uint32 elapsed; // seconds since this vault's previous observation of any kind (0 on the first)
     uint256 twapBnb; // average pool price over that interval, BNB per token, 1e18
     uint256 bnbUsd; // verified BNB/USD, 1e18, 0 when no Atlas rate rode along
     bool trusted; // TWAP valid: counts for the exit streak
-    bool strict; // atlas && deep: counts for unlock and the tap rate
+    bool strict; // atlas && deep && a valid rate window: adds unlock time
     bool atlas; // a verified, fresh BNB/USD rate is attached (pull report or push feed)
-    bool deep; // the pool's BNB reserve is at least half of its launch seed
+    bool deep; // the pool's BNB reserve at the window's TWAP, on its invariant (sqrt(k x TWAP)), is at least half its seed
     uint256 spotBnb; // pool spot price at poke time, BNB per token, 1e18 (display only)
+    uint32 rateElapsed; // with a rate: seconds since this vault's previous poke with a rate (or its first poke)
+    uint256 rateTwapBnb; // with a rate: average pool price over that interval, BNB per token, 1e18
 }
 
 /// @notice Addresses every vault of one vault factory shares. Fixed at factory construction.

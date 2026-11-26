@@ -11,15 +11,15 @@ import {IPortal} from "src/flap/IPortal.sol";
 
 /// @title TestnetCovenant
 /// @notice Creates one covenant on BNB testnet through Flap's Portal and our demo launcher factory
-///         (contracts/deployments/97.json), from the team wallet. Flap's testnet Portal refuses a pool unless
-///         seed (BNB) x 700 >= 750 / pool share, i.e. seed >= 1.0714 BNB / pool share (custom error
-///         0xa32ef056(seed x 700, 750 / pool share), both 1e18, raised by a Portal facet inside launchTaxTokenV2; read
-///         on forks of chain 97 on 26 Nov 2026). The default split 50 / 45 / 5 (sale / pool / team) needs a seed of
-///         2.381 BNB, so the default raise is 2.65 tBNB: seed 2.385, treasury 0.265.
+///         (contracts/deployments/97.json), from the team wallet. The demo factory needs the minimum raise's pool seed
+///         to clear 1.5x Flap's creation floor ($750 x S / P at the Portal's BNB price, read live through
+///         `minRaiseFor`); at the default split 50 / 45 / 5 (sale / pool / team) and $700 per BNB that is a 3.57 BNB
+///         seed and a 3.97 tBNB minimum raise. The raise defaults to exactly that minimum (min = cap).
 ///
 ///   Required env:  TEAM_PRIVATE_KEY (the team wallet; it pays the Portal's salt-lock fee and the gas)
-///   Optional env:  TN_RAISE (wei, min = cap, default 2.65 ether), TN_SALE_SECONDS (default 300), TN_HEARTBEAT (s, 600),
-///                  TN_TAP_USD (dollars per 30 days, 100), TN_NAME, TN_SYMBOL
+///   Optional env:  TN_RAISE (wei, min = cap, default: the factory's minRaiseFor), TN_SALE_SECONDS (default 300),
+///                  TN_HEARTBEAT (s, 600), TN_TAP_USD (dollars per 30 days, 100), TN_NAME, TN_SYMBOL,
+///                  TN_FACTORY_KEY (the 97.json key of the launcher factory, default demoLauncherFactory)
 ///
 /// @dev forge script script/TestnetCovenant.s.sol --rpc-url $BSC_TESTNET_RPC_URL            (simulation)
 ///      forge script script/TestnetCovenant.s.sol --rpc-url $BSC_TESTNET_RPC_URL --broadcast
@@ -27,12 +27,13 @@ contract TestnetCovenant is Script, StackBuilder {
     function run() external returns (address launcher) {
         require(block.chainid == 97, "TestnetCovenant targets BNB testnet (97)");
         string memory record = vm.readFile("deployments/97.json");
-        address factory = vm.parseJsonAddress(record, ".demoLauncherFactory");
+        address factory =
+            vm.parseJsonAddress(record, string.concat(".", vm.envOr("TN_FACTORY_KEY", string("demoLauncherFactory"))));
         address portalAddr = vm.parseJsonAddress(record, ".portal");
         uint256 key = vm.envUint("TEAM_PRIVATE_KEY");
         address team = vm.addr(key);
 
-        uint256 raise = vm.envOr("TN_RAISE", uint256(2.65 ether));
+        uint256 raise = vm.envOr("TN_RAISE", uint256(0));
         bytes32 seed = keccak256(abi.encode("covenant-testnet", team, block.timestamp));
         Terms memory t = CovenantProfiles.demoTerms(
             vm.envOr("TN_NAME", string("Covenant Testnet")),
@@ -46,6 +47,9 @@ contract TestnetCovenant is Script, StackBuilder {
         t.trancheBps[0] = 500;
         t.trancheMultiple = new uint16[](1);
         t.trancheMultiple[0] = 200;
+        if (raise == 0) {
+            (raise,,,,,) = CovenantLauncherFactory(factory).minRaiseFor(t.totalSupply, t.saleBps, t.poolBps);
+        }
         t.minRaise = raise;
         t.cap = raise;
         t.saleDuration = uint32(vm.envOr("TN_SALE_SECONDS", uint256(300)));

@@ -55,3 +55,34 @@ interface IFlapNameScreen {
         view
         returns (bool nameBlocked, bool symbolBlocked);
 }
+
+/// @notice Flap's addresses that `src/flap/LaunchVaultAddresses.sol` does not carry, per chain. The factories check
+///         every Flap address they are given against these and `LaunchVaultAddresses` on Flap's chains, so a
+///         deployment there cannot name another Portal, Guardian, Token Dock router or name screen.
+library FlapChain {
+    /// @notice Flap's anti-scam module (`isScamWord`) on BNB Chain, the one the Portal's launch facet calls.
+    address internal constant BSC_NAME_SCREEN = 0xfFb69d59f62454f3B8322Bc1a9FCE6E171a5264f;
+    /// @notice The same module on BNB testnet.
+    address internal constant BSC_TESTNET_NAME_SCREEN = 0x5CfbE713d070e87F67D1bc84312B7eB8Fe4F2B5E;
+    /// @notice Flap's tax-token implementation that the Portal clones (EIP-1167, by the Portal, salt = the launch salt)
+    ///         for a DIRECT_V2_POOL_TAX launch, on both chains; the vanity 7777 address is mined against it.
+    address internal constant TAX_TOKEN_IMPL = 0x7777c57ff7dc441c1715b2e36fa581c48B782222;
+
+    /// @return true on BNB Chain (56) and BNB testnet (97), where Flap's Pool Launch Portal runs. A local fork of BNB
+    ///         Chain also reports 56 and runs against the forked Portal, so the same checks apply there.
+    function isFlapChain() internal view returns (bool) {
+        return block.chainid == 56 || block.chainid == 97;
+    }
+
+    /// @return Flap's tax-token implementation on this chain, or zero off Flap's chains
+    function taxTokenImpl() internal view returns (address) {
+        return isFlapChain() ? TAX_TOKEN_IMPL : address(0);
+    }
+
+    /// @return Flap's name screen on this chain, or zero off Flap's chains
+    function nameScreen() internal view returns (address) {
+        if (block.chainid == 56) return BSC_NAME_SCREEN;
+        if (block.chainid == 97) return BSC_TESTNET_NAME_SCREEN;
+        return address(0);
+    }
+}

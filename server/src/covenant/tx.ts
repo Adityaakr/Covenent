@@ -71,7 +71,7 @@ export class TxBuilder {
       abi: this.svc.abis.launcher,
       functionName: 'finalize',
       gas: FINALIZE_GAS,
-      description: `Close the raise after its deadline: launch the token and fund the vault, or mark the raise failed below its minimum. Send with gas ${FINALIZE_GAS} (the launch refuses less than 15M).`,
+      description: `Close the raise after its deadline: launch the token and fund the vault, or mark the raise failed below its minimum. Send with gas ${FINALIZE_GAS} (the launcher needs 12M left before the launch).`,
     });
   }
 

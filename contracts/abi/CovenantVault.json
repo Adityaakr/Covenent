@@ -348,19 +348,6 @@
   },
   {
     "type": "function",
-    "name": "freshBnbUsd",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "fundTreasury",
     "inputs": [
       {
@@ -768,6 +755,16 @@
           },
           {
             "name": "spotBnb",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "rateElapsed",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rateTwapBnb",
             "type": "uint256",
             "internalType": "uint256"
           }

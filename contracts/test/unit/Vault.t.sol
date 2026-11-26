@@ -507,8 +507,15 @@ contract VaultRulesTest is CovenantTestBase {
         (,, uint256 p1,,) = v.trancheProgress(1);
         assertEq(p1, 0, "4x is not reached");
 
-        // ...the first strict observation after the cliff unlocks the 2x tranche.
-        vm.warp(uint256(v.launchedAt()) + 180 days);
+        // ...continuous strict time keeps counting up to the cliff, and the first strict observation after it
+        // unlocks the 2x tranche. (A gap longer than maxStep would restart the counter: Flap re-review F4.)
+        uint256 cliffAt = uint256(v.launchedAt()) + 180 days;
+        while (block.timestamp + 6 hours < cliffAt) {
+            _step(v, 6 hours, BNB_USD);
+        }
+        (,,, unlocked,) = v.trancheProgress(0);
+        assertFalse(unlocked, "still before the cliff");
+        vm.warp(cliffAt);
         uint256 b = v.bookValue();
         _poke(v, BNB_USD);
         (,,, unlocked,) = v.trancheProgress(0);
@@ -529,7 +536,8 @@ contract VaultRulesTest is CovenantTestBase {
             _step(v, 6 hours, BNB_USD);
         }
         (,, uint256 progress,,) = v.trancheProgress(0);
-        assertEq(progress, 10 days);
+        // The first window ran 6 h plus the pump's 601 s, over maxStep, so the count started at the second poke.
+        assertEq(progress, 10 days - 6 hours);
         _step(v, 6 hours, BNB_USD / 2); // BNB halves: the dollar price falls under 2x
         (,, progress,,) = v.trancheProgress(0);
         assertEq(progress, 0, "strict toward the team");

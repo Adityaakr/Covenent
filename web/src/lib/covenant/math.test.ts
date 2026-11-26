@@ -66,7 +66,7 @@ describe("rule 1: tap", () => {
     expect(tapCap30d(375, 400)).toBe(15);
     expect(tapPer30d(30_000, 600, 375, 400)).toEqual({ bnb: 15, binding: "cap" });
   });
-  it("pauses with no fresh BNB/USD (no cap-only fallback)", () => {
+  it("pays nothing before any verified BNB/USD (no cap-only fallback)", () => {
     expect(tapPer30d(30_000, null, 375, 400)).toEqual({ bnb: 0, binding: "paused" });
   });
   it("pays the dollar budget when it is below the cap", () => {

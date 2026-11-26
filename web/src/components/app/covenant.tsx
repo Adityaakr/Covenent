@@ -700,7 +700,7 @@ export function TrustPanel({ v }: { v: CovenantView }) {
             </ul>
             <details className="more">
               <summary>Learn more<Icon name="chevronDown" size={13} /></summary>
-              <p>Anyone can poke, and a poke without a verified rate counts against unlocking (it resets the counters), so withholding reports never helps the {w}. With no rate fresher than the vault&apos;s limit the tap pauses rather than falling back to its cap.</p>
+              <p>Anyone can poke. A poke without a verified rate never adds unlock time and resets every counter whose multiple it finds missed at the last verified rate; a report-carrying poke always gets through (nobody can use up its slot), and unlock time must be continuous strict time, so withholding reports never helps the {w}. With no new rate the tap keeps the dollar budget at the last verified rate; it never falls back to its cap alone.</p>
               <p>The dollar sale price is fixed at launch from Atlas&apos;s push feed where there is one, otherwise by the first verified rate, raised (never lowered) by higher ones for a short window.</p>
               <p>The PancakeSwap pair is the price, with liquidity locked at launch. No Covenant admin keys: no owner, no pause, no fee switch.</p>
             </details>
@@ -884,7 +884,7 @@ export function TermsCard({ v, d }: { v: CovenantView; d: Derived }) {
           <dt>Sale price</dt><dd className="mono">{price(d.salePrice)}</dd>
           <dt>Starting floor</dt><dd className="num">{pct(d.startRatio, 0)} of sale price</dd>
           <dt>Trading tax</dt><dd className="num">{bps(t.buyTaxBps)} buy, {bps(t.sellTaxBps)} sell, for {longSpan(t.taxDuration)}</dd>
-          <dt>Tax ends</dt><dd>{v.taxEndsAt ? <>{date(v.taxEndsAt)}; after that the treasury grows only from revenue the {who(v)} sends</> : <>{longSpan(t.taxDuration)} after launch; after that the treasury grows only from revenue the {who(v)} sends</>}</dd>
+          <dt>Tax ends</dt><dd>{v.taxEndsAt ? date(v.taxEndsAt) : <>{longSpan(t.taxDuration)} after launch</>}; after that the tap is paid only from the treasury, so book value only falls unless the {who(v)} deposits revenue</dd>
           <dt>Tap</dt><dd className="num">{usd(t.tapUsdPer30d)} / 30d, cap {bps(t.tapCapBps)}</dd>
           <dt>Unlock tranches</dt><dd className="num">{t.trancheMultiple.map((m, k) => `${bps(t.trancheBps[k] ?? 0)} at ${multiple(m)}`).join(", ")}</dd>
           <dt>Exit</dt><dd className="num">{span(t.exitStreak)} streak · {span(t.roundLength)} round · {span(t.cooldown)} cooldown · {bps(t.exitFeeBps)} fee</dd>

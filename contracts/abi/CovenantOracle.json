@@ -98,6 +98,25 @@
   },
   {
     "type": "function",
+    "name": "nextRatePokeAt",
+    "inputs": [
+      {
+        "name": "vault",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "points",
     "inputs": [
       {
@@ -190,6 +209,16 @@
             "name": "spotBnb",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "rateElapsed",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rateTwapBnb",
+            "type": "uint256",
+            "internalType": "uint256"
           }
         ]
       }
@@ -244,6 +273,35 @@
         "name": "rate",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ratePoints",
+    "inputs": [
+      {
+        "name": "vault",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "cumulative",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "pokedAt",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "stateMutability": "view"

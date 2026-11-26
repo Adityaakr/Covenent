@@ -35,9 +35,16 @@ describe('the committed BNB testnet record works as is', () => {
     expect(cfg.oracle).toBe(record.oracle);
     expect(cfg.lens).toBe(record.lens);
     expect(cfg.identityRegistry).toBe(record.identityRegistry);
-    // the current pair, then Covenant's own earlier one (the first testnet covenant was made by it)
+    // the current pair, then Covenant's own earlier ones (the first testnet covenant was made by `previous*`)
     expect(cfg.launcherFactories).toEqual(
-      [record.launcherFactory, record.demoLauncherFactory, record.previousLauncherFactory, record.previousDemoLauncherFactory].filter(Boolean),
+      [
+        record.launcherFactory,
+        record.demoLauncherFactory,
+        record.previousLauncherFactory,
+        record.previousDemoLauncherFactory,
+        record.round1LauncherFactory,
+        record.round1DemoLauncherFactory,
+      ].filter(Boolean),
     );
     expect(cfg.atlas.pushFeed).toBeTruthy();
     expect(cfg.atlas.localSignerAllowed).toBe(false);

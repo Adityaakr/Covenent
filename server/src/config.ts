@@ -264,9 +264,12 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
         [
           deploymentAddress(deployments, 'launcherFactory'),
           deploymentAddress(deployments, 'demoLauncherFactory'),
-          // Covenant's own earlier deployment on the chain (97.json `previous*`), so its covenants stay readable
+          // Covenant's own earlier deployments on the chain (97.json `previous*`: the first one; `round1*`: the first
+          // round of audit fixes), so their covenants stay readable
           deploymentAddress(deployments, 'previousLauncherFactory'),
           deploymentAddress(deployments, 'previousDemoLauncherFactory'),
+          deploymentAddress(deployments, 'round1LauncherFactory'),
+          deploymentAddress(deployments, 'round1DemoLauncherFactory'),
         ].filter(
           (a): a is Address => !!a,
         ),
@@ -281,6 +284,8 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
           deploymentAddress(deployments, 'demoVaultFactory'),
           deploymentAddress(deployments, 'previousVaultFactory'),
           deploymentAddress(deployments, 'previousDemoVaultFactory'),
+          deploymentAddress(deployments, 'round1VaultFactory'),
+          deploymentAddress(deployments, 'round1DemoVaultFactory'),
         ].filter(
           (a): a is Address => !!a,
         ),
