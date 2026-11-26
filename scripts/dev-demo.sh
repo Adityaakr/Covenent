@@ -101,8 +101,11 @@ advance() {
 record() {
   local tmp; tmp="$(mktemp)"
   [ -f "$EXTRA" ] || echo '{}' >"$EXTRA"
-  jq --arg s "$1" --arg n "${DEMO_NAME:-Covenant Agent}" --slurpfile l "$C/deployments/local.json" \
-    '.seeded[$s] = ($l[0].demo + {name: $n})' "$EXTRA" >"$tmp" && mv "$tmp" "$EXTRA"
+  # the vault as the launcher reports it now (a raise still under way has none; .demo.vault may be the previous one)
+  local l v; l="$(jq -r .demo.launcher "$C/deployments/local.json")"
+  v="$(cast call --rpc-url "$RPC" "$l" 'vault()(address)')"
+  jq --arg s "$1" --arg n "${DEMO_NAME:-Covenant Agent}" --arg v "$v" --slurpfile l "$C/deployments/local.json" \
+    '.seeded[$s] = ($l[0].demo + {name: $n, vault: $v})' "$EXTRA" >"$tmp" && mv "$tmp" "$EXTRA"
   merge_extra
 }
 

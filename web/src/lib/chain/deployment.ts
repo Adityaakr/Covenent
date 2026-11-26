@@ -41,7 +41,8 @@ export function launchersOf(d: Deployment): Address[] {
   const walk = (v: unknown, key: string, depth: number) => {
     if (depth > 4) return;
     const k = key.toLowerCase();
-    const wanted = k.includes("launcher") && !k.includes("factory");
+    // covenant launchers only: not the factories, and not the Four.meme path's launcher (it creates Lite vaults)
+    const wanted = k.includes("launcher") && !k.includes("factory") && !k.includes("four") && !k.includes("lite");
     if (isAddr(v)) { if (wanted) out.add(v); return; }
     if (Array.isArray(v)) { v.forEach((x) => walk(x, key, depth + 1)); return; }
     if (v && typeof v === "object") for (const [kk, vv] of Object.entries(v)) walk(vv, kk, depth + 1);
