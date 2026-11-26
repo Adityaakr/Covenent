@@ -22,7 +22,7 @@ contracts/   Foundry (Solidity 0.8.26). src/{launcher,vault,oracle,lens,openfour
 server/      TypeScript, Node 22, pnpm, viem, Hono. src/{api,keeper,covenant,atlas,sim,abi}, agents/{issuer,investor}, mcp/
 web/         Next.js 16 app router, React 19, Tailwind 4, wagmi + viem, Privy. Landing at / (src/landing), app at /app
 scripts/     dev-all.sh (whole local stack), dev-up/dev-down (chain + deploy), dev-demo (scenes), dev-abi, dev-funds
-docs/        DESIGN.md, DEPLOY.md, landing/
+docs/        DESIGN.md, DEPLOY.md, landing/, assets/ (README images)
 ```
 
 Each of `server/` and `web/` is a standalone pnpm package with its own lockfile. There is no root workspace.
@@ -50,7 +50,7 @@ pnpm --dir web dev                              # http://localhost:8080
 
 # whole stack
 scripts/dev-all.sh [--mock|--fork|--prod|--no-chain]    # status | stop | stop-issuer
-scripts/testnet-up.sh [--prod]                  # chain 97; status | stop | issuer
+scripts/testnet-up.sh [--prod]                  # chain 97; status | stop | issuer | stop-issuer
 ```
 
 Run the tests of every package you touched before you report done. `server/test/chain/deployed.test.ts` is skipped

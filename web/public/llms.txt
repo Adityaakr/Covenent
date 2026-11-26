@@ -42,6 +42,7 @@ There is no hosted public API. Run the server from the repository (Node 22, pnpm
 - CovenantLens: 0x6c0D9CDDCbAA497a54fF5aDDCbf444E77b3d1A83
 - CovenantLiteVault template (Four.meme): 0xC9aD3B8aC5baD26278EFc8F88D1073eB85791437
 - Flap Portal: 0x000042108465206185A077Edc3F3fd2b49060000
+- First testnet covenant, CVT (demo factory, taken through every stage and now wound down): token 0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777, launcher 0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E, vault 0x524059B1424101D4CAFD33B9a1A8D332dD71193D
 
 ## What it does not protect
 
