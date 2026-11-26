@@ -17,8 +17,9 @@ transactions: abandoned by its agent, wound down by its team, ACTIVE with tax an
 under way (recorded under `.seeded` in `contracts/deployments/local.json`). It then starts the server API on `:8787`,
 the keeper (pokes every 20 s with the local Atlas test signer), an issuer agent on each live covenant and the web app
 on http://localhost:8080 (`WEB_PORT` moves it; 8081-8083 and 8085 are also Privy origins; `--prod` serves a build).
-Every screen reads the chain or the server; there is no stand-in data. `/app/faucet` sends a connected wallet test
-BNB and Demo USDC (dev chain only) and swaps dUSDC to BNB on the local pool.
+Every screen reads the chain or the server; there is no stand-in data. Settings, Test funds (`/app/settings/funds`)
+sends a connected wallet test BNB and Demo USDC on the dev chain (and swaps dUSDC to BNB on the local pool), or a
+0.003 tBNB drip on BNB testnet, once per wallet a day.
 
 - `scripts/dev-all.sh status` shows what runs and where the logs are (`.dev/`); `stop` stops everything.
 - `scripts/dev-all.sh stop-issuer` kills the issuer agent, the stage moment: once the heartbeat window passes, the

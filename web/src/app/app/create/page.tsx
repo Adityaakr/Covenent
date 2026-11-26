@@ -184,7 +184,7 @@ function CovenantCreate() {
           <h1 className="h-page">Write the covenant</h1>
           <p className="lede">{venue === "four" ? "On Four.meme, the founder\u2019s share of trading tax goes to a vault with a budget cap and an abandonment switch." : "Nothing can be edited later except lowering the tap."}</p>
         </div>
-        {venue === "flap" ? <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}><span className="dot" />{src.mode === "live" ? "Creates on the local chain" : src.mode === "checking" ? "Checking the local chain" : "Offline: connect to create"}</span> : null}
+        {venue === "flap" ? <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}>{src.mode === "live" ? "Creates on the local chain" : src.mode === "checking" ? "Checking the local chain" : "Offline: connect to create"}</span> : null}
       </div>
 
       <div className="choice venue" role="group" aria-label="Where to launch">
@@ -337,7 +337,7 @@ function CovenantCreate() {
 
         <aside className="stack sticky" aria-label="Live preview">
           <div className="card preview">
-            <div className="card-head"><div><h3 className="h-card">Live preview</h3><p className="t-xs muted w5">BNB/USD assumed at $600</p></div><span className="badge accent"><span className="dot pulse" />Live</span></div>
+            <div className="card-head"><div><h3 className="h-card">Live preview</h3><p className="t-xs muted w5">BNB/USD assumed at $600</p></div><span className="badge accent">Live</span></div>
             <div className="card-body stack">
               <div style={{ display: "grid", gap: 2 }}><span className="lbl">Sale price at the cap</span><span className="fig-md mono" style={{ fontFamily: "var(--font-mono-stack)", fontSize: 20 }}>{price(atCap.salePrice)}<BnbUnit /></span></div>
               <dl className="kv">

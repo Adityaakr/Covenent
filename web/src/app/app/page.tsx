@@ -136,7 +136,7 @@ function RaiseInvite() {
       </div>
       <div className="row wrap-ok" style={{ gap: 8 }}>
         <Link className="btn btn-primary" href="/app/create">Start a covenant<Icon name="arrow" size={15} /></Link>
-        <Link className="btn btn-secondary" href="/app/simulator"><Icon name="flask" size={15} />Test terms in the simulator</Link>
+        <Link className="btn btn-secondary" href="/app/settings/simulator"><Icon name="flask" size={15} />Test terms in the simulator</Link>
       </div>
     </section>
   );

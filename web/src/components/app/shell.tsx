@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useSwitchChain } from "wagmi";
 import { privyOriginAllowed, useWallet } from "@/components/providers";
-import { ANVIL_ACCOUNTS, ANVIL_ROLES, TESTNET_FAUCET, anvil, chainName, explorerTx } from "@/lib/chain/chains";
+import { ANVIL_ACCOUNTS, ANVIL_ROLES, anvil, chainName, explorerTx } from "@/lib/chain/chains";
 import { useCovenants, useSource } from "@/lib/data/hooks";
 import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
@@ -14,6 +14,8 @@ import { hidePromo, reopenOnboarding, setCollapsed, useCollapsed, usePromoHidden
 import { CoverCut, Skeleton, TokenAvatar, coverVars, cx, seedOf } from "./ui";
 import { withBnb } from "@/components/app/bnb";
 import { ThinkingMark } from "./mark";
+import { GetStarted } from "./funds";
+import { SETTINGS } from "./settings-nav";
 
 const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = [
   { href: "/app", label: "Discover", icon: "compass", exact: true },
@@ -21,11 +23,17 @@ const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = 
   { href: "/app/portfolio", label: "Portfolio", icon: "pie" },
   { href: "/app/create", label: "Create", icon: "plus" },
 ];
-const TOOLS: { href: string; label: string; icon: IconName }[] = [
-  { href: "/app/faucet", label: "Get test funds", icon: "drop" },
-  { href: "/app/simulator", label: "Simulator", icon: "flask" },
-  { href: "/app/demo", label: "Demo script", icon: "play" },
-];
+
+/**
+ * The key that replays the page-enter motion: a new section animates in, while tabs inside one covenant or inside
+ * Settings swap in place (their own content rises) so the header above them stays still.
+ */
+function routeKey(path: string): string {
+  const p = path.split("/").filter(Boolean);
+  if (p[1] === "c" || p[1] === "lite") return p.slice(0, 3).join("/");
+  if (p[1] === "settings") return "app/settings";
+  return path;
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -62,9 +70,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <WalletMenu />
           </div>
         </header>
-        <div className="pg">{children}</div>
+        <div className="pg" key={routeKey(path)}>{children}</div>
       </div>
       {cmdk ? <CommandPalette onClose={() => setCmdk(false)} /> : null}
+      <GetStarted />
       <Toasts />
     </div>
   );
@@ -97,17 +106,6 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
           </Link>
         );
       })}
-      <div className="sb-label">Tools</div>
-      {TOOLS.map((n) => n.href === "/app/faucet" && source.chainId === 97 ? (
-        // BNB testnet: test BNB comes from BNB Chain's faucet, not from the dev stack
-        <a key={n.href} href={TESTNET_FAUCET} target="_blank" rel="noreferrer" className="sb-item" title="BNB testnet faucet (bnbchain.org)">
-          <Icon name={n.icon} size={18} /><span className="lab">BNB testnet faucet</span>
-        </a>
-      ) : (
-        <Link key={n.href} href={n.href} className="sb-item" aria-current={path.startsWith(n.href) ? "page" : undefined} title={n.label}>
-          <Icon name={n.icon} size={18} /><span className="lab">{n.label}</span>
-        </Link>
-      ))}
       <div className="sb-label">Covenants</div>
       <div className="sb-covs" style={{ display: "grid", gap: 2 }}>
         {live.map((v) => {
@@ -121,24 +119,28 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
           );
         })}
         {!online ? (
-          <Link href="/app" className="sb-offline" title={source.reason}><span className="dot" /><span>{source.mode === "checking" ? "Checking the chain" : "Not connected to the chain"}</span></Link>
+          <Link href="/app" className="sb-offline" title={source.reason}><Icon name="alert" size={15} /><span>{source.mode === "checking" ? "Checking the chain" : "Not connected to the chain"}</span></Link>
         ) : loading ? [0, 1, 2].map((k) => <span key={k} className="sb-cov" aria-hidden><Skeleton h={22} w={22} r={22} /><Skeleton h={12} w={`${60 - k * 12}%`} /></span>)
-          : live.length === 0 ? <p className="sb-empty">No covenants yet</p> : null}
+          : live.length === 0 ? <Link href="/app/create" className="sb-empty"><span>No covenants yet</span><span className="sb-empty-a">Create the first<Icon name="arrow" size={13} /></span></Link> : null}
       </div>
       <div className="sb-spacer" />
       {!promoHidden ? (
         <div className="promo">
-          <div className="promo-art cover" style={coverVars("operating stack")}>
+          <div className="promo-art cover" style={coverVars("operating stack")} aria-hidden>
             <CoverCut className="cover-cut" />
           </div>
-          <button className="promo-x" aria-label="Dismiss" onClick={hidePromo}><Icon name="x" size={13} /></button>
+          <button className="promo-x" aria-label="Hide this card" onClick={hidePromo}><Icon name="x" size={12} /></button>
           <div className="promo-body">
-            <p className="h-card" style={{ fontSize: 15 }}>Launch your autonomous venture</p>
-            <p className="t-s muted w5">Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts.</p>
-            <Link href="/app/create" className="btn btn-secondary btn-sm btn-block">Get started</Link>
+            <p className="promo-eb">For founders and agents</p>
+            <p className="promo-t">Launch your autonomous venture</p>
+            <p className="promo-s">A raise with refunds, a treasury on a budget, and an exit at book. Enforced by code.</p>
+            <Link href="/app/create" className="promo-cta">Start a covenant<Icon name="arrow" size={14} /></Link>
           </div>
         </div>
       ) : null}
+      <Link href="/app/settings" className="sb-item sb-settings" aria-current={path.startsWith("/app/settings") ? "page" : undefined} title="Settings">
+        <Icon name="sliders" size={18} /><span className="lab">Settings</span>
+      </Link>
       <div className="sb-foot">
         <Link href="/features" title="Docs"><Icon name="book" size={16} /><span className="lab">Docs</span></Link>
         <Link href="/contact" title="Community"><Icon name="send" size={16} /><span className="lab">Community</span></Link>
@@ -150,10 +152,17 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
 
 function Crumbs() {
   const path = usePathname();
-  const src = useSource();
   const { list } = useCovenants();
   const parts = path.split("/").filter(Boolean).slice(1);
-  const top: Record<string, string> = { lite: "Four.meme covenant", create: "Create a covenant", simulator: "Launch simulator", demo: "Demo script", portfolio: "Portfolio", covenants: "Covenants", faucet: src.chainId === 97 ? "Get test BNB" : "Get test funds" };
+  const top: Record<string, string> = { lite: "Four.meme covenant", create: "Create a covenant", portfolio: "Portfolio", covenants: "Covenants" };
+  if (parts[0] === "settings") {
+    const sub = SETTINGS.find((t) => t.href !== "/app/settings" && path.startsWith(t.href));
+    return (
+      <nav className="crumbs" aria-label="Breadcrumb">
+        {sub ? <><Link href="/app/settings" className="hide-sm">Settings</Link><span className="sep hide-sm">/</span><b>{sub.label}</b></> : <b>Settings</b>}
+      </nav>
+    );
+  }
   if (parts[0] === "c") {
     const v = list.find((x) => x.id.toLowerCase() === (parts[1] ?? "").toLowerCase());
     const sub = parts[2] ? { raise: "Raise", settle: "Settlement", redeem: "Redeem", team: v?.issuer.kind === "agent" ? "Agent console" : "Team console" }[parts[2]] ?? null : null;
@@ -193,7 +202,7 @@ function subscribeTheme(cb: () => void) {
   o.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   return () => o.disconnect();
 }
-function setTheme(next: "light" | "dark") {
+export function setTheme(next: "light" | "dark") {
   document.documentElement.dataset.theme = next;
   try { localStorage.setItem("theme", next); } catch { /* this page only */ }
 }
@@ -256,9 +265,8 @@ function WalletMenu() {
               <div className="pop-sep" />
               <button className="pop-item" role="menuitem" onClick={() => { void navigator.clipboard?.writeText(w.address!); setCopied(true); setTimeout(() => setCopied(false), 1200); }}><Icon name={copied ? "check" : "copy"} size={16} />{copied ? "Copied" : "Copy address"}</button>
               <Link className="pop-item" role="menuitem" href="/app/portfolio" onClick={() => setOpen(false)}><Icon name="pie" size={16} />Portfolio</Link>
-              {src.chainId === 97
-                ? <a className="pop-item" role="menuitem" href={TESTNET_FAUCET} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}><Icon name="drop" size={16} />BNB testnet faucet</a>
-                : <Link className="pop-item" role="menuitem" href="/app/faucet" onClick={() => setOpen(false)}><Icon name="drop" size={16} />Get test funds</Link>}
+              <Link className="pop-item" role="menuitem" href="/app/settings/funds" onClick={() => setOpen(false)}><Icon name="drop" size={16} />{src.chainId === 97 ? "Get test BNB" : "Get test funds"}</Link>
+              <Link className="pop-item" role="menuitem" href="/app/settings" onClick={() => setOpen(false)}><Icon name="sliders" size={16} />Settings</Link>
               <button className="pop-item" role="menuitem" onClick={() => { w.disconnect(); setOpen(false); }}><Icon name="exit" size={16} />Disconnect</button>
             </>
           ) : (
@@ -304,7 +312,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   const go = (href: string) => () => { router.push(href); onClose(); };
   const all = useMemo<Cmd[]>(() => [
     ...NAV.map((n) => ({ id: n.href, group: "Pages", label: n.label, icon: n.icon, run: go(n.href) })),
-    ...TOOLS.map((n) => ({ id: n.href, group: "Pages", label: n.label, icon: n.icon, run: go(n.href) })),
+    ...SETTINGS.map((n) => ({ id: n.href, group: "Settings", label: n.label === "Account" ? "Settings" : n.label, icon: n.icon, run: go(n.href) })),
     ...list.filter((v) => v.source === "live").map((v) => ({ id: v.id, group: "Covenants", label: v.terms.name, hint: v.terms.symbol, symbol: seedOf(v), run: go(`/app/c/${v.id}`) })),
     { id: "theme", group: "Actions", label: `Switch to ${theme === "dark" ? "light" : "dark"} theme`, icon: theme === "dark" ? "sun" : "moon", run: () => { setTheme(theme === "dark" ? "light" : "dark"); onClose(); } },
     { id: "intents", group: "Actions", label: "Personalise Discover", icon: "sparkle", run: () => { reopenOnboarding(); router.push("/app"); onClose(); } },

@@ -7,6 +7,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   devIndicators: false,
+  // the tools moved into Settings; old links keep working
+  async redirects() {
+    return [
+      { source: "/app/faucet", destination: "/app/settings/funds", permanent: false },
+      { source: "/app/simulator", destination: "/app/settings/simulator", permanent: false },
+      { source: "/app/demo", destination: "/app/settings/demo", permanent: false },
+    ];
+  },
   turbopack: {
     rules: {
       "{globals,app}.css": {

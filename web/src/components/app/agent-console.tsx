@@ -44,7 +44,7 @@ export function AgentChat({ v, all }: { v: CovenantView; all: CovenantView[] }) 
       <div className="chat-head">
         <span className="icon-tile sm agent"><ThinkingMark size={15} still={!live} /></span>
         <div style={{ minWidth: 0 }}><div className="t-s ink w5 trunc">Activity and Ask Covenant</div><div className="t-xs muted w5">The issuer loop&apos;s actions, and answers from the MCP read tools</div></div>
-        <span className={cx("badge", live ? "good" : "bad")} style={{ marginLeft: "auto" }}><span className={cx("dot", live && "pulse")} />{live ? "Live" : "Stopped"}</span>
+        <span className={cx("badge", live ? "good" : "bad")} style={{ marginLeft: "auto" }}>{live ? "Live" : "Stopped"}</span>
       </div>
       <div className="chat-log" ref={log} aria-live="polite">
         <div className="chat-hello">

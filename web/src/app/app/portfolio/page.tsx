@@ -40,7 +40,7 @@ export default function PortfolioPage() {
           <h1 className="h-page">Portfolio</h1>
           <p className="lede">What you hold in each covenant, valued at book (what the vault would pay in an exit round) and at the pool.</p>
         </div>
-        {online && w.address ? <span className="badge lg good"><span className="dot" />Connected</span> : null}
+        {online && w.address ? <span className="badge lg good">Connected</span> : null}
       </div>
 
       {!online && !loading ? <ConnectChain source={source} /> : needsWallet ? (
@@ -55,7 +55,7 @@ export default function PortfolioPage() {
           </div>
 
           {rows.length === 0 ? (
-            <div className="card"><Empty title="No positions yet" icon="pie" action={<div className="row" style={{ gap: 8, justifyContent: "center" }}><Link className="btn btn-primary btn-sm" href="/app">Discover covenants</Link><Link className="btn btn-secondary btn-sm" href="/app/faucet"><Icon name="drop" size={14} />Get test funds</Link></div>}>Commit to a raise and your allocation, refund and book value show up here.</Empty></div>
+            <div className="card"><Empty title="No positions yet" icon="pie" action={<div className="row" style={{ gap: 8, justifyContent: "center" }}><Link className="btn btn-primary btn-sm" href="/app">Discover covenants</Link><Link className="btn btn-secondary btn-sm" href="/app/settings/funds"><Icon name="drop" size={14} />Get test funds</Link></div>}>Commit to a raise and your allocation, refund and book value show up here.</Empty></div>
           ) : (
             <div className="card" style={{ overflow: "hidden" }}>
               <div className="card-head"><h2 className="h-card">Positions</h2><span className="t-xs muted w5">{rows.length} covenant{rows.length === 1 ? "" : "s"}</span></div>

@@ -52,3 +52,4 @@ export function setCollapsed(on: boolean) { write("cv-sidebar", on ? "collapsed"
 
 export function usePromoHidden(): boolean { return useKey("cv-promo", "hidden") === "hidden"; }
 export function hidePromo() { write("cv-promo", "hidden"); }
+export function showPromo() { write("cv-promo", "shown"); }

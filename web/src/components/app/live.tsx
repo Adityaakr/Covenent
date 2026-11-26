@@ -52,7 +52,7 @@ export function ConnectChain({ source, title = "Connect to the local chain" }: {
       <ol className="connect-steps">
         <li className="cstep"><span className="n">1</span><div><b>Start the stack</b><span>Chain, contracts, a live covenant, the API, keeper and issuer agent.</span><br /><CopyCode text="scripts/dev-all.sh" /></div></li>
         <li className="cstep"><span className="n">2</span><div><b>The app finds the deployment</b><span>It reads contracts/deployments/local.json on every request; this page updates by itself.</span></div></li>
-        <li className="cstep"><span className="n">3</span><div><b>Get test funds and connect</b><span>Mint test BNB on the local chain, then pick a wallet or a local test account.</span><br /><Link className="tlink" href="/app/faucet" style={{ marginTop: 6 }}>Get test funds<Icon name="chevronRight" size={14} /></Link></div></li>
+        <li className="cstep"><span className="n">3</span><div><b>Get test funds and connect</b><span>Mint test BNB on the local chain, then pick a wallet or a local test account.</span><br /><Link className="tlink" href="/app/settings/funds" style={{ marginTop: 6 }}>Get test funds<Icon name="chevronRight" size={14} /></Link></div></li>
       </ol>
     </section>
   );
