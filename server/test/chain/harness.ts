@@ -35,8 +35,11 @@ export const KEYS = {
 
 export const addr = (k: Hex) => privateKeyToAccount(k).address;
 
+const SOURCE_OF: Record<string, string> = { MockIdentityRegistry: 'MockErc8004', MockReputationRegistry: 'MockErc8004' };
+
 function artifact(name: string): { abi: Abi; bytecode: Hex } {
-  const j = JSON.parse(readFileSync(path.join(FIXTURE, 'out', `${name}.sol`, `${name}.json`), 'utf8'));
+  const file = SOURCE_OF[name] ?? name;
+  const j = JSON.parse(readFileSync(path.join(FIXTURE, 'out', `${file}.sol`, `${name}.json`), 'utf8'));
   return { abi: j.abi as Abi, bytecode: j.bytecode.object as Hex };
 }
 
@@ -102,7 +105,7 @@ export interface Fixture {
  * seed + 150M tokens, 375 BNB treasury, 1B supply split 60/15/25) with the demo factory timers
  * (exit streak 3 min, round 5 min, cooldown 2 min, heartbeat 10 min, poke interval 20 s).
  */
-export async function deployFixture(anvil: Anvil): Promise<Fixture> {
+export async function deployFixture(anvil: Anvil, opts: { identity?: boolean } = {}): Promise<Fixture> {
   buildFixtures();
   const rpcUrl = anvil.rpcUrl;
   const client = createPublicClient({ chain: foundry, transport: http(rpcUrl) }) as PublicClient;
@@ -129,6 +132,18 @@ export async function deployFixture(anvil: Anvil): Promise<Fixture> {
   const oracle = await deploy('MockCovenantOracle', [FEED, privateKeyToAccount(LOCAL_TEST_SIGNER_KEY).address, 20n]);
   const launcher = await deploy('MockCovenantLauncher', [200n * E18, 500n * E18, 120n, SALE]);
   const salePrice = (500n * E18 * E18) / SALE;
+  // optional ERC-8004 registries: the team registers as an agent before the vault binds its id
+  let identity: Address | undefined;
+  let reputation: Address | undefined;
+  let agentId = 0n;
+  if (opts.identity) {
+    const idr = await deploy('MockIdentityRegistry', []);
+    const rep = await deploy('MockReputationRegistry', [idr.address]);
+    identity = idr.address;
+    reputation = rep.address;
+    await write(KEYS.team, idr.address, idr.abi, 'register', ['http://127.0.0.1:8787/agents/team/registration.json']);
+    agentId = 1n;
+  }
   const vault = await deploy('MockCovenantVault', [
     {
       token: token.address,
@@ -136,7 +151,7 @@ export async function deployFixture(anvil: Anvil): Promise<Fixture> {
       oracle: oracle.address,
       teamWallet: addr(KEYS.team),
       pair: pair.address,
-      agentId: 0n,
+      agentId,
       salePriceBnb: salePrice,
       tapUsdPer30d: 30_000n * E18,
       tapCapBps: 400,
@@ -171,7 +186,7 @@ export async function deployFixture(anvil: Anvil): Promise<Fixture> {
     chainId: 31337,
     rpcUrl,
     startBlock: 0,
-    addresses: { oracle: oracle.address, wbnb: wbnb.address },
+    addresses: { oracle: oracle.address, wbnb: wbnb.address, ...(identity ? { identityRegistry: identity, reputationRegistry: reputation } : {}) },
     demo: {
       name: 'Covenant Demo',
       vault: vault.address,

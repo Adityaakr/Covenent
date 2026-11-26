@@ -195,6 +195,15 @@ export function createApp(deps: AppDeps) {
     return c.body(readFileSync(file), 200, { 'content-type': 'text/markdown; charset=utf-8' });
   });
 
+  /** ERC-8004 registration files written by `pnpm issuer:register`. */
+  app.get('/agents/:owner/registration.json', (c) => {
+    const owner = c.req.param('owner');
+    if (!isAddress(owner)) throw new HttpError(400, 'owner must be a 0x address');
+    const file = path.join(cfg.dataDir, 'agents', `${owner.toLowerCase()}.json`);
+    if (!existsSync(file)) return c.json({ error: 'no registration file' }, 404);
+    return c.body(readFileSync(file), 200, { 'content-type': 'application/json' });
+  });
+
   app.notFound((c) => c.json({ error: 'not found' }, 404));
   return app;
 }
