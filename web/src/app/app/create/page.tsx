@@ -172,7 +172,9 @@ function CovenantCreate() {
       const why = await checkTerms(src.client!, tg, terms, mine.salt);
       if (why) throw new Error(`The factory refuses these terms: ${why}`);
       const { launcher } = await createCovenantLive(config, src.client!, d.chainId, tg, terms, mine.salt);
-      await qc.invalidateQueries({ queryKey: ["source"] }); // rediscover launchers so the new one opens at once
+      // rediscover launchers so the new one opens at once (the page keeps looking for a few seconds if an RPC lags)
+      await qc.invalidateQueries({ queryKey: ["source"] });
+      void qc.invalidateQueries({ queryKey: ["covenants"] });
       router.push(launcher ? `/app/c/${launcher}/raise` : "/app");
     } catch (e) {
       setErr((e as { shortMessage?: string }).shortMessage ?? (e as Error).message);

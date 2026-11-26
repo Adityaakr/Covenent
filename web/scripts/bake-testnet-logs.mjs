@@ -33,7 +33,8 @@ const abi = (name) => payload.abis[name];
 try {
   // The covenants the app lists: launchers named in the deployment, plus every launcher the factories created.
   const named = Object.entries(d.addresses).filter(([k, v]) => isAddr(v) && /launcher/i.test(k) && !/factory|four|lite/i.test(k)).map(([, v]) => v);
-  const factories = ["launcherFactory", "covenantLauncherFactory", "demoLauncherFactory"].map((k) => d.addresses[k]).filter(isAddr);
+  // every covenant launcher factory the record names, current and earlier (the web's discover.ts reads the same set)
+  const factories = [...new Set(Object.entries(d.addresses).filter(([k, v]) => /launcherfactory$/i.test(k) && !/four|lite/i.test(k) && isAddr(v)).map(([, v]) => v))];
   const made = (await Promise.all(factories.map((f) => reader.readContract({ address: f, abi: abi("CovenantLauncherFactory"), functionName: "allLaunchers" }).catch(() => [])))).flat();
   const launchers = [...new Map([...named, ...made].map((a) => [a.toLowerCase(), a])).values()];
   const vaults = (await Promise.all(launchers.map((l) => reader.readContract({ address: l, abi: abi("CovenantLauncher"), functionName: "vault" }).catch(() => null))))
