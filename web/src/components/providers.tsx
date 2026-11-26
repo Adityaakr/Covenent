@@ -13,7 +13,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyn
 import { http, type Address } from "viem";
 import { WagmiProvider, createConfig, useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected, mock } from "wagmi/connectors";
-import { ANVIL_ACCOUNTS, anvil, bscTestnet, configureLocalChain, localAccountsAllowed, type LocalChainInfo } from "@/lib/chain/chains";
+import { ANVIL_ACCOUNTS, ANVIL_ROLES, anvil, bscTestnet, configureLocalChain, localAccountsAllowed, type LocalChainInfo } from "@/lib/chain/chains";
 
 const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
 const DEV_WALLET_FLAG = process.env.NEXT_PUBLIC_DEV_WALLET === "1";
@@ -28,12 +28,19 @@ export function privyOriginAllowed(): boolean {
 
 export type WalletMode = "privy" | "browser";
 
+/**
+ * Privy whenever an app id is set and this origin is on its allow list, so Connect opens Privy's modal directly.
+ * A saved "browser" choice (the local anvil test accounts) counts only with NEXT_PUBLIC_DEV_WALLET=1, off by default;
+ * a Settings screen sets it through useWalletSettings().
+ */
 function readMode(): WalletMode {
   if (!APP_ID || FORCED === "injected") return "browser";
-  try {
-    const saved = localStorage.getItem("wallet-mode");
-    if (saved === "browser" || saved === "privy") return saved;
-  } catch { /* storage blocked: fall through */ }
+  if (DEV_WALLET_FLAG) {
+    try {
+      const saved = localStorage.getItem("wallet-mode");
+      if (saved === "browser" || saved === "privy") return saved;
+    } catch { /* storage blocked: fall through */ }
+  }
   return privyOriginAllowed() ? "privy" : "browser";
 }
 
@@ -182,4 +189,21 @@ export function Providers({ children, localChain }: { children: ReactNode; local
       </QueryClientProvider>
     </PrivyProvider>
   );
+}
+
+/**
+ * For a Settings screen: the wallet stack in use and, with NEXT_PUBLIC_DEV_WALLET=1 on a chain on this machine, the
+ * anvil test accounts. setMode("browser") then connectLocal(i) connects one; setMode("privy") goes back to Privy.
+ * The header's Connect never shows these: it opens Privy (or the browser's wallet) directly.
+ */
+export function useWalletSettings() {
+  const w = useWallet();
+  return {
+    mode: w.mode,
+    setMode: w.setMode,
+    privyAvailable: w.privyAvailable,
+    localAccountsAvailable: DEV_WALLET_FLAG && localAccountsAllowed(),
+    localAccounts: DEV_WALLET_FLAG && localAccountsAllowed() ? ANVIL_ACCOUNTS.map((address, index) => ({ index, address, role: ANVIL_ROLES[index] ?? "" })) : [],
+    connectLocal: w.connectLocal,
+  };
 }
