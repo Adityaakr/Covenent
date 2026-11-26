@@ -1,7 +1,8 @@
 /* Covenant global navigation and footer content (content-plan.md "Global"). */
 
-/** The public source repository. */
-export const REPO_URL = "https://github.com/Adityaakr/Covenent";
+import { REPO_URL } from "@/lib/repo";
+
+export { REPO_URL };
 /** The judge guide: every claim with the command that checks it. */
 export const JUDGES_URL = `${REPO_URL}/blob/main/JUDGES.md`;
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { REPO_URL } from "@/lib/repo";
 import { useState } from "react";
 import { Icon } from "@/components/app/icons";
 import { CopyCode } from "@/components/app/live";
@@ -21,7 +22,7 @@ const TOOLS: { group: string; names: string[] }[] = [
   { group: "Issuer only", names: ["claim_tap", "heartbeat", "lower_tap", "post_report", "wind_down"] },
 ];
 const TOOL_COUNT = TOOLS.reduce((a, g) => a + g.names.length, 0);
-const REPO = "https://github.com/Adityaakr/Covenent";
+const REPO = REPO_URL;
 const DIR = "/absolute/path/to/Covenent";
 
 type Client = "claude-code" | "claude-desktop" | "cursor" | "http";

@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "wagmi";
-import { FourmemeCreate } from "@/components/app/lite";
 import { Icon, type IconName } from "@/components/app/icons";
 import { BnbUnit, Meter, Note, Segmented, TokenAvatar, cx } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
@@ -19,6 +18,7 @@ import { floorAfterMonths, runwayMonths, settleRaise, split, startingFloorRatio,
 import { DAY, longSpan, span } from "@/lib/covenant/time";
 import type { Address, Terms } from "@/lib/covenant/types";
 import { useSource } from "@/lib/data/hooks";
+import { repoFile } from "@/lib/repo";
 import { useBnbUsd } from "@/lib/data/bnb-usd";
 import { bnb, bps, multiple, pct, price, tokens, usd } from "@/lib/format";
 import { LOCAL_MODE } from "@/lib/chain/target";
@@ -80,9 +80,9 @@ function CovenantCreate() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const worker = useRef<Worker | null>(null);
-  // The venue: Flap (default) or Four.meme; /app/create?venue=fourmeme opens the Four.meme path (Covenant Lite).
-  const venue = useSearchParams().get("venue") === "fourmeme" ? "four" : "flap";
-  const setVenue = (v: "flap" | "four") => router.replace(v === "four" ? "/app/create?venue=fourmeme" : "/app/create", { scroll: false });
+  // Flap is the only venue on testnet. Covenant Lite (Four.meme) needs Four.meme's mainnet token backend, so its option
+  // is shown but cannot be picked; /app/create?venue=fourmeme (older links) lands here with that note highlighted.
+  const askedFour = useSearchParams().get("venue") === "fourmeme";
   const [step, setStep] = useState(0);
   const [tried, setTried] = useState<number[]>([]);
   const set = <K extends keyof Terms>(k: K, val: Terms[K]) => setT((x) => ({ ...x, [k]: val }));
@@ -208,17 +208,22 @@ function CovenantCreate() {
         <div className="stack-sm" style={{ display: "grid" }}>
           <span className="eyebrow">Create a covenant</span>
           <h1 className="h-page">Write the covenant</h1>
-          <p className="lede">{venue === "four" ? "On Four.meme, the founder\u2019s share of trading tax goes to a vault with a budget cap and an abandonment switch." : "Nothing can be edited later except lowering the tap."}</p>
+          <p className="lede">Nothing can be edited later except lowering the tap.</p>
         </div>
-        {venue === "flap" ? <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}>{src.mode === "live" ? <>Creates on {src.chainId && networkKind(src.chainId) !== "local" ? withBnb(chainName(src.chainId)) : "the local chain"}</> : src.mode === "checking" ? "Checking the chain" : "Offline: connect to create"}</span> : null}
+        <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}>{src.mode === "live" ? <>Creates on {src.chainId && networkKind(src.chainId) !== "local" ? withBnb(chainName(src.chainId)) : "the local chain"}</> : src.mode === "checking" ? "Checking the chain" : "Offline: connect to create"}</span>
       </div>
 
       <div className="choice venue" role="group" aria-label="Where to launch">
-        <button type="button" aria-pressed={venue === "flap"} onClick={() => setVenue("flap")}><span className="icon-tile accent"><Icon name="vault" size={17} /></span><span><b className="t-s ink" style={{ display: "block" }}>Flap Pool Launch</b><span className="t-xs muted w5">The full five rules: raise with refunds, vault, exit at book, unlocks, disclosure</span></span><span className="radio" /></button>
-        <button type="button" aria-pressed={venue === "four"} onClick={() => setVenue("four")}><span className="icon-tile"><Icon name="coins" size={17} /></span><span><b className="t-s ink" style={{ display: "block" }}>Four.meme tax token</b><span className="t-xs muted w5">Covenant Lite: a budget cap and the abandonment switch on the founder&apos;s tax</span></span><span className="radio" /></button>
+        <button type="button" aria-pressed="true"><span className="icon-tile accent"><Icon name="vault" size={17} /></span><span><b className="t-s ink" style={{ display: "block" }}>Flap Pool Launch</b><span className="t-xs muted w5">The full five rules: raise with refunds, vault, exit at book, unlocks, disclosure</span></span><span className="radio" /></button>
+        <button type="button" disabled aria-disabled="true" aria-describedby="lite-note"><span className="icon-tile"><Icon name="coins" size={17} /></span><span><span className="row" style={{ gap: 8 }}><b className="t-s ink">Four.meme tax token</b><span className="soon-tag">Mainnet · coming soon</span></span><span className="t-xs muted w5">Covenant Lite: a budget cap and the abandonment switch on the founder&apos;s tax</span></span><span /></button>
       </div>
+      <p id="lite-note" className={cx("t-xs w5 lite-note", askedFour ? "ink" : "muted")}>
+        Covenant Lite plugs into Four.meme tax tokens through OpenFour. Token creation runs on Four.meme&apos;s mainnet backend, so it is not available on testnet yet.{" "}
+        <a href={repoFile("contracts/src/openfour/CovenantLiteVault.sol")} target="_blank" rel="noopener noreferrer">CovenantLiteVault source</a>
+        {" · "}
+        <a href={repoFile("contracts/test/unit/LiteVault.t.sol")} target="_blank" rel="noopener noreferrer">its tests</a>
+      </p>
 
-      {venue === "four" ? <FourmemeCreate /> : (
         <>
       <nav className="steps" aria-label="Steps">
         {STEPS.map((s, k) => (
@@ -401,7 +406,6 @@ function CovenantCreate() {
         </aside>
       </div>
         </>
-      )}
     </main>
   );
 }

@@ -46,7 +46,7 @@ export function HomeFourMeme() {
         </div>
         <div className={s.actions}>
           <Button variant="primary" href="/app/create?venue=fourmeme">
-            Launch on Four.meme
+            Mainnet · coming soon
           </Button>
         </div>
       </div>
