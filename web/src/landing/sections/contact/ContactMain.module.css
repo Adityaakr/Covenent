@@ -1,0 +1,141 @@
+/* Contact Main Content (vt1yw6iEY): padding 96 64 112 / 80 48 96 / 56 20 64, gap 0. Outer: no top border. */
+.content.content {
+  padding: 96px 64px 112px;
+  gap: 0;
+  align-items: flex-start;
+}
+/* Contact Columns: horizontal, align start, gap 72. Tablet: vertical gap 48. Phone: vertical gap 40. */
+.columns {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 72px;
+}
+/* Contact Intro: 1fr, gap 24. */
+.intro {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+.full { width: 100%; }
+.title { width: 100%; text-align: left; }
+
+/* Contact Channels: 1px top border; rows: 1px bottom border, padding 18 0, gap 14, centred. */
+.channels {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--c-border);
+}
+.channel {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+.channelIcon { display: inline-flex; flex: none; }
+.channelTitle { flex: 1 1 0; min-width: 0; }
+
+/* Contact Form Card: width 520, padding 32 (Phone 20), radius 20, Surface fill, 1px Border. */
+.card {
+  position: relative;
+  flex: none;
+  width: 520px;
+  padding: 32px;
+  border-radius: 20px;
+  background: var(--c-surface);
+  display: flex;
+  flex-direction: column;
+}
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--c-border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* Contact Form: vertical, gap 18; rows horizontal gap 14; fields (label) vertical gap 8. */
+.form {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+.row {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14px;
+}
+.field {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.fieldFull { width: 100%; flex: none; }
+
+/* Inputs (FormPlainTextInputNode / FormSelectNode): 46px, padding 12px 14px, radius 10px, 1px Border,
+   Background fill, Inter 500 15px / 1.2em, letter spacing 0, Text Primary, placeholder Text Secondary,
+   focused border 1px Accent. Textarea 140px. Select icon Text Secondary. */
+.input {
+  width: 100%;
+  height: 46px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  background: var(--c-bg);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 500;
+  font-style: normal;
+  letter-spacing: 0em;
+  line-height: 1.2em;
+  color: var(--c-text);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.input::placeholder { color: var(--c-text-2); opacity: 1; }
+.input:focus { border-color: var(--c-accent); }
+.textarea { height: 140px; resize: none; display: block; }
+.selectWrap { position: relative; width: 100%; display: block; }
+.select { padding-right: 36px; cursor: pointer; }
+.caret {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--c-text-2);
+  pointer-events: none;
+}
+/* Contact Submit: Submit Button instance, 100% x 48px. */
+.submit.submit { width: 100%; height: 48px; }
+
+@media (max-width: 1199.98px) {
+  .content.content { padding: 80px 48px 96px; }
+  .columns { flex-direction: column; gap: 48px; }
+  .intro { flex: none; width: 100%; }
+  .card { width: 100%; }
+}
+@media (max-width: 809.98px) {
+  .content.content { padding: 56px 20px 64px; }
+  .columns { gap: 40px; }
+  .card { padding: 20px; }
+  .row { flex-direction: column; }
+  .field { flex: none; width: 100%; }
+}

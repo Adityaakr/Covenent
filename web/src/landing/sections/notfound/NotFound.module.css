@@ -1,0 +1,20 @@
+/* Not Found Content (QhFy6b3oo): stack vertical, centred, gap 24, padding 140 64 160 (Desktop and Tablet),
+   96 20 112 (Phone). Outer: no top border, side padding 32 / 24 / 16. */
+.content.content {
+  align-items: center;
+  text-align: center;
+  gap: 24px;
+  padding: 140px 64px 160px;
+}
+.full { width: 100%; text-align: center; }
+.title { width: 100%; max-width: 820px; text-align: center; text-wrap: balance; }
+.body { width: 100%; max-width: 520px; text-align: center; }
+.actions {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+}
+@media (max-width: 809.98px) {
+  .content.content { padding: 96px 20px 112px; gap: 24px; }
+}

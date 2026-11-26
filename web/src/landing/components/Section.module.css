@@ -1,0 +1,66 @@
+/* Section shell (design-system skill; confirmed on Home "Features" and /features "Features Hero", "Security").
+   Framer draws borders inside frames without taking layout space, so borders are overlays here. */
+.outer {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 32px;
+  background: var(--c-bg);
+}
+.outer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--c-border);
+  pointer-events: none;
+  z-index: 2;
+}
+.surface { background: var(--c-surface); }
+.noBorder::before { display: none; }
+.inner {
+  position: relative;
+  width: 100%;
+  max-width: 1280px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-left: 1px solid var(--c-border);
+  border-right: 1px solid var(--c-border);
+  pointer-events: none;
+  z-index: 2;
+}
+.content {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 120px 64px;
+  gap: 56px;
+}
+.head {
+  align-items: center;
+  text-align: center;
+  padding: 112px 64px 88px;
+  gap: 24px;
+}
+@media (max-width: 1199.98px) {
+  .outer { padding: 0 24px; }
+  .content { padding: 96px 48px; gap: 56px; }
+  .head { padding: 96px 48px; gap: 24px; }
+}
+@media (max-width: 809.98px) {
+  .outer { padding: 0 16px; }
+  .content { padding: 64px 20px; gap: 36px; }
+  .head { padding: 64px 20px; gap: 36px; }
+}

@@ -1,0 +1,25 @@
+/* Features Hero Content: stack vertical, centred, gap 24 (phone 36), padding from Section head. */
+.eyebrow {
+  width: 100%;
+  text-align: center;
+}
+.title {
+  width: 100%;
+  max-width: 900px;
+  text-align: center;
+  text-wrap: balance;
+}
+.body {
+  width: 100%;
+  max-width: 560px;
+  text-align: center;
+  text-wrap: balance;
+}
+/* Features Hero Actions: stack horizontal, gap 10, padding-top 8. */
+.actions {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 8px;
+}

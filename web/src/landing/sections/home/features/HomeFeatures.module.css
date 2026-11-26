@@ -1,0 +1,298 @@
+/* Framer Home section "Features" (ZN5NVUdId). Values: docs/landing/spec/home-a.md.
+   Borders that Framer draws inside frames are inset box-shadows here, so they take no layout space. */
+
+.grow { flex: 1 1 0; min-width: 0; }
+.trunc { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Section shell content: the Features section has no content padding of its own; Intro and Body carry it. */
+.content.content { padding: 0; gap: 0; }
+
+.intro { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; padding: 120px 64px 96px; }
+.heading { width: 100%; max-width: 1040px; }
+
+.body { display: flex; flex-direction: row; align-items: flex-start; box-shadow: inset 0 1px 0 var(--c-border); }
+
+/* Feature Index Column: sticky below the 64px navigation */
+.indexColumn {
+  position: sticky;
+  top: 64px;
+  align-self: flex-start;
+  flex: none;
+  width: 300px;
+  padding: 64px 32px 64px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.index { width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
+.indexItem { display: flex; align-items: center; gap: 14px; }
+.indexMarker { display: block; flex: none; width: 2px; height: 22px; }
+.indexText { flex: 1 1 0; min-width: 0; }
+
+.blocks {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 112px;
+  padding: 64px 64px 120px;
+  box-shadow: inset 1px 0 0 var(--c-border);
+}
+.block { display: flex; flex-direction: column; align-items: flex-start; gap: 40px; width: 100%; }
+.statement { width: 100%; max-width: 680px; }
+
+/* Shared bits */
+.dot7, .dot6 { display: block; flex: none; }
+.dot7 { width: 7px; height: 7px; border-radius: 7px; }
+.dot6 { width: 6px; height: 6px; border-radius: 6px; }
+.bg_accent { background: var(--c-accent); }
+.bg_text { background: var(--c-text); }
+.bg_text2 { background: var(--c-text-2); }
+.bg_border { background: var(--c-border); }
+.bg_danger { background: var(--c-danger); }
+.iconText { flex: none; color: var(--c-text); }
+.iconAccent { flex: none; color: var(--c-accent); }
+.iconMuted { flex: none; color: var(--c-text-2); }
+.iconBg { flex: none; color: var(--c-bg); }
+.source { flex: none; display: flex; padding: 3px 8px; border-radius: 6px; background: var(--c-surface); }
+.status110, .status96 { flex: none; display: flex; align-items: center; gap: 6px; }
+.status110 { width: 110px; }
+.status96 { width: 96px; }
+.plate { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; z-index: 0; }
+
+/* 1. Requests panel -> commitments */
+.panelRaise {
+  width: 100%;
+  height: 440px;
+  overflow: clip;
+  padding: 48px 48px 0;
+  border-radius: 20px;
+  background: var(--c-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.inbox {
+  flex: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: clip;
+  border-radius: 14px;
+  background: var(--c-bg);
+  box-shadow: 0px 20px 40px -16px rgba(21, 23, 28, 0.18), 0px 0px 0px 1px rgba(21, 23, 28, 0.06);
+}
+.inboxHeader { display: flex; align-items: center; gap: 10px; padding: 14px 18px; box-shadow: inset 0 -1px 0 var(--c-border); }
+.spacer { flex: 1 1 0; height: 4px; }
+.filter { flex: none; display: flex; padding: 4px 10px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--c-border); }
+.filterOn { background: var(--c-text); box-shadow: none; }
+.request { display: flex; align-items: center; gap: 16px; padding: 14px 18px; box-shadow: inset 0 -1px 0 var(--c-border); }
+.votes {
+  flex: none;
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--c-border);
+}
+.requestText { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 3px; }
+
+/* 2. Roadmap board on an image plate -> rule cards */
+.panelSheet {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  overflow: clip;
+  padding: 48px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.board {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--c-glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0px 24px 48px -20px rgba(21, 23, 28, 0.3);
+}
+.column {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--c-surface);
+}
+.columnHeader { display: flex; align-items: center; gap: 8px; padding: 2px 4px 6px; }
+.ruleCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--c-bg);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+}
+.cardMeta { display: flex; align-items: center; gap: 8px; }
+.avatar20 {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 20px;
+  background: var(--c-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.progress4 { display: flex; height: 4px; border-radius: 4px; overflow: hidden; background: var(--c-surface); }
+.progress4Fill { display: block; height: 4px; border-radius: 4px; background: var(--c-accent); }
+
+/* 3. My work -> team console, with blocker and progress cards */
+.panelTeam {
+  width: 100%;
+  overflow: clip;
+  padding: 40px;
+  border-radius: 20px;
+  background: var(--c-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+.workCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: clip;
+  border-radius: 14px;
+  background: var(--c-bg);
+  box-shadow: 0px 20px 40px -16px rgba(21, 23, 28, 0.16), 0px 0px 0px 1px rgba(21, 23, 28, 0.06);
+}
+.workHeader { display: flex; align-items: center; gap: 10px; padding: 14px 18px; box-shadow: inset 0 -1px 0 var(--c-border); }
+.task {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  background: var(--c-bg);
+  box-shadow: inset 0 -1px 0 var(--c-border);
+  transition: background-color 0.2s cubic-bezier(0.44, 0, 0.56, 1), transform 0.2s cubic-bezier(0.44, 0, 0.56, 1);
+}
+/* hoverEffect on Task 1..5: Surface fill and scale 1.1, tween 0.2s ease (0.44, 0, 0.56, 1) */
+.task:hover { z-index: 1; background: var(--c-surface); transform: scale(1.1); }
+.trackingSide { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; }
+.blocker, .progressCard {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--c-bg);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+}
+.blocker { gap: 10px; }
+.progressCard { gap: 12px; align-items: stretch; }
+.blockerHeader { width: 100%; display: flex; align-items: center; gap: 8px; }
+.blockerAction { display: flex; padding: 6px 10px; border-radius: 8px; background: var(--c-text); cursor: pointer; }
+.progress6 { display: flex; height: 6px; border-radius: 6px; overflow: hidden; background: var(--c-surface); }
+.progress6Fill { display: block; height: 6px; border-radius: 6px; background: var(--c-accent); }
+
+/* 4. Release panel on an image plate with a toast -> exit round */
+.panelExit {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  overflow: clip;
+  padding: 48px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.release {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--c-bg);
+  box-shadow: 0px 30px 60px -20px rgba(21, 23, 28, 0.35);
+}
+.releaseHeader { display: flex; align-items: center; gap: 10px; }
+.version {
+  flex: none;
+  display: flex;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--c-surface);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+}
+.releaseGroup { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.releaseTag { display: flex; align-items: center; gap: 6px; }
+.toast {
+  position: absolute;
+  top: 32px;
+  right: 32px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--c-text);
+}
+
+@media (max-width: 1199.98px) {
+  .intro { padding: 96px 48px 72px; }
+  .indexColumn { display: none; }
+  .blocks { box-shadow: none; padding: 56px 48px 96px; }
+}
+
+@media (max-width: 809.98px) {
+  .intro { padding: 64px 20px 48px; }
+  .body { flex-direction: column; align-items: stretch; }
+  .blocks { gap: 72px; padding: 40px 20px 64px; }
+  .phoneHidden { display: none; }
+
+  .panelRaise { height: 400px; padding: 20px 16px 0; border-radius: 16px; }
+  .filter { display: none; }
+  .request { gap: 12px; padding: 12px 14px; }
+  .request .source, .request .status110 { display: none; }
+
+  .panelSheet { padding: 16px; border-radius: 16px; }
+  .board { flex-direction: column; align-items: stretch; }
+  .column { flex: none; width: 100%; }
+
+  .panelTeam { padding: 16px; }
+  .trackingSide { flex-direction: column; align-items: stretch; }
+  .blocker, .progressCard { flex: none; width: 100%; }
+
+  .panelExit { padding: 20px 12px; }
+  .release { padding: 18px; }
+  .toast { display: none; }
+}

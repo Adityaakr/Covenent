@@ -1,0 +1,30 @@
+/* Submit Button (isiuHjqjc): stack horizontal centred, gap 8px, padding 0 18px, radius 10px, height 44px.
+   The component's own width is 200px; instances override height/width through className. */
+.button {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: none;
+  width: 200px;
+  height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background-color: var(--c-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.button:disabled {
+  cursor: pointer;
+}
+.button:focus-visible {
+  outline: 2px solid var(--c-input-focus);
+  outline-offset: 2px;
+}
+.label {
+  color: var(--c-bg);
+  white-space: pre;
+}

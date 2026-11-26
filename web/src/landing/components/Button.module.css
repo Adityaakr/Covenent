@@ -1,0 +1,43 @@
+/* Button (Cd7LjBF5C): stack horizontal, centred, gap 6px, padding 0 16px, radius 10px, height 40px. */
+.button {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  width: auto;
+  padding: 0 16px;
+  border-radius: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.md { height: 40px; }
+.lg { height: 44px; }
+.button .label {
+  display: block;
+  position: relative;
+  white-space: pre;
+  color: inherit;
+}
+.primary {
+  background-color: var(--c-text);
+  color: var(--c-bg);
+}
+.secondary {
+  background-color: var(--c-bg);
+  color: var(--c-text);
+}
+/* Framer draws borders inside the frame without changing its size. */
+.secondary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--c-border);
+  border-radius: inherit;
+  pointer-events: none;
+}

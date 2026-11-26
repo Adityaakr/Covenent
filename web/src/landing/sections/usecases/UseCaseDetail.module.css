@@ -1,0 +1,87 @@
+/* /use-cases/[slug] (Framer story detail UUPt0HfzN). Values per docs/landing/spec/use-cases.md. */
+
+/* ---------- Story Header ---------- */
+.headerContent { padding: 96px 64px 56px; gap: 24px; align-items: flex-start; }
+.back { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; color: var(--c-text-2); }
+.company { display: flex; flex-direction: row; align-items: center; gap: 10px; }
+.markWrap { display: flex; flex: none; color: var(--c-text); }
+.markWrap svg { width: 24px; height: 24px; }
+.title { width: 100%; max-width: 960px; text-wrap: auto; }
+.summary { width: 100%; max-width: 640px; }
+
+/* ---------- Story Cover Section ---------- */
+.coverContent { padding: 0 24px 24px; gap: 0; }
+.coverLift { width: 100%; }
+.cover {
+  display: block;
+  width: 100%;
+  height: 560px;
+  border-radius: 20px;
+  overflow: clip;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* ---------- Story Body ---------- */
+.bodyContent { gap: 0; }
+.columns { display: flex; flex-direction: row; align-items: flex-start; gap: 80px; width: 100%; }
+.facts {
+  position: sticky;
+  top: 96px;
+  flex: none;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 16px 0;
+  border-top: 1px solid var(--c-border);
+}
+.fact > *,
+.facts > p { width: 100%; }
+
+/* Rich text: base Body (Inter 500 15px, -0.006em, 1.55em, Text Secondary); h2 -> H3 preset, p -> Lead preset.
+   Paragraph spacing (Framer): each block after the first gets its preset's spacing above it (H3 40px, Lead 20px). */
+.rich {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 680px;
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: -0.006em;
+  line-height: 1.55em;
+  color: var(--c-text-2);
+}
+.rich > h2 { margin-top: 40px; text-wrap: auto; }
+.rich > p { margin-top: 20px; text-wrap: auto; }
+.rich > :first-child { margin-top: 0; }
+
+/* ---------- Story Quote ---------- */
+.quoteContent { gap: 28px; align-items: center; }
+.quoteMark { color: var(--c-accent); }
+.quoteText { width: 100%; max-width: 900px; text-align: center; text-wrap: balance; }
+.quoteAuthor { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; }
+
+/* ---------- Tablet ---------- */
+@media (max-width: 1199.98px) {
+  .headerContent { padding: 96px 48px; }
+  .cover { height: 420px; }
+  .columns { flex-direction: column; gap: 48px; }
+  .facts { position: relative; top: auto; width: 100%; }
+  .rich { flex: none; width: 100%; }
+}
+
+/* ---------- Phone ---------- */
+@media (max-width: 809.98px) {
+  .headerContent { padding: 64px 20px; gap: 36px; }
+  .coverContent { padding: 0 12px 12px; }
+  .cover { height: 260px; border-radius: 14px; }
+  .bodyContent { gap: 36px; }
+  .columns { gap: 40px; }
+  .quoteContent { gap: 36px; }
+}
