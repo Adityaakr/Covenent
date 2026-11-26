@@ -18,6 +18,8 @@
     "issuer:earn": "tsx agents/issuer/earn.ts",
     "investor": "tsx agents/investor/main.ts",
     "mcp": "tsx mcp/main.ts",
+    "mcp:http": "tsx mcp/http-main.ts",
+    "demo:agent": "tsx scripts/agent-demo.ts",
     "build:fixtures": "forge build --root test/fixtures/contracts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

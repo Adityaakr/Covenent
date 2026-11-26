@@ -11,5 +11,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["src", "agents", "mcp", "test", "vitest.config.ts"]
+  "include": ["src", "agents", "mcp", "scripts", "test", "vitest.config.ts"]
 }

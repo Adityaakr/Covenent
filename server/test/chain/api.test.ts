@@ -6,6 +6,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';
 import { createApp } from '../../src/api/app.js';
 import { CmcClient } from '../../src/api/cmc.js';
+import { FINALIZE_GAS } from '../../src/covenant/gas.js';
 import { CovenantSheet, CovenantSummary, Downside, Health, History, LedgerEvent, PokeReport, UnsignedTx } from '../../src/schema.js';
 import { deployFixture, E18, KEYS, POOL, startAnvil, type Anvil, type Fixture } from './harness.js';
 
@@ -97,6 +98,32 @@ describe('API', () => {
     expect(tx.to.toLowerCase()).toBe(fx.launcher.toLowerCase());
     const hb = UnsignedTx.parse((await get(`/api/covenants/${fx.vault}/tx/heartbeat`)).body);
     expect(hb.from).not.toBeNull();
+    const fin = UnsignedTx.parse((await get(`/api/covenants/${fx.vault}/tx/finalize`)).body);
+    expect(fin.gas).toBe(FINALIZE_GAS.toString());
+    expect(fin.to.toLowerCase()).toBe(fx.launcher.toLowerCase());
+    expect(UnsignedTx.parse((await get(`/api/covenants/${fx.vault}/tx/release-team`)).body).functionName).toBe('releaseTeam');
+    const over = await get(`/api/covenants/${fx.vault}/tx/commit?amount=500.5`); // decimal = BNB, over the 100 BNB local cap
+    expect(over.status).toBe(400);
+    expect((over.body as { error: string }).error).toMatch(/per-call cap/);
+  });
+
+  it('health never shows the RPC path or query, where hosted RPCs keep their key', async () => {
+    const a = createApp({ cfg: fx.cfg({ rpcUrl: `${fx.rpcUrl}/secret-key?apikey=s3cret` }) });
+    const h = (await (await a.request('/health')).json()) as { rpcUrl: string };
+    expect(h.rpcUrl).not.toMatch(/secret|s3cret/);
+  });
+
+  it('rate-limits the routes that build transactions', async () => {
+    process.env.API_TX_RATE_PER_MIN = '2';
+    try {
+      const a = createApp({ cfg: fx.cfg() });
+      const codes = [];
+      for (let i = 0; i < 3; i++) codes.push((await a.request(`/api/covenants/${fx.vault}/tx/claim-tokens`)).status);
+      expect(codes).toEqual([200, 200, 429]);
+      expect((await a.request('/health')).status).toBe(200); // reads are not limited
+    } finally {
+      delete process.env.API_TX_RATE_PER_MIN;
+    }
   });
 
   it('CMC proxy keeps the key server-side and strips key-like params', async () => {

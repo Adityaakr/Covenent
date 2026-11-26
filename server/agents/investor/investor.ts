@@ -51,6 +51,7 @@ export class InvestorAgent {
         to: step.to,
         data: step.data,
         value: BigInt(step.value),
+        ...(step.gas ? { gas: BigInt(step.gas) } : {}),
       });
       const r = await this.client.waitForTransactionReceipt({ hash });
       if (r.status !== 'success') throw new Error(`${step.functionName} reverted (${hash})`);
@@ -65,7 +66,7 @@ export class InvestorAgent {
     this.log(`${covenants.length} covenant(s) trading under book value`);
     const out: InvestorDecision[] = [];
     for (const c of covenants) {
-      const d = await callTool<Downside>(this.mcp, 'get_downside', { vault: c.vault, holder: this.address });
+      const d = await callTool<Downside>(this.mcp, 'get_downside', { covenant: c.vault, wallet: this.address });
       const base = { vault: c.vault, symbol: c.symbol, premiumToBookPct: c.premiumToBookPct, state: c.state, downside: d, txs: [] as Hex[] };
       if (BigInt(d.tokensWei) === 0n) {
         out.push({ ...base, action: 'hold', reason: 'no position in this covenant' });
@@ -82,7 +83,12 @@ export class InvestorAgent {
         out.push({ ...base, action: 'hold', reason: `Redeeming pays ${formatEther(redeem)} BNB against ${formatEther(sell)} BNB on the pool: edge ${edgePct.toFixed(2)}% is under ${this.opts.minEdgePct}%.` });
         continue;
       }
-      const { unsignedTransaction } = await callTool<{ unsignedTransaction: UnsignedTx }>(this.mcp, 'redeem', { vault: c.vault, holder: this.address, tokens: d.tokensWei });
+      const { unsignedTransaction, simulation } = await callTool<{ unsignedTransaction: UnsignedTx; simulation: { ok: boolean | null; note: string } }>(this.mcp, 'redeem', { covenant: c.vault, wallet: this.address, tokens_wei: d.tokensWei });
+      // the simulation runs before the approval lands, so a revert there is expected only while a prerequisite is pending
+      if (simulation.ok === false && unsignedTransaction.prerequisites.length === 0) {
+        out.push({ ...base, action: 'hold', reason: `Redeem would revert now, not sent: ${simulation.note}` });
+        continue;
+      }
       const txs = await this.sign(unsignedTransaction);
       out.push({
         ...base,
