@@ -7,12 +7,14 @@ export type SplitHeadingProps = {
   className?: string;
   first: ReactNode;
   second?: ReactNode;
+  /** Put the grey second sentence on its own line on desktop (1200px and up), for two-line headings. */
+  stack?: boolean;
 };
 
 const style = { h1: "t-h1", h2: "t-h2", h3: "t-h3" } as const;
 
 /** Two-run heading: first sentence in text colour, second in secondary colour. "BNB" gets its inline mark. */
-export function SplitHeading({ as = "h2", className, first, second }: SplitHeadingProps) {
+export function SplitHeading({ as = "h2", className, first, second, stack }: SplitHeadingProps) {
   const Tag = as;
   return (
     <Tag className={[style[as], s.heading, className ?? ""].filter(Boolean).join(" ")}>
@@ -20,7 +22,7 @@ export function SplitHeading({ as = "h2", className, first, second }: SplitHeadi
       {second ? (
         <>
           {" "}
-          <span className="c-text-2">{bnb(second)}</span>
+          <span className={["c-text-2", stack ? s.stack : ""].filter(Boolean).join(" ")}>{bnb(second)}</span>
         </>
       ) : null}
     </Tag>

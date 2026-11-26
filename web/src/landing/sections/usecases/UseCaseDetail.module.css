@@ -6,7 +6,7 @@
 .company { display: flex; flex-direction: row; align-items: center; gap: 10px; }
 .markWrap { display: flex; flex: none; color: var(--c-text); }
 .markWrap svg { width: 24px; height: 24px; }
-.title { width: 100%; max-width: 960px; text-wrap: auto; }
+.title { width: 100%; max-width: 960px; text-wrap: balance; }
 .summary { width: 100%; max-width: 640px; }
 
 /* ---------- Story Cover Section ---------- */
@@ -57,8 +57,8 @@
   line-height: 1.55em;
   color: var(--c-text-2);
 }
-.rich > h2 { margin-top: 40px; text-wrap: auto; }
-.rich > p { margin-top: 20px; text-wrap: auto; }
+.rich > h2 { margin-top: 40px; text-wrap: pretty; }
+.rich > p { margin-top: 20px; text-wrap: pretty; }
 .rich > :first-child { margin-top: 0; }
 .rich > .sources { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 16px; }
 .rich > .block { margin-top: 20px; }

@@ -25,7 +25,7 @@ export function Capabilities() {
           as="h2"
           className={s.heading}
           first="Five rules, fixed at launch."
-          second="Each one is a formula over numbers the vault reads on-chain."
+          second={"Each one is a formula over numbers the vault reads\u00a0on-chain."}
         />
       </div>
       {/* FeatureGrid carries the grid's scroll lift (y 32, scale 0.98). */}

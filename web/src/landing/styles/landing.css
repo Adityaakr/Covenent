@@ -230,3 +230,7 @@ body:has(.landing-root) {
 
 /* In-page anchors land below the 64px sticky navigation. */
 .landing-root section[id] { scroll-margin-top: 64px; }
+
+/* Headings never end on a lone word. :where keeps this at element weight, so a class's own text-wrap
+   (balance on centred titles) still wins. */
+:where(.landing-root) :is(h1, h2, h3, h4, blockquote) { text-wrap: pretty; }

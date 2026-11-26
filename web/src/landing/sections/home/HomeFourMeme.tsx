@@ -41,7 +41,7 @@ export function HomeFourMeme() {
           <SplitHeading
             className={s.heading}
             first="Already launching on Four.meme?"
-            second="Put your tax share under a covenant."
+            second={"Put your tax share under a\u00a0covenant."}
           />
         </div>
         <div className={s.actions}>

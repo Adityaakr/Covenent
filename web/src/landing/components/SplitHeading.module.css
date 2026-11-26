@@ -1,1 +1,5 @@
 .heading { max-width: 100%; }
+/* Two-line headings: the second sentence starts a new line on desktop; narrower screens let it flow. */
+@media (min-width: 1200px) {
+  .stack { display: block; }
+}

@@ -167,7 +167,8 @@ export function HomeProblem() {
         <SplitHeading
           className={s.heading}
           first="Money raised in public has no rules after launch."
-          second="Buyers get no claim, and agents answer to no one."
+          second="Buyers get no claim. Agents answer to no one."
+          stack
         />
       </div>
 

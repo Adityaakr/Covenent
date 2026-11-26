@@ -32,8 +32,8 @@ const approaches: Approach[] = [
     ],
   },
   {
-    name: "Bonding-curve launchpads",
-    when: "Pump.fun and others",
+    name: "Launchpads",
+    when: "Bonding curves: Pump.fun and others",
     right: "Anyone can launch a token in minutes, and trading starts at once.",
     leaves: "No treasury and no terms after launch. 98.6% of Pump.fun tokens fell below $1,000 of liquidity.",
     answer: "A covenant is a launch type inside Flap and Four.meme: the same speed, plus a vault and fixed terms.",

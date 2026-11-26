@@ -24,6 +24,11 @@ from the home page, and `/pricing` and `/changelog` redirect home (owner's reque
 
 ## The problem today (from the template's "Stats")
 
+Heading: "Money raised in public has no rules after launch." / "Buyers get no claim. Agents answer to no one.",
+exactly two lines at 1200px (the second sentence starts its own line from 1200px up, `SplitHeading stack`).
+Every heading on the site uses `text-wrap: pretty` (or `balance` where centred) so none ends on a lone word; the one
+exception is the hero at 390px, where "autonomous ventures." is wider than the phone at the template's 42px size.
+
 Two short stories, picked with the template's pill tabs: "Token raises" and "Agents holding money". Each has an
 illustrative curve (labelled as such) with four markers, an axis, and four step cells in the Stats cell pattern. The
 story plays itself while on screen (a progress line on the active step) until someone picks a step or a story; the
