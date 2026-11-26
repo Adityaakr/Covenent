@@ -52,4 +52,27 @@ describe.skipIf(!online)('BNB testnet read smoke (live RPC)', () => {
     expect(acts.actions.length).toBeGreaterThan(5);
     await c.close();
   }, 90_000);
+
+  it('reads the legacy CVT covenant (97.json legacyCovenantVault): its ledger, token and pool', async () => {
+    const d = loadDeployments(deploymentFile('97.json'));
+    const vault = (d!.addresses as Record<string, string>).legacyCovenantVault!;
+    const cfg = { ...loadConfig({ deployments: d }), chainId: 97, rpcUrl: TESTNET_PUBLIC_RPC, covenants: [] };
+    const server = createMcpServer({ cfg });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const c = new Client({ name: 'smoke', version: '0' });
+    await c.connect(b);
+    const call = async (name: string, args: Record<string, unknown> = {}) => {
+      const r = (await c.callTool({ name, arguments: args })) as { isError?: boolean; content: { text: string }[] };
+      expect(r.isError ?? false, `${name}: ${r.content[0]!.text}`).toBe(false);
+      return JSON.parse(r.content[0]!.text);
+    };
+    const ev = await call('get_events', { covenant: vault, limit: 200 });
+    expect(ev.covenant.token.toLowerCase().endsWith('7777')).toBe(true);
+    expect(ev.covenant.pair).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    expect(ev.total).toBeGreaterThan(10);
+    const byToken = await call('get_covenant', { covenant: ev.covenant.token });
+    expect(byToken.resolved).toMatchObject({ vault, matchedAs: 'token' });
+    await c.close();
+  }, 180_000);
 });

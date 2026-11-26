@@ -128,6 +128,8 @@ const str = (v: bigint | null): string | null => (v === null ? null : v.toString
 export interface ServiceOptions {
   cfg: ServerConfig;
   client?: PublicClient;
+  /** client for eth_getLogs; defaults to one on cfg.logRpcUrl when set, else `client` */
+  logClient?: PublicClient;
   abis?: CovenantAbis;
 }
 
@@ -143,7 +145,8 @@ export class CovenantService {
     this.cfg = opts.cfg;
     this.client = opts.client ?? publicClient(opts.cfg);
     this.abis = opts.abis ?? loadAbis();
-    this.index = new EventIndex(this.client, opts.cfg.startBlock);
+    const logClient = opts.logClient ?? (opts.client || !opts.cfg.logRpcUrl ? this.client : publicClient({ ...opts.cfg, rpcUrl: opts.cfg.logRpcUrl }));
+    this.index = new EventIndex(logClient, opts.cfg.startBlock);
     for (const c of opts.cfg.covenants) this.refs.set(c.vault.toLowerCase(), c);
   }
 
@@ -168,7 +171,8 @@ export class CovenantService {
       }
       await Promise.all(
         launchers.map(async (l) => {
-          if ([...this.refs.values()].some((r) => r.launcher && getAddress(r.launcher) === getAddress(l))) return;
+          const known = [...this.refs.values()].find((r) => r.launcher && getAddress(r.launcher) === getAddress(l));
+          if (known) return void (await this.complete(known));
           try {
             const [vault, token, pool] = await Promise.all(
               ['vault', 'token', 'pool'].map((fn) =>
@@ -189,6 +193,25 @@ export class CovenantService {
       );
     }
     return this.covenants();
+  }
+
+  /**
+   * Fill a known covenant's missing token and pool from its launcher. A covenant named in the deployment record (97.json
+   * `legacyCovenantVault` / `legacyCovenantLauncher`) comes with its vault and launcher only, and without this its token
+   * and pool addresses would never resolve.
+   */
+  async complete(ref: CovenantRef): Promise<CovenantRef> {
+    if (!ref.launcher || (ref.token && ref.pair)) return ref;
+    const [token, pool] = await Promise.all([
+      ref.token ? Promise.resolve(ref.token) : this.tryRead<Address>(ref.launcher, this.abis.launcher, 'token'),
+      ref.pair ? Promise.resolve(ref.pair) : this.tryRead<Address>(ref.launcher, this.abis.launcher, 'pool'),
+    ]);
+    this.addCovenant({
+      vault: ref.vault,
+      ...(token && token !== zeroAddress ? { token: getAddress(token) } : {}),
+      ...(pool && pool !== zeroAddress ? { pair: getAddress(pool) } : {}),
+    });
+    return this.refs.get(ref.vault.toLowerCase())!;
   }
 
   addCovenant(ref: CovenantRef): void {
@@ -616,6 +639,12 @@ export class CovenantService {
       await this.discover().catch(() => undefined);
       hit = this.findRef(a);
     }
+    if (!hit) {
+      // a covenant from the deployment record may not know its token and pool yet
+      await Promise.all(this.covenants().map((r) => this.complete(r).catch(() => r)));
+      hit = this.findRef(a);
+    }
+    if (hit) hit = await this.complete(hit).catch(() => hit!);
     if (hit) return { vault: hit.vault, launcher: hit.launcher ?? null, token: hit.token ?? null, pair: hit.pair ?? null, matchedAs: matchedAs(hit, a) };
     // not discovered: only our factories can vouch for it
     const launcherOf = await this.factoryLauncherOf(a);

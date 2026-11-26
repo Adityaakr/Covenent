@@ -67,6 +67,12 @@ export function abiDir(): string {
 
 /** Public BNB testnet RPC used when a record names none (the web app's first choice too). */
 export const TESTNET_PUBLIC_RPC = 'https://bsc-testnet-rpc.publicnode.com';
+/**
+ * BNB Chain's own testnet endpoint that keeps the full log history (5,000-block ranges). publicnode keeps logs for only a
+ * few hours and answers older ranges with an empty list, so the event ledger of an older covenant (the first testnet
+ * covenant, CVT) would read as empty. Measured 27 Nov 2026; the web app uses the same endpoint (web/src/lib/chain/logs.ts).
+ */
+export const TESTNET_LOG_RPC = 'https://bsc-prebsc-dataseed.bnbchain.org';
 /** First block of the 26 Nov 2026 BNB testnet deployment (contracts/deployments/97.json; scripts/testnet-up.sh). */
 export const TESTNET_START_BLOCK = 144_956_048;
 
@@ -163,6 +169,8 @@ export function deploymentAddress(d: Deployments | null, ...keys: string[]): Add
 
 export interface ServerConfig {
   rpcUrl: string;
+  /** RPC for eth_getLogs when it differs from rpcUrl (BNB testnet: an endpoint that keeps the full history) */
+  logRpcUrl?: string;
   chainId: number;
   deployments: Deployments | null;
   covenants: CovenantRef[];
@@ -249,6 +257,10 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
   const cfg: ServerConfig = {
     rpcUrl: env('RPC_URL') ?? deployments?.rpcUrl ?? 'http://127.0.0.1:8545',
     chainId: Number(env('CHAIN_ID') ?? deployments?.chainId ?? 31337),
+    // BNB testnet through a public RPC: logs come from the full-history endpoint. A loopback node serves its own.
+    logRpcUrl:
+      env('LOG_RPC_URL') ??
+      (chainIdFor(deployments) === 97 && !isLoopbackRpc(env('RPC_URL') ?? deployments?.rpcUrl ?? 'http://127.0.0.1:8545') ? TESTNET_LOG_RPC : undefined),
     deployments,
     covenants: [...merged.values()],
     oracle: addrEnv('COVENANT_ORACLE') ?? deploymentAddress(deployments, 'oracle', 'covenantOracle', 'CovenantOracle'),
