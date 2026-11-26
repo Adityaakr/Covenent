@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { Fragment } from "react";
+import { MoneyMap, RaiseClosed, Story, SupplyBar } from "@/components/app/story";
+import { amt } from "@/lib/covenant/story";
 import { CovenantPage } from "@/components/app/covenant-page";
 import { Icon } from "@/components/app/icons";
 import { BnbUnit, Empty, Note, Ticker } from "@/components/app/ui";
@@ -31,44 +33,35 @@ function Settle({ v, d }: { v: CovenantView; d: Derived }) {
     );
   }
 
-  const C = Math.max(v.raise.committed, 1e-9);
   const steps: [string, string][] = failed ? [
     ["Committed by buyers", `${bnb(v.raise.committed)} BNB`],
-    ["Minimum", `${bnb(v.terms.minRaise, 0)} BNB`],
+    ["Minimum", `${amt(v.terms.minRaise)} BNB`],
     ["Result", "Failed: every commitment refunds in full"],
   ] : [
-    ["Committed by buyers", `${bnb(v.raise.committed, 0)} BNB (${r.oversubscription.toFixed(1)}× the cap)`],
-    ["Accepted", `${bnb(r.Q, 0)} BNB`],
-    ["Refunded pro rata", `${bnb(r.refunded, 0)} BNB (each buyer keeps ${pct(r.keptShare, 1)})`],
-    ["Sale price", `${bnb(r.Q, 0)} / ${tokens(d.sp.A)} = ${price(r.salePrice)} BNB`],
-    ["Pool seed", `${bnb(r.qPool, 0)} BNB + ${tokens(d.sp.P)} tokens, at the sale price`],
-    ["Treasury", `${bnb(r.T0, 0)} BNB, held by the vault`],
-    ["Book value per token", `${bnb(r.T0, 0)} / ${tokens(d.sp.A + d.sp.P)} = ${price(r.T0 / (d.sp.A + d.sp.P))} BNB (${pct(d.startRatio, 0)} of the sale price)`],
+    ["Committed by buyers", `${amt(v.raise.committed)} BNB (${r.oversubscription.toFixed(1)}× the cap)`],
+    ["Accepted", `${amt(r.Q)} BNB`],
+    ["Refunded pro rata", `${amt(r.refunded)} BNB (each buyer keeps ${pct(r.keptShare, 1)})`],
+    ["Sale price", `${amt(r.Q)} / ${tokens(d.sp.A)} = ${price(r.salePrice)} BNB`],
+    ["Pool seed", `${amt(r.qPool)} BNB + ${tokens(d.sp.P)} tokens, at the sale price`],
+    ["Treasury", `${amt(r.T0)} BNB, held by the vault`],
+    ["Book value per token", `${amt(r.T0)} / ${tokens(d.sp.A + d.sp.P)} = ${price(r.T0 / (d.sp.A + d.sp.P))} BNB (${pct(d.startRatio, 0)} of the sale price)`],
   ];
-  const seg = (n: number, c: string, label: string, i: number) => n > 0 ? <div key={label} title={`${label}: ${bnb(n)} BNB`} style={{ flexGrow: n / C, flexBasis: 0, background: c, animation: `grow 600ms var(--ease) both ${i * 80}ms`, transformOrigin: "left" }}>{n / C > 0.12 ? label : ""}</div> : null;
 
   return (
     <div className="grid-side">
-      <div className="stack">
-        <div className="card">
-          <div className="card-head"><div><h3 className="h-card">Result of the raise</h3><p className="t-xs muted w5">{failed ? "The minimum was missed" : "One transaction settled all of this"}</p></div><span className={failed ? "badge" : "badge good"}>{failed ? "Failed" : "Launched"}</span></div>
-          <div className="card-body stack">
-            {failed ? (
-              <div className="split-bar">{seg(v.raise.committed, "var(--faint)", "Refunded in full", 0)}</div>
-            ) : (
-              <>
-                <div className="split-bar" aria-label="Commitments: accepted and refunded">{seg(r.Q, "var(--accent-strong)", `Accepted ${bnb(r.Q, 0)}`, 0)}{seg(r.refunded, "var(--line-strong)", `Refunded ${bnb(r.refunded, 0)}`, 1)}</div>
-                <div className="split-bar" style={{ width: `${(r.Q / C) * 100}%`, minWidth: 220 }} aria-label="Accepted: pool and treasury">{seg(r.qPool, "var(--good)", `Pool ${bnb(r.qPool, 0)}`, 2)}{seg(r.T0, "var(--agent)", `Vault ${bnb(r.T0, 0)}`, 3)}</div>
-              </>
-            )}
-          </div>
-          <div className="table-wrap" style={{ borderTop: "1px solid var(--line)" }}>
-            <table className="table">
-              <tbody>{steps.map(([k, val], i) => <tr key={k} className="rise" style={{ ["--i" as string]: i } as CSSProperties}><td className="muted">{k}</td><td className="r ink" style={{ whiteSpace: "normal" }}>{val}</td></tr>)}</tbody>
-            </table>
-          </div>
-        </div>
-        {!failed ? <Note icon="shield">It refunded the excess, launched the token on Flap with the pool at the sale price, created the vault and moved <span className="num">{bnb(r.T0, 0)}</span> BNB into it. The {v.issuer.kind === "agent" ? "agent" : "team"} never held the raise.</Note> : null}
+      <div className="stack" style={{ gap: 20 }}>
+        <Story id="result" title="Result of the raise" sub={failed ? "The minimum was missed" : "One transaction settled all of this"} right={<span className={failed ? "badge lg" : "badge good lg"}>{failed ? "Failed" : "Launched"}</span>}>
+          <RaiseClosed v={v} d={d} />
+          <details className="more">
+            <summary>Show the math<Icon name="chevronDown" size={13} /></summary>
+            <dl className="kv" style={{ marginTop: 12 }}>
+              {steps.map(([k, val]) => <Fragment key={k}><dt>{k}</dt><dd>{val}</dd></Fragment>)}
+            </dl>
+          </details>
+        </Story>
+        <MoneyMap v={v} d={d} />
+        {!failed ? <Story id="supply" title="Who holds the supply"><SupplyBar v={v} /></Story> : null}
+        {!failed ? <Note icon="shield">It refunded the excess, launched the token on Flap with the pool at the sale price, created the vault and moved <span className="num">{bnb(r.T0, 4)}</span> BNB into it. The {v.issuer.kind === "agent" ? "agent" : "team"} never held the raise.</Note> : null}
       </div>
 
       <div className="stack sticky">

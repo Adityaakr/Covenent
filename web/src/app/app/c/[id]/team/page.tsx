@@ -5,6 +5,7 @@ import { AgentChat } from "@/components/app/agent-console";
 import { ConfirmAction } from "@/components/app/confirm";
 import { EventFeed } from "@/components/app/covenant";
 import { CovenantPage } from "@/components/app/covenant-page";
+import { Health, Story } from "@/components/app/story";
 import { Icon, type IconName } from "@/components/app/icons";
 import { Addr, Meter, Note, Ticker, cx } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
@@ -24,11 +25,12 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
   const w = useWallet();
   const { list } = useCovenants();
   const agent = v.issuer.kind === "agent";
-  const [newTap, setNewTap] = useState(String(Math.round(v.terms.tapUsdPer30d * 0.6)));
+  const [newTap, setNewTap] = useState("");
   const [rev, setRev] = useState("0.25");
   const [confirmWind, setConfirmWind] = useState(false);
   const isTeam = Boolean(w.address && w.address.toLowerCase() === v.terms.teamWallet.toLowerCase());
   const ended = v.state === "WIND_DOWN" || v.state === "FAILED" || v.state === "RAISING";
+  const launched = v.state !== "RAISING" && v.state !== "FAILED";
   const hbUsed = Math.max(0, v.now - v.lastHeartbeat);
   const hbLow = d.hbLeft < 7 * DAY;
 
@@ -41,8 +43,8 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
         <div className="hr" />
         <label className="label" htmlFor="tap" style={{ margin: 0 }}>Lower the tap <span className="hint">now {usd(v.terms.tapUsdPer30d)}</span></label>
         <div className="row" style={{ gap: 8 }}>
-          <div className="ig grow"><input id="tap" className="field" inputMode="numeric" value={newTap} onChange={(e) => setNewTap(e.target.value.replace(/[^0-9]/g, ""))} /><span className="unit">USD / 30d</span></div>
-          <button className="btn btn-secondary" disabled={!isTeam || ended || !(Number(newTap) < v.terms.tapUsdPer30d)} onClick={() => void run("lowerTap", Number(newTap))}>Lower</button>
+          <div className="ig grow"><input id="tap" className="field" inputMode="numeric" placeholder={String(Math.round(v.terms.tapUsdPer30d))} value={newTap} onChange={(e) => setNewTap(e.target.value.replace(/[^0-9]/g, ""))} /><span className="unit">USD / 30d</span></div>
+          <button className="btn btn-secondary" disabled={!isTeam || ended || newTap === "" || !(Number(newTap) < v.terms.tapUsdPer30d)} onClick={() => void run("lowerTap", Number(newTap))}>Lower</button>
         </div>
         <p className="help" style={{ marginTop: 0 }}>Only downwards. Nobody can raise it.</p>
       </Ctl>
@@ -110,6 +112,12 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
         {!isTeam ? <span className="badge warn lg">Read only: connect the team wallet</span> : <span className="badge good lg">Team wallet connected</span>}
       </div>
 
+      {launched ? (
+        <Story id="health" title="Health" sub={`The treasury if the ${agent ? "agent" : "team"} draws its full limit, what it holds, and the rules on spending it.`}>
+          <Health v={v} d={d} />
+        </Story>
+      ) : null}
+
       {agent ? (
         <div className="grid-side console-grid">
           <AgentChat v={v} all={list} />
@@ -119,7 +127,7 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
         <div className="grid-side">
           <div className="stack">{controls}</div>
           <div className="stack">
-            <EventFeed v={v} />
+            <EventFeed v={v} limit={8} />
             <Note icon="shield">A human team is bound the same way as an agent issuer: the tap only goes down, unlocks need the price to hold, and silence opens the treasury to holders.</Note>
           </div>
         </div>

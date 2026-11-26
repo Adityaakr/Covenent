@@ -97,6 +97,7 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
         <Link href="/" className="sb-logo" title="Covenant home"><Mark size={22} /><span>Covenant</span></Link>
         <button className="sb-collapse" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed(!collapsed)}><Icon name="sidebar" size={18} /></button>
       </div>
+      <div className="sb-scroll">
       <button className="sb-item" onClick={onSearch} title="Search">
         <Icon name="search" size={18} /><span className="lab">Search</span>
         <span className="kbd" aria-hidden><kbd>⌘</kbd><kbd>K</kbd></span>
@@ -127,7 +128,8 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
         ) : loading ? [0, 1, 2].map((k) => <span key={k} className="sb-cov" aria-hidden><Skeleton h={22} w={22} r={22} /><Skeleton h={12} w={`${60 - k * 12}%`} /></span>)
           : live.length === 0 ? <Link href="/app/create" className="sb-empty"><span>No covenants yet</span><span className="sb-empty-a">Create the first<Icon name="arrow" size={13} /></span></Link> : null}
       </div>
-      <div className="sb-spacer" />
+      </div>
+      <div className="sb-bottom">
       {!promoHidden ? (
         <>
           <section className="promo promo-v2" aria-label="Start a covenant">
@@ -155,6 +157,7 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
       <div className="sb-foot">
         <Link href="/features" title="Docs"><Icon name="book" size={16} /><span className="lab">Docs</span></Link>
         <ThemeSwitch />
+      </div>
       </div>
     </aside>
   );

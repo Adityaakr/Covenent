@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { IssuerBadge } from "@/components/app/covenant";
+import { MoneyMap, Story, UnlockCurve } from "@/components/app/story";
 import { CovenantPage } from "@/components/app/covenant-page";
 import { Icon, type IconName } from "@/components/app/icons";
 import { BnbUnit, Note, StateBadge, Ticker, cx, useCountdown } from "@/components/app/ui";
@@ -12,6 +13,7 @@ import { buyerOutcome, settleRaise, startingFloorRatio } from "@/lib/covenant/ma
 import { DAY, HOUR, MINUTE, date, span } from "@/lib/covenant/time";
 import type { CovenantView } from "@/lib/covenant/types";
 import { bnb, bps, multiple, pct, price, tokens, usd } from "@/lib/format";
+import { amt as fmtBnb } from "@/lib/covenant/story";
 
 export default function RaisePage() {
   return <CovenantPage>{(v, d) => <Raise v={v} d={d} />}</CovenantPage>;
@@ -19,7 +21,7 @@ export default function RaisePage() {
 
 function Raise({ v, d }: { v: CovenantView; d: Derived }) {
   const { run } = useActions(v);
-  const [amt, setAmt] = useState("14");
+  const [amt, setAmt] = useState("");
   const t = v.terms;
   const open = v.state === "RAISING";
   const C = v.raise.committed;
@@ -34,7 +36,6 @@ function Raise({ v, d }: { v: CovenantView; d: Derived }) {
   const left = useCountdown(Math.max(0, v.raise.deadline - v.now));
   const max = Math.max(t.cap * 1.08, C);
   const at = (x: number) => `${Math.min(100, (x / max) * 100)}%`;
-  const rNow = settleRaise(C, t.minRaise, t.cap, d.sp);
   const whoW = v.issuer.kind === "agent" ? "agent" : "team";
 
   return (
@@ -47,9 +48,9 @@ function Raise({ v, d }: { v: CovenantView; d: Derived }) {
           </div>
           <div className="row base wrap-ok" style={{ gap: 12 }}>
             <span className="fig-xl" style={{ fontSize: 44 }}><Ticker value={C} format={(n) => bnb(n, C >= 100 ? 0 : 2)} /><BnbUnit /></span>
-            <span className={cx("badge", C >= t.cap ? "agent" : C >= t.minRaise ? "good" : "warn")}>{C >= t.cap ? `${(C / t.cap).toFixed(2)}× oversubscribed` : C >= t.minRaise ? "Minimum met" : `${bnb(t.minRaise - C, 1)} BNB to the minimum`}</span>
+            <span className={cx("badge", C >= t.cap ? "agent" : C >= t.minRaise ? "good" : "warn")}>{C >= t.cap ? `${(C / t.cap).toFixed(2)}× oversubscribed` : C >= t.minRaise ? "Minimum met" : `${fmtBnb(t.minRaise - C)} BNB to the minimum`}</span>
           </div>
-          <p className="t-s muted w5" style={{ marginTop: -12 }}>From {v.raise.contributors || "–"} wallets · minimum <span className="num">{bnb(t.minRaise, 0)}</span> · cap <span className="num">{bnb(t.cap, 0)}</span> BNB</p>
+          <p className="t-s muted w5" style={{ marginTop: -12 }}>From {v.raise.contributors || "–"} wallets · minimum <span className="num">{fmtBnb(t.minRaise)}</span> · cap <span className="num">{fmtBnb(t.cap)}</span> BNB</p>
           <div>
             <div className="raise-meter" role="meter" aria-label="Committed against minimum and cap" aria-valuenow={Math.round((C / t.cap) * 100)} aria-valuemin={0} aria-valuemax={100}>
               <i className={C > t.cap ? "over" : undefined} style={{ width: at(C) }} />
@@ -58,8 +59,10 @@ function Raise({ v, d }: { v: CovenantView; d: Derived }) {
             </div>
             <div className="raise-labels">
               <span style={{ left: 0 }}>0</span>
-              <span style={{ left: at(t.minRaise) }}><b className="ink num">{bnb(t.minRaise, 0)}</b>minimum</span>
-              <span style={{ left: at(t.cap) }}><b className="ink num">{bnb(t.cap, 0)}</b>cap</span>
+              {(t.cap - t.minRaise) / max < 0.18
+                ? <span style={{ left: at(t.cap) }}><b className="ink num">{fmtBnb(t.minRaise)} / {fmtBnb(t.cap)}</b>minimum / cap</span>
+                : <><span style={{ left: at(t.minRaise) }}><b className="ink num">{fmtBnb(t.minRaise)}</b>minimum</span>
+                  <span style={{ left: at(t.cap) }}><b className="ink num">{fmtBnb(t.cap)}</b>cap</span></>}
             </div>
           </div>
           {open && !closed ? (
@@ -74,29 +77,11 @@ function Raise({ v, d }: { v: CovenantView; d: Derived }) {
           ) : open ? <Note tone="accent" icon="clock"><b>The sale window has closed.</b> Anyone can call finalize: one transaction refunds the excess, launches the token on Flap and creates the vault.</Note> : null}
         </div>
 
-        <div className="card">
-          <div className="card-head"><div><h3 className="h-card">Where the money goes</h3><p className="t-xs muted w5">{open ? "If the raise closed at today's commitments" : "How this raise settled"}</p></div></div>
-          <div className="card-body">
-            {rNow.failed ? <Note>Below the minimum, nothing launches and every commitment refunds in full.</Note> : (
-              <div className="wf">
-                {([
-                  ["Committed", C, 0, "var(--line-strong)"],
-                  ["Accepted", rNow.Q, 0, "var(--accent)"],
-                  ["Refunded pro rata", rNow.refunded, rNow.Q, "var(--faint)"],
-                  ["Seeds the pool", rNow.qPool, 0, "var(--good)"],
-                  ["Vault treasury", rNow.T0, rNow.qPool, "var(--agent)"],
-                ] as [string, number, number, string][]).map(([k, n, off, c], i) => (
-                  <div key={k} className="wf-row">
-                    <span className={i === 0 ? "ink" : "ink2"}>{k}</span>
-                    <span className="wf-bar"><i style={{ left: `${(off / Math.max(C, 1e-9)) * 100}%`, width: `${(n / Math.max(C, 1e-9)) * 100}%`, background: c, animationDelay: `${i * 70}ms` }} /></span>
-                    <span className="v">{bnb(n, 1)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className="t-xs muted w5" style={{ marginTop: 14 }}>The pool opens at the sale price ({price(rNow.salePrice || d.salePrice)} BNB). The {whoW} never holds the raise: the vault does.</p>
-          </div>
-        </div>
+        <MoneyMap v={v} d={d} />
+
+        <Story id="unlock-curve" title="If the price rises" sub={`What a stake at the sale price is worth at each multiple, and when the ${whoW}'s tokens can unlock.`}>
+          <UnlockCurve v={v} d={d} />
+        </Story>
 
         <div className="card">
           <div className="card-head"><div><h3 className="h-card">The terms in plain words</h3><p className="t-xs muted w5">Fixed at creation</p></div><Link className="tlink" href={`/app/c/${v.id}#terms`}>All terms<Icon name="chevronRight" size={14} /></Link></div>
@@ -123,7 +108,7 @@ function Raise({ v, d }: { v: CovenantView; d: Derived }) {
               <div>
                 <label className="label" htmlFor="amt">Amount <span className="hint">Uncapped, scaled back above the cap</span></label>
                 <div className="ig">
-                  <input id="amt" className="field field-xl" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value.replace(/[^0-9.]/g, ""))} aria-invalid={amt !== "" && !(a > 0)} />
+                  <input id="amt" className="field field-xl" inputMode="decimal" placeholder="0" value={amt} onChange={(e) => setAmt(e.target.value.replace(/[^0-9.]/g, ""))} aria-invalid={amt !== "" && !(a > 0)} />
                   <span className="unit">BNB</span>
                 </div>
                 <div className="quick">{["1", "5", "14", "50"].map((x) => <button key={x} type="button" aria-pressed={amt === x} onClick={() => setAmt(x)}>{x} BNB</button>)}</div>

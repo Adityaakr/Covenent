@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Metadata } from "next";
 import "./app.css";
 import "@/components/agents/agents.css";
+import "./story.css";
 import { AppShell } from "@/components/app/shell";
 import { Providers } from "@/components/providers";
 import type { LocalChainInfo } from "@/lib/chain/chains";

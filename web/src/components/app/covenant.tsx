@@ -6,15 +6,17 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { explorerAddress } from "@/lib/chain/chains";
 import { derive, type Derived } from "@/lib/covenant/derive";
 import { settleRaise } from "@/lib/covenant/math";
-import { DAY, date, dateTime, duration, longSpan, relative, span } from "@/lib/covenant/time";
+import { DAY, date, duration, longSpan, relative, span } from "@/lib/covenant/time";
 import { FLAP_TAX } from "@/lib/covenant/defaults";
-import type { CovenantView, FeedEvent, LedgerKind } from "@/lib/covenant/types";
+import type { CovenantView, LedgerKind } from "@/lib/covenant/types";
 import { useActions } from "@/lib/data/actions";
 import { bnb, bps, multiple, pct, price, short, signedPct, tokens, usd } from "@/lib/format";
+import { amt } from "@/lib/covenant/story";
 import { BookTrend, PriceBookChart, Sparkline } from "./chart";
 import { ConfirmAction } from "./confirm";
 import { Icon, type IconName } from "./icons";
-import { Addr, BnbUnit, CoverCut, Fig, Meter, Note, Segmented, StateBadge, Ticker, TokenAvatar, coverVars, cx, seedOf, useCountdown } from "./ui";
+import { Timeline, type TimelineItem } from "./timeline";
+import { Addr, BnbUnit, CoverCut, Fig, Meter, Segmented, StateBadge, Ticker, TokenAvatar, coverVars, cx, seedOf, useCountdown } from "./ui";
 import { BnbChain } from "@/components/app/bnb";
 
 export { derive };
@@ -144,7 +146,7 @@ export function StatusStrip({ v, d }: { v: CovenantView; d: Derived }) {
   if (v.state === "RAISING") {
     tone = "accent"; icon = "clock";
     title = <>Raise open · closes in <span className="num">{duration(raiseLeft, 3)}</span></>;
-    sub = <><span className="num">{bnb(v.raise.committed, 0)}</span> of a <span className="num">{bnb(t.cap, 0)}</span> BNB cap from {v.raise.contributors || "–"} wallets. Above the cap everyone is scaled back pro rata.</>;
+    sub = <><span className="num">{amt(v.raise.committed)}</span> of a <span className="num">{amt(t.cap)}</span> BNB cap from {v.raise.contributors || "–"} wallets. Above the cap everyone is scaled back pro rata.</>;
     meter = <Bar value={v.raise.committed} max={Math.max(t.cap, v.raise.committed)} label={`${pct(v.raise.committed / t.cap, 0)} of cap`} marks={[t.minRaise]} />;
     action = <Link className="btn btn-primary btn-sm" href={`${base}/raise`}>Commit BNB</Link>;
   } else if (v.state === "FAILED") {
@@ -365,9 +367,9 @@ function RaiseCell({ v }: { v: CovenantView }) {
     <>
       <span className="lbl">{v.state === "FAILED" ? "Committed, refunding" : "Committed"}</span>
       <div className="fig-xl"><Ticker value={C} format={(n) => bnb(n, C >= 100 ? 0 : 2)} /><BnbUnit /></div>
-      <p className="t-s muted w5">From {v.raise.contributors || "–"} wallets · minimum <span className="num">{bnb(t.minRaise, 0)}</span> · cap <span className="num">{bnb(t.cap, 0)}</span></p>
+      <p className="t-s muted w5">From {v.raise.contributors || "–"} wallets · minimum <span className="num">{amt(t.minRaise)}</span> · cap <span className="num">{amt(t.cap)}</span></p>
       <Meter value={C} max={Math.max(t.cap * 1.05, C)} marks={[t.minRaise, t.cap]} tone={C >= t.minRaise ? "good" : undefined} size="lg" label="Committed against minimum and cap" />
-      <div className="row between t-xs muted w5"><span>{C >= t.cap ? `${(C / t.cap).toFixed(2)}× oversubscribed` : C >= t.minRaise ? "Minimum met" : `${bnb(t.minRaise - C, 1)} BNB to the minimum`}</span><span className="num">{pct(C / t.cap, 0)} of cap</span></div>
+      <div className="row between t-xs muted w5"><span>{C >= t.cap ? `${(C / t.cap).toFixed(2)}× oversubscribed` : C >= t.minRaise ? "Minimum met" : `${amt(t.minRaise - C)} BNB to the minimum`}</span><span className="num">{pct(C / t.cap, 0)} of cap</span></div>
       <div className="nav-line" style={{ marginTop: "auto" }}><span className="ink2">Closes</span><span className="num ink">{date(v.raise.deadline)}</span></div>
     </>
   );
@@ -668,23 +670,59 @@ export function TreasuryLedger({ v, d }: { v: CovenantView; d: Derived }) {
 
 export function TrustPanel({ v }: { v: CovenantView }) {
   const g = v.trust;
+  const w = who(v);
   return (
     <div className="card" id="trust">
-      <div className="card-head"><div><h3 className="h-card">Trust panel</h3><p className="t-xs muted w5">{g.lastPoke ? `Last poke ${relative(g.lastPoke, v.now)}` : "No poke yet"}</p></div><span className="badge good"><Icon name="shieldCheck" size={13} />No admin keys</span></div>
-      <div className="card-body stack">
+      <div className="card-head"><div><h3 className="h-card">Trust panel</h3><p className="t-xs muted w5">Who can do what, and what is not covered. {g.lastPoke ? `Last poke ${relative(g.lastPoke, v.now)}.` : "No poke yet."}</p></div><span className="badge good"><Icon name="shieldCheck" size={13} />No Covenant admin keys</span></div>
+      <div className="card-body stack" style={{ gap: 18 }}>
         <div className="grid2" style={{ gap: 12 }}>
           <Gate title="Exit gate" sub="Protects holders. Counts the exit streak." checks={g.exitGate} good />
           <Gate title="Strict gate" sub="Pays the team. Counts unlocks and prices the tap." checks={g.strictGate} />
         </div>
-        <dl className="kv">
-          <dt>Atlas BNB/USD</dt><dd className="num">{g.bnbUsd ? usd(g.bnbUsd, 2) : "–"}</dd>
-          <dt>Atlas report age at last poke</dt><dd className="num">{g.atlasReportAge === null ? "–" : g.atlasReportAge <= 180 ? `${g.atlasReportAge} s` : duration(g.atlasReportAge)}</dd>
-          <dt>Without a fresh rate</dt><dd>The tap pauses; unlock counters reset</dd>
-        </dl>
+
         <GuardianTrust v={v} />
-        <Note icon="shield"><b>Atlas.</b> One Atlas signer sets the BNB/USD rate. A wrong rate can misprice the tap, but never past its cap of {bps(v.terms.tapCapBps)} of the treasury per 30 days, and it cannot unlock team tokens on its own: a tranche also needs the pool&apos;s own price (TWAP) at the multiple in BNB, with no oracle. It cannot open or block an exit either: book value and pool price are both read on-chain. Anyone can poke, and a poke without a verified rate counts against unlocking (it resets the counters), so withholding reports never helps the {who(v)}; with no rate fresher than the vault&apos;s limit the tap pauses rather than falling back to its cap. The dollar sale price is fixed at launch from Atlas&apos;s push feed where there is one, otherwise by the first verified rate, raised (never lowered) by higher ones for a short window. The PancakeSwap pair is the price, with liquidity locked at launch. No Covenant admin keys: no owner, no pause, no fee switch.</Note>
-        <Note icon="info"><b>The raise.</b> No per-wallet cap, by design: above the cap everyone is scaled back pro rata and the excess refunds. Refunds and sale tokens are pulled, never pushed: each contributor claims them (Claim on the settle page). Rounding leaves at most one wei per contributor in the launcher and a few wei of sale tokens in the dock: anyone can sweep the BNB into the treasury once every refund is claimed, and burn sale-token dust that no claim can reach. If Flap refuses the launch, anyone can retry finalize for a short window before the raise refunds.</Note>
-        <Note tone="warn"><b>What it does not cover.</b> The floor starts below the sale price and falls as the {who(v)} spends. The treasury is BNB, so its dollar value moves. Nothing off-chain (company, IP, revenue not sent to the vault) is protected.</Note>
+
+        <div className="trust-cards">
+          <div className="trust-card">
+            <div className="trust-card-h"><span className="icon-tile sm accent"><Icon name="globe" size={15} /></span><b>Oracle (Atlas)</b></div>
+            <div className="trust-figs">
+              <div><span>BNB/USD</span><b className="num">{g.bnbUsd ? usd(g.bnbUsd, 2) : "–"}</b></div>
+              <div><span>Report age at last poke</span><b className="num">{g.atlasReportAge === null ? "–" : g.atlasReportAge <= 180 ? `${g.atlasReportAge} s` : duration(g.atlasReportAge)}</b></div>
+            </div>
+            <ul className="facts">
+              <li><Icon name="coins" size={14} /><span>One signer sets BNB/USD. A wrong rate can misprice the tap, <b>never past {bps(v.terms.tapCapBps)} of the treasury per 30 days</b>.</span></li>
+              <li><Icon name="unlock" size={14} /><span><b>It cannot unlock team tokens on its own</b>: a tranche also needs the pool&apos;s own price (TWAP) at the multiple in BNB, with no oracle.</span></li>
+              <li><Icon name="exit" size={14} /><span><b>It cannot open or block an exit</b>: book value and pool price are both read on-chain.</span></li>
+            </ul>
+            <details className="more">
+              <summary>Learn more<Icon name="chevronDown" size={13} /></summary>
+              <p>Anyone can poke, and a poke without a verified rate counts against unlocking (it resets the counters), so withholding reports never helps the {w}. With no rate fresher than the vault&apos;s limit the tap pauses rather than falling back to its cap.</p>
+              <p>The dollar sale price is fixed at launch from Atlas&apos;s push feed where there is one, otherwise by the first verified rate, raised (never lowered) by higher ones for a short window.</p>
+              <p>The PancakeSwap pair is the price, with liquidity locked at launch. No Covenant admin keys: no owner, no pause, no fee switch.</p>
+            </details>
+          </div>
+          <div className="trust-card">
+            <div className="trust-card-h"><span className="icon-tile sm"><Icon name="coins" size={15} /></span><b>The raise</b></div>
+            <ul className="facts">
+              <li><Icon name="users" size={14} /><span><b>No per-wallet cap</b>, by design: above the cap everyone is scaled back pro rata and the excess refunds.</span></li>
+              <li><Icon name="wallet" size={14} /><span><b>Refunds and sale tokens are pulled, never pushed</b>: each contributor claims them on the Settlement tab.</span></li>
+              <li><Icon name="refresh" size={14} /><span><b>If Flap refuses the launch</b>, anyone can retry finalize for a short window before the raise refunds.</span></li>
+            </ul>
+            <details className="more">
+              <summary>Learn more<Icon name="chevronDown" size={13} /></summary>
+              <p>Rounding leaves at most one wei per contributor in the launcher and a few wei of sale tokens in the dock: anyone can sweep the BNB into the treasury once every refund is claimed, and burn sale-token dust that no claim can reach.</p>
+            </details>
+          </div>
+        </div>
+
+        <div className="not-covered" role="note">
+          <div className="trust-card-h"><span className="icon-tile sm warn"><Icon name="alert" size={15} /></span><b>Not covered</b></div>
+          <ul>
+            <li><Icon name="trendDown" size={14} /><span>The floor starts below the sale price and falls as the {w} spends.</span></li>
+            <li><Icon name="coins" size={14} /><span>The treasury is BNB, so its dollar value moves.</span></li>
+            <li><Icon name="globe" size={14} /><span>Nothing off-chain is protected: the company, IP, revenue not sent to the vault.</span></li>
+          </ul>
+        </div>
       </div>
     </div>
   );
@@ -692,28 +730,42 @@ export function TrustPanel({ v }: { v: CovenantView }) {
 
 /** What Flap's Guardian can and cannot do to this covenant (Flap's Pool Launch spec; see CovenantVault NatSpec). */
 function GuardianTrust({ v }: { v: CovenantView }) {
+  const w = who(v);
+  const can: [IconName, string, ReactNode][] = [
+    ["refresh", "Upgrade the vault and launcher logic", <>The only upgrade path, per Flap&apos;s spec. The treasury and the refund BNB are only as safe as the Guardian.</>],
+    ["vault", "Wind down any covenant", <>The tap ends early and redemption opens with no fee. No funds move; this page says when the Guardian did it.</>],
+    ["team", `Call the ${w}'s other functions`, <>Claim the tap (paid only to the fixed team wallet), lower the tap (even to zero, and it can never go back up), post a period&apos;s report (reports are write-once; the vault records who posted each).</>],
+  ];
+  const cannot: [IconName, string, ReactNode][] = [
+    ["heart", `Keep a silent ${w} alive`, <>Its calls never count as a heartbeat.</>],
+    ["lock", "Raise the tap or change a term", <>Raise the tap, change the team wallet or any term, or unlock team tokens.</>],
+    ["send", "Send treasury funds elsewhere", <>Send treasury BNB or tokens anywhere but the team wallet&apos;s accrued tap and redeeming holders, short of an upgrade.</>],
+  ];
+  const col = (title: string, rows: [IconName, string, ReactNode][], tone: "warn" | "good") => (
+    <div className={cx("cc-col", tone)}>
+      <div className="cc-h"><span className={cx("cc-badge", tone)}><Icon name={tone === "good" ? "x" : "check"} size={12} strokeWidth={2.2} /></span>{title}</div>
+      <ul>
+        {rows.map(([icon, line, more]) => (
+          <li key={line}>
+            <details className="cc-item">
+              <summary><Icon name={icon} size={15} /><span>{line}</span><Icon name="chevronDown" size={13} /></summary>
+              <p>{more}</p>
+            </details>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
   return (
-    <div className="tile stack-sm" style={{ display: "grid" }}>
-      <span className="lbl">Flap&apos;s Guardian</span>
-      <div className="grid2" style={{ gap: 12 }}>
-        <div className="stack-sm" style={{ display: "grid" }}>
-          <b className="t-s ink">Can</b>
-          <ul className="t-xs muted w5" style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
-            <li>Upgrade the vault and launcher logic (the only upgrade path, per Flap&apos;s spec). The treasury and the refund BNB are only as safe as the Guardian.</li>
-            <li>Wind down any covenant: the tap ends early and redemption opens with no fee. No funds move; this page says when the Guardian did it.</li>
-            <li>Call the {who(v)}&apos;s other functions: claim the tap (paid only to the fixed team wallet), lower the tap (even to zero, and it can never go back up), post a period&apos;s report (reports are write-once; the vault records who posted each).</li>
-          </ul>
-        </div>
-        <div className="stack-sm" style={{ display: "grid" }}>
-          <b className="t-s ink">Cannot</b>
-          <ul className="t-xs muted w5" style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
-            <li>Keep a silent {who(v)} alive: its calls never count as a heartbeat.</li>
-            <li>Raise the tap, change the team wallet or any term, or unlock team tokens.</li>
-            <li>Send treasury BNB or tokens anywhere but the team wallet&apos;s accrued tap and redeeming holders, short of an upgrade.</li>
-          </ul>
-        </div>
+    <div className="guardian">
+      <div className="row between wrap-ok" style={{ gap: 8 }}>
+        <div><b className="t-s ink">Flap&apos;s Guardian</b><p className="t-xs muted w5">Flap&apos;s platform key. Tap a line for the detail.</p></div>
+        {v.windDown ? <span className="t-xs w5 ink">This covenant was {v.windDown.cause === "abandoned" ? "declared abandoned" : `wound down by ${v.windDown.cause === "guardian" ? "Flap's Guardian" : `the ${w}`}`} (<Addr a={v.windDown.by} chainId={liveChain(v)} copy={false} />).</span> : null}
       </div>
-      {v.windDown ? <p className="t-xs w5 ink">This covenant was {v.windDown.cause === "abandoned" ? "declared abandoned" : `wound down by ${v.windDown.cause === "guardian" ? "Flap's Guardian" : `the ${who(v)}`}`} (<Addr a={v.windDown.by} chainId={liveChain(v)} copy={false} />).</p> : null}
+      <div className="cc-grid">
+        {col("Can", can, "warn")}
+        {col("Cannot", cannot, "good")}
+      </div>
     </div>
   );
 }
@@ -793,31 +845,22 @@ export function eventStyle(name: string) { return EVT[name] ?? { tone: "", icon:
 /** Event details with full addresses and hashes shortened, so a line reads at a glance. */
 export function tidyDetail(s: string) { return s.replace(/0x[0-9a-fA-F]{40,64}/g, (a) => short(a)); }
 
-export function EventFeed({ v, limit = 10 }: { v: CovenantView; limit?: number }) {
-  const shown: FeedEvent[] = [];
-  let beats = 0;
-  for (const e of v.events) {
-    if (e.name === "Heartbeat" && ++beats > 2) continue;
-    shown.push(e);
-    if (shown.length >= limit) break;
-  }
+const ROUTINE: Record<string, string> = { Heartbeat: "heartbeats", Observed: "observations", TapAccrued: "tap accruals", RevenueRecognized: "revenue entries" };
+
+export function EventFeed({ v, limit = 6 }: { v: CovenantView; limit?: number }) {
+  const items: TimelineItem[] = v.events.map((e, i) => {
+    const st = eventStyle(e.name);
+    const plural = ROUTINE[e.name];
+    return {
+      key: `${e.tx ?? ""}-${i}`, icon: st.icon, tone: st.tone, at: e.at, tx: e.tx,
+      title: e.name.replace(/([a-z])([A-Z])/g, "$1 $2"), group: plural ? e.name : undefined, plural,
+      detail: e.detail ? <span className="trunc" title={e.detail}>{tidyDetail(e.detail)}</span> : undefined,
+    };
+  });
   return (
     <div className="card" id="activity">
-      <div className="card-head"><h3 className="h-card">Activity</h3><span className="t-xs muted w5">{v.source === "live" ? "From contract logs" : "Demo events"}</span></div>
-      <div className="feed" style={{ paddingBottom: 12 }}>
-        {shown.length === 0 ? <p className="t-s muted w5" style={{ padding: "0 22px 10px" }}>No events yet.</p> : shown.map((e, i) => {
-          const s = eventStyle(e.name);
-          return (
-            <div key={i} className="feed-item">
-              <span className={cx("feed-ic", s.tone)}><Icon name={s.icon} size={14} /></span>
-              <div style={{ minWidth: 0, paddingTop: 3 }}>
-                <div className="row between" style={{ gap: 8 }}><span className="ev">{e.name.replace(/([a-z])([A-Z])/g, "$1 $2")}</span><span className="t-xs faint w5" style={{ whiteSpace: "nowrap" }} title={dateTime(e.at)}>{relative(e.at, v.now)}</span></div>
-                <div className="det" title={e.detail}>{tidyDetail(e.detail)}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <div className="card-head"><div><h3 className="h-card">Activity</h3><p className="t-xs muted w5">{v.source === "live" ? "Every event the contracts emitted, newest first" : "Demo events"}</p></div><span className="badge plain num">{v.events.length}</span></div>
+      <div className="card-body"><Timeline items={items} now={v.now} chainId={liveChain(v)} initial={limit} empty="No events yet." /></div>
     </div>
   );
 }
@@ -833,7 +876,7 @@ export function TermsCard({ v, d }: { v: CovenantView; d: Derived }) {
         <dl className="kv">
           <dt>Supply</dt><dd className="num">{tokens(t.totalSupply)}</dd>
           <dt>Sale / pool / team</dt><dd className="num">{bps(t.saleBps)} / {bps(t.poolBps)} / {bps(d.teamBps)}</dd>
-          <dt>Minimum and cap</dt><dd className="num">{bnb(t.minRaise, 0)} / {bnb(t.cap, 0)} BNB</dd>
+          <dt>Minimum and cap</dt><dd className="num">{amt(t.minRaise)} / {amt(t.cap)} BNB</dd>
           <dt>Sale price</dt><dd className="mono">{price(d.salePrice)}</dd>
           <dt>Starting floor</dt><dd className="num">{pct(d.startRatio, 0)} of sale price</dd>
           <dt>Trading tax</dt><dd className="num">{bps(t.buyTaxBps)} buy, {bps(t.sellTaxBps)} sell, for {longSpan(t.taxDuration)}</dd>
@@ -900,8 +943,8 @@ export function CovenantCard({ v, i = 0 }: { v: CovenantView; i?: number }) {
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
             <div className="ccard-figs">
-              <div><div className="k">Committed</div><div className="v">{bnb(v.raise.committed, 0)}</div></div>
-              <div><div className="k">Cap</div><div className="v">{bnb(v.terms.cap, 0)}</div></div>
+              <div><div className="k">Committed</div><div className="v">{amt(v.raise.committed)}</div></div>
+              <div><div className="k">Cap</div><div className="v">{amt(v.terms.cap)}</div></div>
               <div><div className="k">Wallets</div><div className="v">{v.raise.contributors || "–"}</div></div>
             </div>
             <Meter size="sm" value={v.raise.committed} max={Math.max(v.terms.cap, v.raise.committed)} marks={[v.terms.minRaise]} tone={v.state === "FAILED" ? undefined : v.raise.committed >= v.terms.minRaise ? "good" : undefined} label="Committed against cap" />

@@ -11,16 +11,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useWallet } from "@/components/providers";
-import { explorerTx } from "@/lib/chain/chains";
 import { readDecisions, type TimelineEntry } from "@/lib/chain/decisions";
-import { relative } from "@/lib/covenant/time";
 import type { CovenantView } from "@/lib/covenant/types";
 import { useSource } from "@/lib/data/hooks";
 import { useDemoUsdc, useUsdcRevenue, useUsdcWrite } from "@/lib/data/usdc";
-import { short } from "@/lib/format";
 import { Icon, type IconName } from "./icons";
 import { ThinkingMark } from "./mark";
 import { cx } from "./ui";
+import { Timeline, TxLink, type TimelineItem } from "./timeline";
 
 const ACTION: Record<string, { label: string; icon: IconName; tone: string }> = {
   claim_tap: { label: "Claimed the tap", icon: "coins", tone: "agent" },
@@ -28,15 +26,10 @@ const ACTION: Record<string, { label: string; icon: IconName; tone: string }> = 
   heartbeat: { label: "Heartbeat", icon: "heart", tone: "" },
   wait: { label: "Waited", icon: "clock", tone: "" },
 };
-const EVENT: Record<string, { label: string; icon: IconName }> = {
-  TapClaimed: { label: "Tap claimed", icon: "coins" }, TapLowered: { label: "Tap lowered", icon: "trendDown" },
-  Heartbeat: { label: "Heartbeat", icon: "heart" }, RevenueDeposited: { label: "Revenue deposited", icon: "vault" },
+const EVENT: Record<string, { label: string; icon: IconName; tone: string }> = {
+  TapClaimed: { label: "Tap claimed", icon: "coins", tone: "accent" }, TapLowered: { label: "Tap lowered", icon: "trendDown", tone: "good" },
+  Heartbeat: { label: "Heartbeat", icon: "heart", tone: "" }, RevenueDeposited: { label: "Revenue deposited", icon: "vault", tone: "agent" },
 };
-
-function TxLink({ chainId, hash }: { chainId: number; hash: string }) {
-  const href = explorerTx(chainId, hash);
-  return href ? <a className="mono link t-xs" href={href} target="_blank" rel="noreferrer">{short(hash, 8, 4)}</a> : <span className="mono t-xs faint">{short(hash, 8, 4)}</span>;
-}
 
 const num = (v: unknown, d = 4) => (typeof v === "number" ? v.toLocaleString("en-US", { maximumFractionDigits: d }) : null);
 
@@ -53,52 +46,45 @@ function Inputs({ inputs }: { inputs: Record<string, unknown> }) {
   return <div className="dec-inputs">{rows.map(([k, v]) => <span key={k}><span className="faint">{k}</span> {v}</span>)}</div>;
 }
 
-function Row({ e, chainId, now }: { e: TimelineEntry; chainId: number; now: number }) {
+const isUrl = (u: string) => u.startsWith("https://") || u.startsWith("http://");
+
+/** One decision, report or team action as a timeline row. */
+export function decisionItem(e: TimelineEntry, i: number): TimelineItem {
   if (e.type === "decision") {
     const parts = e.record.action.split("+");
     const main = ACTION[parts[0]!] ?? { label: e.record.action, icon: "sparkle" as IconName, tone: "agent" };
-    return (
-      <li className="dec">
-        <span className={cx("feed-ic", main.tone)}><Icon name={main.icon} size={14} /></span>
-        <div className="dec-body">
-          <div className="row between wrap-ok" style={{ gap: 8 }}>
-            <span className="ev">{parts.map((p) => ACTION[p]?.label ?? p).join(", ")}</span>
-            <span className="t-xs faint w5" style={{ whiteSpace: "nowrap" }}>{relative(e.at, now)}</span>
-          </div>
+    return {
+      key: `${e.tx}-${i}`, icon: main.icon, tone: main.tone, at: e.at, tx: e.tx,
+      title: parts.map((p) => ACTION[p]?.label ?? p).join(", "),
+      body: (
+        <div className="tl-body">
           <blockquote className="dec-reason" title="Written by the agent; posted on-chain">{e.record.reason}</blockquote>
           <Inputs inputs={e.record.inputs} />
-          <div className="row wrap-ok" style={{ gap: 8 }}>
+          <div className="row wrap-ok" style={{ gap: 6 }}>
             <span className={cx("badge", e.record.author.kind === "llm" ? "agent" : "plain")}>{e.record.author.kind === "llm" ? `Decided by ${e.record.author.model}` : `Fixed rule: ${e.record.author.why}`}</span>
             <span className={cx("badge", e.verified ? "good" : "warn")} title="keccak256 of the record equals the hash posted with it">{e.verified ? <><Icon name="shieldCheck" size={12} />Hash verified</> : <><Icon name="alert" size={12} />Hash mismatch</>}</span>
-            <TxLink chainId={chainId} hash={e.tx} />
           </div>
         </div>
-      </li>
-    );
+      ),
+    };
   }
   if (e.type === "report") {
-    return (
-      <li className="dec">
-        <span className="feed-ic"><Icon name="doc" size={14} /></span>
-        <div className="dec-body">
-          <div className="row between" style={{ gap: 8 }}><span className="ev">Period {e.period} report</span><span className="t-xs faint w5">{relative(e.at, now)}</span></div>
-          {e.text ? <details><summary className="t-xs muted">Read it ({e.verified ? "hash verified" : "hash mismatch"})</summary><pre className="ai-raw">{e.text.slice(0, 4000)}</pre></details>
-            : /^https?:\/\//.test(e.uri) ? <a className="tlink t-xs" href={e.uri} target="_blank" rel="noreferrer">Hosted by the issuer<Icon name="arrowUpRight" size={12} /></a> : <span className="t-xs faint mono">{e.uri.slice(0, 60)}</span>}
-          <TxLink chainId={chainId} hash={e.tx} />
-        </div>
-      </li>
-    );
+    return {
+      key: `${e.tx}-${i}`, icon: "doc", tone: "good", at: e.at, tx: e.tx,
+      title: `Period ${e.period} report`,
+      detail: e.text ? <details className="tl-more-d"><summary>Read it ({e.verified ? "hash verified" : "hash mismatch"})</summary><pre className="ai-raw">{e.text.slice(0, 4000)}</pre></details>
+        : isUrl(e.uri) ? <a className="tlink" href={e.uri} target="_blank" rel="noreferrer">Hosted by the issuer<Icon name="arrowUpRight" size={12} /></a> : <span className="mono trunc" title={e.uri}>{e.uri}</span>,
+    };
   }
   const ev = EVENT[e.name]!;
-  return (
-    <li className="dec small">
-      <span className="feed-ic"><Icon name={ev.icon} size={13} /></span>
-      <div className="dec-body"><div className="row between" style={{ gap: 8 }}><span className="t-s ink2 w5">{ev.label} <span className="t-xs muted">{e.detail}</span></span><span className="row" style={{ gap: 8 }}><TxLink chainId={chainId} hash={e.tx} /><span className="t-xs faint w5">{relative(e.at, now)}</span></span></div></div>
-    </li>
-  );
+  return {
+    key: `${e.tx}-${i}`, icon: ev.icon, tone: ev.tone, at: e.at, tx: e.tx, title: ev.label,
+    group: e.name === "Heartbeat" ? "Heartbeat" : undefined, plural: e.name === "Heartbeat" ? "heartbeats" : undefined,
+    detail: e.detail ? <span className="trunc" title={e.detail}>{e.detail}</span> : undefined,
+  };
 }
 
-export function AgentDecisions({ v, limit = 12 }: { v: CovenantView; limit?: number }) {
+export function AgentDecisions({ v, limit = 5 }: { v: CovenantView; limit?: number }) {
   const src = useSource();
   const q = useQuery({
     queryKey: ["decisions", src.chainId, v.vault],
@@ -108,19 +94,22 @@ export function AgentDecisions({ v, limit = 12 }: { v: CovenantView; limit?: num
   });
   const rows = q.data ?? [];
   const decisions = rows.filter((r) => r.type === "decision").length;
+  const agent = v.issuer.kind === "agent";
   return (
     <div className="card" id="decisions">
       <div className="card-head">
         <div style={{ minWidth: 0 }}>
-          <h3 className="h-card">Agent decisions</h3>
-          <p className="t-xs muted w5">{v.issuer.kind === "agent" ? "What the issuer agent decided and why, posted on-chain with a hash" : "Team actions on the vault, from its events"}</p>
+          <h3 className="h-card">{agent ? "Agent decisions" : "Team actions"}</h3>
+          <p className="t-xs muted w5">{agent ? "What the issuer agent decided and why, posted on-chain with a hash" : "What the team did on the vault, from its events"}</p>
         </div>
         {decisions ? <span className="badge agent">{decisions} on-chain</span> : null}
       </div>
-      {q.isLoading ? <p className="loading-line" style={{ padding: "0 22px 18px" }}><ThinkingMark size={15} />Reading the vault&apos;s reports…</p>
-        : q.isError ? <p className="t-s muted w5" style={{ padding: "0 22px 18px" }}>The vault&apos;s logs could not be read just now.</p>
-        : rows.length === 0 ? <p className="t-s muted w5" style={{ padding: "0 22px 18px" }}>No decisions or team actions on-chain yet. An issuer agent running <span className="mono">pnpm --dir server issuer</span> posts one each time it claims, cuts its pay or sends a heartbeat.</p>
-        : <ol className="dec-list">{rows.slice(0, limit).map((e, i) => <Row key={`${e.tx}-${i}`} e={e} chainId={v.chainId ?? src.chainId ?? 97} now={v.now} />)}</ol>}
+      <div className="card-body">
+        {q.isLoading ? <p className="loading-line"><ThinkingMark size={15} />Reading the vault&apos;s reports…</p>
+          : q.isError ? <p className="t-s muted w5">The vault&apos;s logs could not be read just now.</p>
+          : <Timeline items={rows.map(decisionItem)} now={v.now} chainId={v.chainId ?? src.chainId ?? 97} initial={limit}
+              empty={<>No decisions or team actions on-chain yet. An issuer agent running <span className="mono">pnpm --dir server issuer</span> posts one each time it claims, cuts its pay or sends a heartbeat.</>} />}
+      </div>
     </div>
   );
 }

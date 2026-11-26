@@ -17,6 +17,7 @@ import { bookValue, redeemQuote, redeemableSupply } from "@/lib/covenant/math";
 import type { Address, CovenantView, Hash } from "@/lib/covenant/types";
 import { useWallet } from "@/components/providers";
 import { useSource } from "./hooks";
+import { planRedeem } from "./redeem-plan";
 
 // finalize() is sent with an explicit gas limit (lib/chain/gas.ts): an estimate can fall short of its 15M launch guard.
 
@@ -49,6 +50,12 @@ function errorText(e: unknown): string {
   return m.split("\n")[0]!.slice(0, 220);
 }
 
+const ERC20_MIN = [
+  { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "s", type: "address" }, { name: "a", type: "uint256" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "allowance", stateMutability: "view", inputs: [{ name: "o", type: "address" }, { name: "s", type: "address" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "a", type: "address" }], outputs: [{ type: "uint256" }] },
+] as const;
+
 /** Tokens and BNB use 18 decimals; a number from an input becomes wei without float drift. */
 const wei = (n: number) => parseEther(n.toFixed(18).replace(/\.?0+$/, "") || "0");
 
@@ -58,7 +65,7 @@ export function useActions(view?: CovenantView) {
   const config = useConfig();
   const qc = useQueryClient();
 
-  async function run(action: ActionName, arg?: number): Promise<boolean> {
+  async function run(action: ActionName, arg?: number, opts?: { all?: boolean }): Promise<boolean> {
     if (!view) return false;
     const title = ACTION_LABEL[action];
     if (!wallet.address) { wallet.connect(); return false; }
@@ -110,22 +117,31 @@ export function useActions(view?: CovenantView) {
           break;
         }
         case "redeem": {
-          const amount = wei(arg ?? 0);
-          const erc20 = [{ type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "s", type: "address" }, { name: "a", type: "uint256" }], outputs: [{ type: "bool" }] }] as const;
-          patchToast(id, { detail: "Approve the vault to take your tokens" });
-          const ah = await writeContract(config, { address: view.token!, abi: erc20, functionName: "approve", args: [view.vault!, amount], chainId });
-          await waitForTransactionReceipt(config, { hash: ah, chainId });
-          // the vault's own quote when it has one (book read on-chain, fee applied), else the same formula off-chain
+          if (!view.vault || !view.token) throw new Error("No vault yet");
+          const account = wallet.address as Address;
+          // "Max" redeems the exact on-chain balance (a number input would leave dust or overshoot by rounding)
+          const balance = src.client ? await src.client.readContract({ address: view.token, abi: ERC20_MIN, functionName: "balanceOf", args: [account] }).catch(() => undefined) : undefined;
+          const amount = opts?.all && balance !== undefined ? balance : wei(arg ?? 0);
+          if (amount <= 0n) throw new Error("Enter an amount to redeem");
+          if (balance !== undefined && amount > balance) throw new Error("More than your token balance");
+          const allowance = src.client ? await src.client.readContract({ address: view.token, abi: ERC20_MIN, functionName: "allowance", args: [account, view.vault] }).catch(() => undefined) : undefined;
+          const plan = planRedeem({ amount, allowance, preview: undefined, fallbackOut: 0n });
+          if (plan.approve !== null) {
+            // approve exactly what this redemption burns, never an open-ended allowance
+            patchToast(id, { detail: "Approve the vault to take exactly these tokens (1 of 2)" });
+            const ah = await writeContract(config, { address: view.token, abi: ERC20_MIN, functionName: "approve", args: [view.vault, plan.approve], chainId });
+            patchToast(id, { detail: "Waiting for the approval", hash: ah });
+            await waitForTransactionReceipt(config, { hash: ah, chainId });
+          }
+          // the vault's own quote (book read on-chain, fee applied), else the same formula off-chain
           let expected: bigint | undefined;
           if (src.client && hasFn(V, "previewRedeem")) {
-            expected = await src.client.readContract({ address: view.vault!, abi: V!, functionName: "previewRedeem", args: [amount] }).then((x) => x as bigint).catch(() => undefined);
+            expected = await src.client.readContract({ address: view.vault, abi: V!, functionName: "previewRedeem", args: [amount] }).then((x) => x as bigint).catch(() => undefined);
           }
-          if (expected === undefined) {
-            const b = bookValue(view.treasury, view.owedTeam, redeemableSupply(view.terms.totalSupply, view.deadTokens, view.lockedTeam));
-            expected = wei(redeemQuote(arg ?? 0, b, view.terms.exitFeeBps, view.state === "WIND_DOWN").out);
-          }
-          patchToast(id, { detail: "Confirm the redemption" });
-          hash = await write(view.vault, V, ["redeem"], [amount, (expected * 995n) / 1000n]);
+          const b = bookValue(view.treasury, view.owedTeam, redeemableSupply(view.terms.totalSupply, view.deadTokens, view.lockedTeam));
+          const final = planRedeem({ amount, allowance: amount, preview: expected, fallbackOut: wei(redeemQuote(Number(amount) / 1e18, b, view.terms.exitFeeBps, view.state === "WIND_DOWN").out) });
+          patchToast(id, { detail: plan.approve !== null ? "Confirm the redemption (2 of 2)" : "Confirm the redemption" });
+          hash = await write(view.vault, V, ["redeem"], [amount, final.minOut]);
           break;
         }
         case "poke": {
@@ -146,8 +162,8 @@ export function useActions(view?: CovenantView) {
       const rc = await waitForTransactionReceipt(config, { hash, chainId });
       if (rc.status !== "success") throw new Error("Transaction reverted");
       patchToast(id, { status: "done", detail: `Included in block ${rc.blockNumber}`, hash });
-      // the covenant views and the header's wallet balances (BNB moved, maybe USDT)
-      await Promise.all([qc.invalidateQueries({ queryKey: ["covenants"] }), qc.invalidateQueries({ queryKey: ["native-balance"] }), qc.invalidateQueries({ queryKey: ["usdc"] })]);
+      // the covenant views, the issuer's decisions and the header's wallet balances (BNB moved, maybe USDT)
+      await Promise.all([qc.invalidateQueries({ queryKey: ["covenants"] }), qc.invalidateQueries({ queryKey: ["decisions"] }), qc.invalidateQueries({ queryKey: ["native-balance"] }), qc.invalidateQueries({ queryKey: ["usdc"] })]);
       return true;
     } catch (e) {
       patchToast(id, { status: "error", detail: errorText(e) });
