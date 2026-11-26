@@ -343,7 +343,9 @@ export function Launcher({ context, messages: m, host }: LauncherProps) {
               {contributors !== null && <Datum label={m.contributors}>{contributors.toString()}</Datum>}
               {saleAmount !== null && <Datum label={m.tokensForSale}>{decimal(saleAmount, 0)}</Datum>}
               {priceLow !== null && priceHigh !== null && (
-                <Datum label={m.salePrice}>{decimal(priceLow, 10) + " – " + decimal(priceHigh, 10) + " " + native}</Datum>
+                priceLow === priceHigh
+                  ? <Datum label={m.salePriceFixed}>{decimal(priceLow, 10) + " " + native}</Datum>
+                  : <Datum label={m.salePrice}>{decimal(priceLow, 10) + " – " + decimal(priceHigh, 10) + " " + native}</Datum>
               )}
               {launched && token ? <Datum label={m.token}><span title={token}>{short(token)}</span></Datum>
                 : reserved ? <Datum label={m.reservedToken}><span title={reserved}>{short(reserved)}</span></Datum> : null}

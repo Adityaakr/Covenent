@@ -1,0 +1,20 @@
+{
+  "artifactId": "vaultui_covenant-vault-demo_01M8CMW2QF2AR4EF4ZTN4JG972",
+  "name": "Covenant Vault (demo factory)",
+  "match": {
+    "bindings": [
+      {
+        "chainId": 97,
+        "factoryAddress": "0x6d3a421708f8b45fbd92342d33a841de40e6cc8f",
+        "tokenAddresses": [
+          "0xcd4cb77a6d970fdfdde04ab9d9a89349995e7777"
+        ]
+      }
+    ]
+  },
+  "i18n": [
+    "en",
+    "zh",
+    "ko"
+  ]
+}
