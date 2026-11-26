@@ -1,0 +1,268 @@
+import path from 'node:path';
+import { BaseError, ContractFunctionRevertedError, decodeErrorResult, encodeFunctionData, type Abi, getAddress, type Address, type Hex, type PublicClient, type WalletClient } from 'viem';
+import { hasFunction, taxTokenAbi } from '../abi/index.js';
+import { fetchBnbUsdReport, pokeCalldata, type AtlasReport } from '../atlas/report.js';
+import { assertSigningAllowed, walletClient } from '../chain.js';
+import type { CovenantRef, ServerConfig } from '../config.js';
+import { CovenantService } from '../covenant/read.js';
+import { Alerter, alertsFor } from './alerts.js';
+import { acquireLock, JsonStore } from './store.js';
+
+interface VaultRecord {
+  lastPokeAt?: number; // chain time of our last confirmed poke
+  lastPokeTx?: Hex;
+  pending?: { hash: Hex; sentAt: number; kind: 'poke' | 'dispatch' | 'sync' | 'declareAbandoned' };
+  lastDispatchAt?: number;
+  lastSkip?: string;
+  pokes?: number;
+}
+
+export interface KeeperState {
+  vaults: Record<string, VaultRecord>;
+}
+
+export interface TickResult {
+  vault: Address;
+  action: 'poked' | 'skipped' | 'failed' | 'pending';
+  reason?: string;
+  tx?: Hex;
+  reportMode?: AtlasReport['mode'] | 'none';
+}
+
+export interface KeeperOptions {
+  cfg: ServerConfig;
+  svc?: CovenantService;
+  wallet?: WalletClient;
+  log?: (m: string) => void;
+  /** call declareAbandoned() when a covenant is past its heartbeat window (keeper agent role) */
+  declareAbandoned?: boolean;
+}
+
+export function revertReason(e: unknown, abi: Abi = []): string {
+  if (e instanceof BaseError) {
+    const withData = e.walk((x) => typeof (x as { data?: unknown }).data === 'string') as { data?: Hex } | null;
+    if (withData?.data && withData.data.length >= 10) {
+      try {
+        return decodeErrorResult({ abi, data: withData.data }).errorName;
+      } catch {
+        /* unknown selector */
+      }
+    }
+    const r = e.walk((x) => x instanceof ContractFunctionRevertedError) as ContractFunctionRevertedError | null;
+    if (r?.data?.errorName) return r.data.errorName;
+    return e.shortMessage;
+  }
+  return (e as Error).message ?? String(e);
+}
+
+/**
+ * The keeper pokes each covenant about once an hour with a signed BNB/USD report appended to
+ * calldata, dispatches pending trading tax, and raises alerts.
+ *
+ * Redundancy: the oracle refuses a second poke within its minimum interval, and every send is
+ * simulated first, so any number of keepers (and the web's poke button) can run at once and the
+ * extra ones skip without spending gas. Restarts: state is persisted after every send, a pending
+ * transaction is resolved by receipt on the next tick, and "is a poke due" is decided from chain
+ * state (oracle.lastPokeAt when exposed), not from memory.
+ *
+ * Exit-rule fix 3: if no Atlas report can be fetched, the keeper still pokes without one. The
+ * observation is untrusted, so tap rate and unlock counters do not move, but the exit streak
+ * steps on on-chain numbers.
+ */
+export class Keeper {
+  readonly cfg: ServerConfig;
+  readonly svc: CovenantService;
+  readonly wallet: WalletClient;
+  readonly store: JsonStore<KeeperState>;
+  readonly alerter: Alerter;
+  private log: (m: string) => void;
+  private declare: boolean;
+  private get errorsAbi(): Abi {
+    return [...this.svc.abis.oracle, ...this.svc.abis.vault].filter((i) => i.type === 'error') as Abi;
+  }
+
+  constructor(opts: KeeperOptions) {
+    this.cfg = opts.cfg;
+    this.svc = opts.svc ?? new CovenantService({ cfg: opts.cfg });
+    if (!opts.wallet) {
+      if (!opts.cfg.keeper.privateKey) throw new Error('KEEPER_PRIVATE_KEY is not set');
+      assertSigningAllowed(opts.cfg.chainId);
+    }
+    this.wallet = opts.wallet ?? walletClient(opts.cfg, opts.cfg.keeper.privateKey!);
+    this.store = new JsonStore<KeeperState>(opts.cfg.keeper.stateFile, { vaults: {} });
+    this.log = opts.log ?? ((m) => console.log(`[keeper ${new Date().toISOString()}] ${m}`));
+    this.alerter = new Alerter(opts.cfg.keeper.alertsFile, opts.cfg.keeper.alertWebhook, this.log);
+    this.declare = opts.declareAbandoned ?? process.env.KEEPER_DECLARE_ABANDONED === 'true';
+  }
+
+  get client(): PublicClient {
+    return this.svc.client;
+  }
+
+  private rec(vault: Address): VaultRecord {
+    const k = vault.toLowerCase();
+    if (!this.store.get().vaults[k]) this.store.update((d) => (d.vaults[k] = {}));
+    return this.store.get().vaults[k]!;
+  }
+
+  private save(vault: Address, patch: Partial<VaultRecord>) {
+    this.store.update((d) => {
+      d.vaults[vault.toLowerCase()] = { ...d.vaults[vault.toLowerCase()], ...patch };
+    });
+  }
+
+  /** Resolve a transaction left pending by a previous tick or a previous process. */
+  private async resolvePending(vault: Address, now: number): Promise<boolean> {
+    const p = this.rec(vault).pending;
+    if (!p) return false;
+    try {
+      const r = await this.client.getTransactionReceipt({ hash: p.hash });
+      if (p.kind === 'poke' && r.status === 'success') {
+        const block = await this.client.getBlock({ blockNumber: r.blockNumber });
+        this.save(vault, { lastPokeAt: Number(block.timestamp), lastPokeTx: p.hash, pending: undefined, pokes: (this.rec(vault).pokes ?? 0) + 1 });
+      } else {
+        this.save(vault, { pending: undefined, lastSkip: r.status === 'success' ? undefined : `${p.kind} reverted on-chain` });
+      }
+      return false;
+    } catch {
+      // not mined yet; give up on it after 10 minutes (dropped or replaced)
+      if (now - p.sentAt > 600) {
+        this.save(vault, { pending: undefined, lastSkip: `${p.kind} ${p.hash} dropped` });
+        return false;
+      }
+      return true;
+    }
+  }
+
+  private async lastPokeOnChain(vault: Address): Promise<number | null> {
+    const oracle = this.cfg.oracle;
+    if (!oracle || !hasFunction(this.svc.abis.oracle, 'lastPokeAt')) return null;
+    try {
+      return Number(
+        await this.client.readContract({ address: oracle, abi: this.svc.abis.oracle, functionName: 'lastPokeAt', args: [vault] }),
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  private async send(vault: Address, kind: NonNullable<VaultRecord['pending']>['kind'], to: Address, data: Hex, now: number): Promise<Hex> {
+    const account = this.wallet.account!;
+    // simulate first: a revert here costs nothing (TooSoon from a redundant keeper, NotDue, ...)
+    await this.client.call({ account: account.address, to, data });
+    const hash = await this.wallet.sendTransaction({ account, chain: this.wallet.chain, to, data });
+    this.save(vault, { pending: { hash, sentAt: now, kind } });
+    const r = await this.client.waitForTransactionReceipt({ hash, timeout: 60_000 }).catch(() => null);
+    if (r) await this.resolvePending(vault, now);
+    return hash;
+  }
+
+  async report(): Promise<AtlasReport | null> {
+    try {
+      return await fetchBnbUsdReport(this.cfg.atlas, this.client);
+    } catch (e) {
+      this.log(`Atlas report unavailable (${(e as Error).message}); poking without one: the exit rule still steps.`);
+      return null;
+    }
+  }
+
+  async pokeOne(ref: CovenantRef, now: number, force = false): Promise<TickResult> {
+    const vault = ref.vault;
+    if (!this.cfg.oracle) return { vault, action: 'skipped', reason: 'oracle address unknown' };
+    if (await this.resolvePending(vault, now)) return { vault, action: 'pending', tx: this.rec(vault).pending?.hash };
+    const last = (await this.lastPokeOnChain(vault)) ?? this.rec(vault).lastPokeAt ?? 0;
+    if (!force && last && now - last < this.cfg.keeper.pokeIntervalSeconds) {
+      return { vault, action: 'skipped', reason: `not due (${now - last}s since last poke, interval ${this.cfg.keeper.pokeIntervalSeconds}s)` };
+    }
+    const rep = await this.report();
+    const data = pokeCalldata(this.svc.abis.oracle, vault, rep?.extraData);
+    try {
+      const tx = await this.send(vault, 'poke', this.cfg.oracle, data, now);
+      this.log(`poked ${vault} (${rep ? rep.mode : 'no report'}) tx ${tx}`);
+      return { vault, action: 'poked', tx, reportMode: rep?.mode ?? 'none' };
+    } catch (e) {
+      const reason = revertReason(e, this.errorsAbi);
+      this.save(vault, { lastSkip: reason });
+      // TooSoon means another keeper or a user already poked: that is success for the system.
+      return { vault, action: /TooSoon/i.test(reason) ? 'skipped' : 'failed', reason, reportMode: rep?.mode ?? 'none' };
+    }
+  }
+
+  /** Trading tax sits in the token's tax processor until someone calls dispatch(). */
+  async dispatchTax(ref: CovenantRef, token: Address | null, now: number): Promise<Hex | null> {
+    if (!this.cfg.keeper.dispatchTax || !token) return null;
+    const r = this.rec(ref.vault);
+    if (r.lastDispatchAt && now - r.lastDispatchAt < this.cfg.keeper.pokeIntervalSeconds) return null;
+    this.save(ref.vault, { lastDispatchAt: now });
+    let processor: Address | null = null;
+    try {
+      processor = getAddress(await this.client.readContract({ address: token, abi: taxTokenAbi, functionName: 'taxProcessor' }));
+    } catch {
+      return null; // not a Flap tax token (or no processor view): nothing to dispatch
+    }
+    try {
+      const tx = await this.send(ref.vault, 'dispatch', processor, encodeFunctionData({ abi: taxTokenAbi, functionName: 'dispatch' }), now);
+      this.log(`dispatched tax for ${ref.vault} tx ${tx}`);
+      await this.alerter.emit({ id: `${ref.vault}:dispatch:${tx}`, kind: 'tax-dispatched', vault: ref.vault, at: now, message: `Dispatched pending trading tax (${tx}).`, data: { tx } });
+      return tx;
+    } catch {
+      return null; // nothing pending
+    }
+  }
+
+  async tick(opts: { force?: boolean } = {}): Promise<TickResult[]> {
+    const { timestamp: now } = await this.svc.chainNow();
+    const results: TickResult[] = [];
+    for (const ref of this.svc.covenants()) {
+      const res = await this.pokeOne(ref, now, opts.force);
+      results.push(res);
+      if (res.action === 'failed') {
+        await this.alerter.emit({ id: `${ref.vault}:poke-failed:${now}`, kind: 'poke-failed', vault: ref.vault, at: now, message: `Poke failed: ${res.reason}`, data: {} });
+      }
+      try {
+        const sheet = await this.svc.sheet(ref.vault);
+        await this.dispatchTax(ref, sheet.token, now);
+        for (const a of alertsFor(sheet, now)) await this.alerter.emit(a);
+        if (this.declare && sheet.heartbeat.abandonable) {
+          const data = encodeFunctionData({ abi: this.svc.abis.vault, functionName: 'declareAbandoned' });
+          try {
+            const tx = await this.send(ref.vault, 'declareAbandoned', ref.vault, data, now);
+            this.log(`declared ${ref.vault} abandoned tx ${tx}`);
+          } catch (e) {
+            this.log(`declareAbandoned skipped: ${revertReason(e, this.errorsAbi)}`);
+          }
+        }
+      } catch (e) {
+        this.log(`read failed for ${ref.vault}: ${(e as Error).message}`);
+      }
+    }
+    return results;
+  }
+
+  lockFile(): string {
+    return path.join(path.dirname(this.cfg.keeper.stateFile), 'keeper.lock');
+  }
+
+  /** Run until stopped. Returns a stop function. */
+  run(): () => void {
+    const release = acquireLock(this.lockFile());
+    let stopped = false;
+    let timer: NodeJS.Timeout | undefined;
+    const loop = async () => {
+      if (stopped) return;
+      try {
+        const rs = await this.tick();
+        for (const r of rs) if (r.action !== 'skipped') this.log(`${r.vault}: ${r.action}${r.reason ? ` (${r.reason})` : ''}`);
+      } catch (e) {
+        this.log(`tick failed: ${(e as Error).message}`);
+      }
+      if (!stopped) timer = setTimeout(loop, this.cfg.keeper.tickSeconds * 1000);
+    };
+    void loop();
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      release();
+    };
+  }
+}

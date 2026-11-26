@@ -32,3 +32,7 @@ What the web app and the server read:
 The exit rule follows the design review: the exit streak decays rather than resets, and it runs on on-chain numbers
 only (no Atlas report, no pool-depth gate), so the exit works with no oracle. Deployment to testnet and mainnet:
 `docs/DEPLOY.md`.
+
+## Server (`server/`)
+
+Keeper, API on `:8787`, launch simulator, issuer and investor agents, and the Covenant MCP server, in TypeScript (Node 22, viem, pnpm). See [server/README.md](server/README.md) for run commands, env and the API; `server/src/schema.ts` holds the response schemas the web app mirrors.

@@ -1,0 +1,146 @@
+# Covenant server
+
+The off-chain side of Covenant: the **keeper**, the **API** the web app reads (`:8787`), the **launch simulator** on market data, the **issuer agent**, the **investor agent** and the **Covenant MCP server**. TypeScript on Node 22 with viem; standalone pnpm package.
+
+```
+server/
+  src/
+    schema.ts        zod response schemas (the web app mirrors these)
+    config.ts        env + contracts/deployments/local.json discovery
+    abi/             fallback ABIs from docs/DESIGN.md, merged under contracts/abi/*.json
+    atlas/report.ts  Atlas pull-report codec, local test signer, SDK path
+    covenant/        read model (sheet, events, history), unsigned tx builders, downside math
+    keeper/          poke loop, tax dispatch, alerts, restart-safe state
+    api/             Hono app: covenants, sheet, events, history, downside, txs, poke-report, CMC proxy
+    sim/             simulator job: sample launches, daily candles, replay covenant terms
+  agents/issuer/     issuer agent loop, period reports (Claude or labelled template), ERC-8004 registration
+  agents/investor/   investor agent: under book -> downside -> redeem, over MCP
+  mcp/               Covenant MCP server (stdio) + SKILL.md
+  data/simulator/    latest simulator output (real data, see provenance inside)
+  test/              vitest: unit + chain (anvil) with a Solidity fake-chain fixture
+```
+
+## Run
+
+```bash
+cd server
+pnpm install
+cp .env.example .env        # optional: every value has a local default
+export PATH="$HOME/.foundry/bin:$PATH"
+
+pnpm test                   # unit + chain tests (starts its own anvil per file)
+pnpm typecheck
+
+pnpm api                    # http://127.0.0.1:8787
+pnpm keeper                 # needs KEEPER_PRIVATE_KEY; --once for one tick: pnpm keeper:once
+pnpm sim                    # writes data/simulator/latest.json (needs network)
+pnpm issuer                 # needs ISSUER_PRIVATE_KEY (the team wallet); --once: pnpm issuer:once
+pnpm investor               # needs INVESTOR_PRIVATE_KEY; drives the MCP server over stdio
+pnpm mcp                    # stdio MCP server
+```
+
+Everything reads `contracts/deployments/local.json` (`{chainId, rpcUrl, addresses{...}, demo{...}}`) and `contracts/abi/<Contract>.json` at runtime. Until those exist the code runs on the interfaces in `docs/DESIGN.md`; point at any other file with `COVENANT_DEPLOYMENTS` / `COVENANT_ABI_DIR`. Vaults are found anywhere in the deployments JSON under a key ending in `vault` (factories, implementations and registries are skipped), or listed in `COVENANT_VAULTS`.
+
+Signing is refused on BNB Chain (56) and testnet (97) unless `COVENANT_ALLOW_PUBLIC_NETWORK=1`: this build is local-only.
+
+### Demo on a local chain
+
+With the contracts lane's local node up and the demo factory timers (exit streak 3 min, round 5 min, heartbeat 10 min, poke interval 20 s):
+
+```bash
+KEEPER_PRIVATE_KEY=<anvil #5> KEEPER_POKE_INTERVAL_SECONDS=20 KEEPER_TICK_SECONDS=5 pnpm keeper
+ISSUER_PRIVATE_KEY=<team key> ISSUER_TICK_SECONDS=20 ISSUER_PERIOD_SECONDS=120 pnpm issuer
+CUSTOMER_PRIVATE_KEY=<anvil #6> pnpm issuer:earn <team address> 2   # revenue scene
+# kill the issuer process on stage: nothing sends heartbeats any more;
+# after the window, anyone declares abandonment (web button, MCP declare_abandoned, or the keeper
+# with KEEPER_DECLARE_ABANDONED=true) and the treasury opens to holders
+INVESTOR_PRIVATE_KEY=<holder key> pnpm investor
+```
+
+## Atlas: two modes
+
+| | With `ATLAS_API_KEY` | Without (default) |
+|---|---|---|
+| Source | `@atlas-oracle/pull-oracle-consumer-sdk` `fetchPrices([ATLAS_BNB_USD_FEED_ID])`, validated (180 s max delay, 60 s drift) | local test signer, anvil account #9 `0xa0Ee7A142d267C1f36714E4a8F75612F20a79720` (override `ATLAS_LOCAL_SIGNER_KEY`) |
+| Price | live Atlas BNB/USD | fixed `ATLAS_LOCAL_BNB_USD` (600) |
+| Accepted by | an oracle whose authorized signer is Atlas's (`0x59eD4701224fD9e2a85Ef2946c2ab828C1dDC600`) | an oracle deployed locally with the test signer authorized |
+| Labelled | `mode: "atlas"` | `mode: "local-test-signer"` and a note saying it is not Atlas |
+
+The report bytes are exactly the Atlas consumer's layout: `[feedId u32 | value u80 (1e18) | timestamp u48]… ++ count u8 ++ signature (r‖s‖v, low-s) ++ 0x7096`, signed over `keccak256(packages ++ count)` with no EIP-191 prefix. Calldata is `poke(vault)` with the report appended, byte-identical to the SDK's `buildCalldata` (unit-tested). The fixture's oracle verifies it on-chain the same way the consumer does. The local signer stamps `max(wall clock, latest block time)` so a warped anvil still passes the freshness check.
+
+## Keeper
+
+Every tick, for each covenant: resolve any pending tx by receipt, decide whether a poke is due from chain state (`oracle.lastPokeAt(vault)` when exposed, persisted state otherwise), fetch a report, **simulate**, then send. Then dispatch pending trading tax (`token.taxProcessor().dispatch()` when the token has one), read the sheet and raise alerts.
+
+- **Idempotent and redundant-safe.** The oracle refuses pokes inside its interval, and the pre-send simulation turns a redundant keeper's poke into a free skip (`TooSoon`). Any number of keepers, plus the web's poke button, can run at once.
+- **Restart-safe.** State lives in `.data/keeper-state.json` (atomic writes) and a pid lock stops two processes sharing one key and state dir.
+- **Exit fix 3.** If Atlas cannot be reached the keeper still pokes, with no report: the observation is untrusted, tap rate and unlocks do not move, the exit streak still steps.
+- **Alerts** (stdout, `.data/alerts.jsonl` served at `/api/covenants/:vault/alerts`, optional `ALERT_WEBHOOK_URL`), deduplicated across restarts: `exit-streak-building` (each quarter of the streak, per round), `exit-round-open`, `heartbeat-due` (80% of the window), `abandonable`, `poke-failed`, `tax-dispatched`.
+- **Keeper agent role.** With `KEEPER_DECLARE_ABANDONED=true` it calls `declareAbandoned()` when due.
+
+## API (`:8787`)
+
+| Route | Returns (schema in `src/schema.ts`) |
+|---|---|
+| `GET /health` | `Health`: chain, block, deployments and ABI source, oracle, Atlas mode, CMC key present |
+| `GET /api/covenants` | `{ covenants: CovenantSummary[] }` |
+| `GET /api/covenants/:vault` (`?fresh=1` skips the 2 s cache) | `CovenantSheet`: state, treasury, book value, pool price, premium, terms, exit streak/round/cooldown, tap, tranches, heartbeat, trust, pool reserves, ledger totals, issuer (ERC-8004), launcher, `reads.missing` |
+| `GET /api/covenants/:vault/events` (`?kind=raise\|tax\|tap\|redeem\|state\|observation\|team`) | `{ events: LedgerEvent[] }` decoded from vault and launcher logs, with tx hashes and block times |
+| `GET /api/covenants/:vault/history` | `History`: `Observed` points (TWAP, book, BNB/USD, trusted, state) and exit-round bands |
+| `GET /api/covenants/:vault/downside?holder=&tokens=` | `Downside`: redeem at book now vs. sell on pool, floor path at the tap cap, runway |
+| `GET /api/covenants/:vault/alerts` | `{ alerts: Alert[] }` |
+| `GET /api/covenants/:vault/tx/:action` | `UnsignedTx` for `commit?amount=`, `claim-refund`, `claim-tokens`, `redeem?amount=&from=`, `declare-abandoned`, `claim-tap`, `heartbeat`, `lower-tap?usd=` |
+| `GET /api/poke-report?vault=` (alias `/poke-report`) | `PokeReport`: signed report + ready `poke(vault)` tx for the web's poke button |
+| `GET /api/simulator` | `SimulatorResult` |
+| `GET /api/cmc` and `/api/cmc/{pair-quote,token-liquidity,liquidity-change,candles,transactions}`, `POST /api/cmc/new-list` | CoinMarketCap DEX proxies from the doc; key stays server-side; `x-covenant-cmc-mode: pro \| keyless-public-api` |
+| `GET /reports/:vault/:period` | issuer period report (markdown) whose hash is on-chain |
+| `GET /agents/:owner/registration.json` | ERC-8004 registration file |
+
+Wei amounts are integer strings; per-token prices are BNB per token × 1e18; `*Bnb`/`*Usd` numbers are display-only. CORS allows `CORS_ORIGINS`.
+
+## Simulator
+
+`pnpm sim` samples BNB Chain launches, pulls daily candles priced in BNB, and replays the default terms: floor at 60% of the opening price, falling 4% per 30 days (the tap cap binding), exit after 3 days below. It reports three variants: the original reset rule, the **decay** fix and the **72-hour average** fix; the headline uses `decay` (`--headline-rule`). Output: `data/simulator/latest.json`, served at `/api/simulator`.
+
+- With `CMC_API_KEY`: CoinMarketCap `POST /v1/dex/new/list` and `GET /v1/k-line/candles`. **This mapping has not run in this build** (no key was available); if it returns nothing usable the job falls back to GeckoTerminal and says so.
+- Without: **GeckoTerminal** (the stated fallback; the keyless CMC route answered with an anonymous-access limit). The sample is WBNB-quoted pools from GeckoTerminal's activity-ranked listings, created 14–180 days ago, so it is biased toward survivors and the trigger share is conservative. The output says this in `source.notes` and names the sample in the headline.
+- `computedFromRealData` is true only when the headline comes from fetched candles; under `--min-sample` tokens there is no headline at all.
+
+## Issuer agent
+
+`agents/issuer`: the loop from the doc, every `ISSUER_TICK_SECONDS`:
+
+1. forward revenue: BNB that arrived in the agent wallet since the last tick (and that it did not cause) is sent to the vault, raising book value;
+2. claim the tap once `ISSUER_MIN_CLAIM_BNB` has accrued (a claim is a heartbeat), else heartbeat on schedule (at most a third of the window);
+3. cut its own pay by 20% (floor `$5,000`) when the pool trades within `ISSUER_PAY_CUT_BELOW_PREMIUM_PCT` of book, once per period;
+4. at period end write a report and `postReport(period, uri, keccak256(report))`.
+
+Every money decision is a fixed rule in code; **the LLM never decides a rule**. With `ANTHROPIC_API_KEY` the report is written by Claude (`claude-opus-5-5`, with server-side refusal fallback) from the ledger only; without it a fixed template writes it and its first line says so. The ledger is appended to every report. Kill the process and it is gone: nothing else heartbeats for the covenant.
+
+`pnpm issuer:register` writes the ERC-8004 registration file (MCP endpoint under `services`, `crypto-economic` under `supportedTrust`) and calls `register(agentURI)` from the team wallet. The sheet's `issuer` block shows the agent id, the registration URI, whether the identity owner is the team wallet, and the reputation summary counting only feedback written by known covenant vaults.
+
+## Investor agent and MCP server
+
+`pnpm mcp` serves 16 tools over stdio: `list_covenants`, `get_terms`, `get_status`, `get_downside`, `get_issuer`, `get_market`, `commit`, `claim_tokens`, `claim_refund`, `redeem`, `poke`, `declare_abandoned`, `claim_tap`, `heartbeat`, `lower_tap`, `post_report`. Writes return unsigned transactions only; the server never holds a key. `mcp/SKILL.md` documents the same surface for skill-based agents.
+
+`pnpm investor` spawns the MCP server over stdio, lists covenants under book, computes the downside of its position, waits if no round is open, and redeems (approval + redeem, signed with its own key) when a round is open and redemption beats the pool by `INVESTOR_MIN_EDGE_PCT`.
+
+## The contract surface the server reads
+
+From `docs/DESIGN.md` plus extra views the sheet needs. Each read is tolerant: a view missing from the real ABI yields `null` and is listed in `sheet.reads.missing`, so integration can see what to align.
+
+- **Vault (doc):** `state()` (enum order RAISING, FAILED, ACTIVE, EXIT_ROUND, COOLDOWN, WIND_DOWN), `bookValue()`, `redeemableSupply()`, `exitStreak()`, `trancheProgress(k)`, `tapAccrued()`; writes `claimTokens, claimTap, lowerTap, heartbeat, releaseTeam, redeem(amount,minOut), declareAbandoned, windDown, postReport, sync`; events as listed in the doc.
+- **Vault (extra views):** `token, launcher, oracle, teamWallet, pair, agentId, salePriceBnb, usdSalePrice, tapUsdPer30d, tapCapBps, exitStreakTarget, roundLength, cooldown, exitFeeBps, heartbeatWindow, unlockWindow, roundEnd, cooldownEnd, lastHeartbeat, owedTeam, lockedTeam, totalRedeemed, totalTapPaid, lastObservedAt, lastTrusted, lastStrict, trancheCount, trancheMultiple(k), trancheAmount(k), trancheUnlocked(k)`. A `terms()`/`getTerms()` struct, when present, fills gaps.
+- **Oracle:** `poke(address)` with trailing report; optional `lastPokeAt(address)`, `minInterval()`; errors `TooSoon`.
+- **Launcher:** `state, committed, minRaise, cap, deadline, contributions, acceptedOf, allocationOf, contribute, finalize, claimRefund`.
+- **Event args the ledger reads:** `TreasuryFunded(amount, pool)`, `RevenueRecognized(amount)`, `TapClaimed(to, amount)`, `Redeemed(holder, tokens, out, bookValue)`, `Observed(twapBnb, bnbUsd, bookValue, trusted, state)`, `ExitRoundOpened(endsAt)`, `ExitRoundClosed(cooldownEndsAt)`.
+
+## The three exit-rule fixes, where this package touches them
+
+1. **Decaying streak.** The sheet reports `exit.rule: "decaying-streak-onchain"`; the fixture vault decays the streak by the elapsed time above book; the simulator replays reset vs. decay vs. 72-hour average; the "pump one day in three" attack is a unit test (blocks the old rule, not the fixed ones).
+2. **Depth gate on unlocks only.** The fixture oracle sets `strict` (tap rate, unlocks) from pool depth and leaves `trusted`/the exit alone; a chain test opens a round with the pool far under half its seed.
+3. **Exit on on-chain numbers only.** The keeper pokes without a report when Atlas is down, and a chain test opens a round with no report at all.
+
+## Tests
+
+`pnpm test` runs both projects. `test/chain/*` start anvil on a random port per file and deploy `test/fixtures/contracts` (mock vault, oracle, launcher, token, pair, ERC-8004 registries, compiled with forge). `test/chain/deployed.test.ts` runs against the real contracts when `contracts/deployments/local.json` exists and is skipped otherwise.
