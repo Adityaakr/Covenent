@@ -43,6 +43,7 @@ export function Navigation({ current }: { current?: string }) {
               href={l.href}
               className="t-label link-nav"
               aria-current={isCurrent(current, l.href) ? "page" : undefined}
+              {...(/^https?:\/\//.test(l.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             >
               {l.label}
             </Link>
@@ -89,6 +90,7 @@ export function Navigation({ current }: { current?: string }) {
                 href={l.href}
                 className={["t-h3 link-nav", s.drawerLink].join(" ")}
                 aria-current={isCurrent(current, l.href) ? "page" : undefined}
+                {...(/^https?:\/\//.test(l.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 onClick={() => setOpen(false)}
               >
                 {l.label}

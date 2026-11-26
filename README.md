@@ -376,16 +376,16 @@ table is in [server/README.md](server/README.md#api-8787).
 
 | Integration | What Covenant uses it for | Status |
 |---|---|---|
-| **Flap Pool Launch** | Flap deploys the tax token, seeds the PancakeSwap pool at the sale price and asks our factory for the vault. Flap's tax processor forwards trading tax to the vault in ~$500 chunks, less a ~10% protocol fee | Full run on BNB testnet, and on a BNB Chain fork |
+| **Flap Pool Launch** | Flap deploys the tax token, seeds the PancakeSwap pool at the sale price and asks our factory for the vault. Flap's tax processor forwards trading tax to the vault in ~$500 chunks, less a ~10% protocol fee | BNB testnet (launch, claim, redeem; first covenant `$CVT` from the previous demo factory). Tax reaching the vault: on a fork of chain 97 |
 | **PancakeSwap V2** | The price. `PairTwap` reads the pair's cumulative price, so a flash loan cannot move it | BNB testnet and fork |
 | **Atlas** | BNB/USD prices the dollar tap and the dollar unlock. Signed pull reports, or the testnet push feed | Live on BNB testnet (push feed) |
-| **CoinMarketCap** | DEX pair quotes, liquidity and candles for the covenant sheet, `get_market` and the simulator | Live, server-side key |
+| **CoinMarketCap** | DEX pair quotes, liquidity and candles for the covenant sheet, `get_market` and the simulator | Server-side: powers the launch simulator; the hosted site shows it only when a Covenant server is attached |
 | **ERC-8004** | Agent identity. The vault writes abandonment (-100), wind-down (0) and unlocks (+multiple) | Fork, against the live registries |
 | **Four.meme** | Covenant Lite: a tax vault template that OpenFour's `ForwardVault` clones per token | Fork |
 | **Cournot** | Would check each period report. A failed check pauses the tap | Planned. The vault hook exists, no relayer runs |
+| **BNB Chain** | Every contract | BNB testnet. Not on mainnet |
 
 Raises are in BNB today. USDT and USD1 raises are in progress: Flap mainnet already accepts both as launch quotes.
-| **BNB Chain** | Every contract | BNB testnet. Not on mainnet |
 
 <details>
 <summary><b>Integration addresses</b> (from <code>contracts/deployments/97.json</code> and <a href="docs/DEPLOY.md"><code>docs/DEPLOY.md</code></a>)</summary>

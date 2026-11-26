@@ -79,6 +79,7 @@ export function HomeUseCases() {
           </MotionLink>
         ))}
       </div>
+      <p className={["t-small c-text-2", s.note].join(" ")}>Illustrative numbers, default terms. Not a live covenant.</p>
     </Section>
   );
 }

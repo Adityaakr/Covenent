@@ -1,0 +1,4 @@
+# Covenant. Everything here may be crawled and read by people and agents.
+# Agents: start at /llms.txt (summary) and /llms-full.txt (full reference).
+User-agent: *
+Allow: /

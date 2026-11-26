@@ -1,8 +1,13 @@
 /* Covenant global navigation and footer content (content-plan.md "Global"). */
+
+/** The public source repository. */
+export const REPO_URL = "https://github.com/Adityaakr/Covenent";
+
 export const navLinks = [
   { label: "Rules", href: "/features" },
   { label: "Use cases", href: "/use-cases" },
   { label: "Why we built it", href: "/#prior-art" },
+  { label: "GitHub", href: REPO_URL },
 ] as const;
 
 export const navSecondary = { label: "Connect wallet", href: "/app" } as const;
@@ -26,6 +31,7 @@ export const footerColumns = [
     links: [
       { label: "Why we built it", href: "/#prior-art" },
       { label: "Who named the problem", href: "/#research" },
+      { label: "Source on GitHub", href: REPO_URL },
     ],
   },
   {
