@@ -16,7 +16,7 @@ if (!key) {
   console.error('ISSUER_PRIVATE_KEY is required');
   process.exit(2);
 }
-assertSigningAllowed(cfg.chainId);
+assertSigningAllowed(cfg.chainId, cfg.rpcUrl);
 const wallet = walletClient(cfg, key);
 const owner = wallet.account!.address;
 const vaults: Address[] = (process.env.ISSUER_VAULTS ?? '').split(',').filter((v) => isAddress(v.trim())).map((v) => getAddress(v.trim()));

@@ -17,6 +17,8 @@ export interface Deployments {
   chainId: number;
   rpcUrl: string;
   startBlock?: number;
+  /** written by contracts' DevDeploy: first block of the stack (on a fork, reading logs below it hits the upstream RPC) */
+  deployedAtBlock?: number;
   addresses: Record<string, unknown>;
   demo?: Record<string, unknown>;
 }
@@ -132,6 +134,10 @@ export interface ServerConfig {
   identityRegistry?: Address;
   reputationRegistry?: Address;
   covenantVaultFactory?: Address;
+  /** CovenantLens, when deployed */
+  lens?: Address;
+  /** launcher factories whose launchers are covenants (discovered on every list) */
+  launcherFactories: Address[];
   startBlock: bigint;
   apiPort: number;
   apiBaseUrl: string;
@@ -195,8 +201,16 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     reputationRegistry:
       addrEnv('ERC8004_REPUTATION') ??
       deploymentAddress(deployments, 'reputationRegistry', 'ReputationRegistry', 'erc8004Reputation'),
+    lens: addrEnv('COVENANT_LENS') ?? deploymentAddress(deployments, 'lens', 'CovenantLens'),
+    launcherFactories: [
+      ...new Set(
+        [deploymentAddress(deployments, 'launcherFactory'), deploymentAddress(deployments, 'demoLauncherFactory')].filter(
+          (a): a is Address => !!a,
+        ),
+      ),
+    ],
     covenantVaultFactory: addrEnv('COVENANT_VAULT_FACTORY') ?? deploymentAddress(deployments, 'vaultFactory', 'CovenantVaultFactory'),
-    startBlock: BigInt(env('START_BLOCK') ?? deployments?.startBlock ?? 0),
+    startBlock: BigInt(env('START_BLOCK') ?? deployments?.startBlock ?? deployments?.deployedAtBlock ?? 0),
     apiPort,
     apiBaseUrl: env('API_BASE_URL') ?? `http://127.0.0.1:${apiPort}`,
     corsOrigins: (env('CORS_ORIGINS') ?? 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080').split(',').map((s) => s.trim()),

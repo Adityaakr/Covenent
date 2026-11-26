@@ -19,6 +19,10 @@ import { foundry } from 'viem/chains';
 import { LOCAL_TEST_SIGNER_KEY, loadConfig, type Deployments, type ServerConfig } from '../../src/config.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+// The fixture chain deploys the doc-shaped stand-ins in test/fixtures/contracts, not the real contracts, so their
+// tests read the doc's ABI (src/abi/fallback.ts) rather than contracts/abi; deployed.test.ts covers the real ones.
+process.env.COVENANT_ABI_DIR = path.join(here, 'no-published-abi');
 const FIXTURE = path.resolve(here, '../fixtures/contracts');
 const FOUNDRY_BIN = path.join(process.env.HOME ?? '', '.foundry', 'bin');
 

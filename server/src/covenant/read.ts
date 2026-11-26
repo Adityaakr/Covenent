@@ -44,7 +44,22 @@ class Reader {
       return null;
     }
   }
+  /** First name the ABI has, so the real contracts' names and the design doc's names both read. */
+  async first<T = unknown>(fns: string[], args: unknown[] = []): Promise<T | null> {
+    const fn = fns.find((f) => hasFunction(this.abi, f));
+    if (!fn) {
+      this.missing.push(`${this.label}.${fns[0]}`);
+      return null;
+    }
+    return this.get<T>(fn, args);
+  }
 }
+
+/** Views whose name differs between docs/DESIGN.md (first) and the real contracts (aliases). */
+const VAULT_ALIASES: Record<string, string[]> = {
+  exitStreakTarget: ['exitStreakTarget', 'exitStreakNeeded'],
+  totalTapPaid: ['totalTapPaid', 'tapPaid'],
+};
 
 const big = (v: unknown): bigint | null => (typeof v === 'bigint' ? v : typeof v === 'number' ? BigInt(v) : null);
 const num = (v: unknown): number | null => (typeof v === 'bigint' || typeof v === 'number' ? Number(v) : null);
@@ -74,6 +89,46 @@ export class CovenantService {
 
   covenants(): CovenantRef[] {
     return [...this.refs.values()];
+  }
+
+  /**
+   * Add every launched covenant from the deployment's launcher factories (allLaunchers() -> launcher.vault()), so
+   * covenants created after the server started (from the web's Create screen) show up without a restart.
+   */
+  async discover(): Promise<CovenantRef[]> {
+    const factoryAbi = [
+      { type: 'function', name: 'allLaunchers', stateMutability: 'view', inputs: [], outputs: [{ type: 'address[]' }] },
+    ] as const;
+    for (const f of this.cfg.launcherFactories ?? []) {
+      let launchers: readonly Address[] = [];
+      try {
+        launchers = await this.client.readContract({ address: f, abi: factoryAbi, functionName: 'allLaunchers' });
+      } catch {
+        continue;
+      }
+      await Promise.all(
+        launchers.map(async (l) => {
+          if ([...this.refs.values()].some((r) => r.launcher && getAddress(r.launcher) === getAddress(l))) return;
+          try {
+            const [vault, token, pool] = await Promise.all(
+              ['vault', 'token', 'pool'].map((fn) =>
+                this.client.readContract({ address: l, abi: this.abis.launcher, functionName: fn }).catch(() => zeroAddress),
+              ),
+            );
+            if (!vault || vault === zeroAddress) return; // still raising, or failed
+            this.addCovenant({
+              vault: getAddress(vault as Address),
+              launcher: getAddress(l),
+              token: token && token !== zeroAddress ? getAddress(token as Address) : undefined,
+              pair: pool && pool !== zeroAddress ? getAddress(pool as Address) : undefined,
+            });
+          } catch {
+            /* not a covenant launcher */
+          }
+        }),
+      );
+    }
+    return this.covenants();
   }
 
   addCovenant(ref: CovenantRef): void {
@@ -120,7 +175,7 @@ export class CovenantService {
       'exitFeeBps', 'heartbeatWindow', 'unlockWindow', 'roundEnd', 'cooldownEnd', 'lastHeartbeat', 'owedTeam', 'lockedTeam',
       'totalRedeemed', 'totalTapPaid', 'lastObservedAt', 'lastTrusted', 'lastStrict', 'trancheCount',
     ] as const;
-    const vals = await Promise.all(names.map((n) => v.get(n)));
+    const vals = await Promise.all(names.map((n) => (VAULT_ALIASES[n] ? v.first(VAULT_ALIASES[n]!) : v.get(n))));
     const r: Raw = Object.fromEntries(names.map((n, i) => [n, vals[i]]));
 
     // A terms() / getTerms() struct, when the real contract exposes one, fills gaps.
@@ -176,6 +231,18 @@ export class CovenantService {
     const count = num(r.trancheCount) ?? 0;
     const tranches = await Promise.all(
       Array.from({ length: count }, async (_, k) => {
+        if (!hasFunction(this.abis.vault, 'trancheMultiple')) {
+          // real contracts: trancheProgress(k) -> (amount, multiple x100, progress seconds, unlocked, targetUsd)
+          const t = await v.get<readonly [bigint, bigint, bigint, boolean, bigint]>('trancheProgress', [BigInt(k)]);
+          return {
+            index: k,
+            multiple: t ? Number(t[1]) / 100 : null,
+            amountWei: t ? t[0].toString() : null,
+            progressSeconds: t ? Number(t[2]) : null,
+            windowSeconds: num(r.unlockWindow),
+            unlocked: t ? t[3] : null,
+          };
+        }
         const [m, amt, prog, unl] = await Promise.all([
           v.get('trancheMultiple', [BigInt(k)]),
           v.get('trancheAmount', [BigInt(k)]),
@@ -295,6 +362,7 @@ export class CovenantService {
   }
 
   async list(): Promise<CovenantSummary[]> {
+    await this.discover().catch(() => undefined);
     const out = await Promise.allSettled(this.covenants().map((c) => this.summary(c.vault)));
     return out.filter((o): o is PromiseFulfilledResult<CovenantSummary> => o.status === 'fulfilled').map((o) => o.value);
   }
@@ -317,7 +385,7 @@ export class CovenantService {
     const rounds: History['rounds'] = [];
     for (const e of ev) {
       if (e.event === 'ExitRoundOpened') {
-        rounds.push({ openedAt: e.timestamp, endsAt: e.args.endsAt ? Number(e.args.endsAt) : null, closedAt: null });
+        rounds.push({ openedAt: e.timestamp, endsAt: (e.args.endsAt ?? e.args.roundEnd) ? Number(e.args.endsAt ?? e.args.roundEnd) : null, closedAt: null });
       } else if (e.event === 'ExitRoundClosed' && rounds.length) {
         rounds[rounds.length - 1]!.closedAt = e.timestamp;
       }
@@ -327,9 +395,12 @@ export class CovenantService {
 
   async launcherInfo(launcher: Address): Promise<CovenantSheet['launcherInfo']> {
     const l = new Reader(this.client, launcher, this.abis.launcher, 'launcher');
-    const [state, committed, minRaise, cap, deadline] = await Promise.all([
-      l.get('state'), l.get('committed'), l.get('minRaise'), l.get('cap'), l.get('deadline'),
-    ]);
+    const real = hasFunction(this.abis.launcher, 'terms') && !hasFunction(this.abis.launcher, 'minRaise');
+    const [state, committed, minRaise, cap, deadline] = real
+      ? await Promise.all([l.get('state'), l.get('committed'), l.get<Raw>('terms'), null, l.get('saleDeadline')]).then(
+          ([st, c, t, , d]) => [st, c, t?.minRaise ?? null, t?.cap ?? null, d] as const,
+        )
+      : await Promise.all([l.get('state'), l.get('committed'), l.get('minRaise'), l.get('cap'), l.get('deadline')]);
     return {
       state: state === null ? 'UNKNOWN' : (LAUNCHER_STATES[Number(state)] ?? 'UNKNOWN'),
       committedWei: str(big(committed)),

@@ -12,7 +12,7 @@ if (!key) {
   console.error('INVESTOR_PRIVATE_KEY is required (a holder wallet; local chain only).');
   process.exit(2);
 }
-assertSigningAllowed(cfg.chainId);
+assertSigningAllowed(cfg.chainId, cfg.rpcUrl);
 
 // Talk to the Covenant MCP server over stdio, exactly as any MCP client would.
 const transport = new StdioClientTransport({

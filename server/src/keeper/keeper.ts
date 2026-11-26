@@ -86,7 +86,7 @@ export class Keeper {
     this.svc = opts.svc ?? new CovenantService({ cfg: opts.cfg });
     if (!opts.wallet) {
       if (!opts.cfg.keeper.privateKey) throw new Error('KEEPER_PRIVATE_KEY is not set');
-      assertSigningAllowed(opts.cfg.chainId);
+      assertSigningAllowed(opts.cfg.chainId, opts.cfg.rpcUrl);
     }
     this.wallet = opts.wallet ?? walletClient(opts.cfg, opts.cfg.keeper.privateKey!);
     this.store = new JsonStore<KeeperState>(opts.cfg.keeper.stateFile, { vaults: {} });
@@ -136,6 +136,15 @@ export class Keeper {
 
   private async lastPokeOnChain(vault: Address): Promise<number | null> {
     const oracle = this.cfg.oracle;
+    if (oracle && !hasFunction(this.svc.abis.oracle, 'lastPokeAt') && hasFunction(this.svc.abis.oracle, 'points')) {
+      // real CovenantOracle: points(vault) -> (cumulative, timestamp, atlasTimestamp, pokedAt, initialized)
+      try {
+        const p = (await this.client.readContract({ address: oracle, abi: this.svc.abis.oracle, functionName: 'points', args: [vault] })) as readonly unknown[];
+        return p[4] ? Number(p[3]) : null;
+      } catch {
+        return null;
+      }
+    }
     if (!oracle || !hasFunction(this.svc.abis.oracle, 'lastPokeAt')) return null;
     try {
       return Number(
@@ -213,6 +222,7 @@ export class Keeper {
   async tick(opts: { force?: boolean } = {}): Promise<TickResult[]> {
     const { timestamp: now } = await this.svc.chainNow();
     const results: TickResult[] = [];
+    await this.svc.discover().catch(() => undefined);
     for (const ref of this.svc.covenants()) {
       const res = await this.pokeOne(ref, now, opts.force);
       results.push(res);

@@ -15,10 +15,16 @@ const svc = new CovenantService({ cfg });
 
 let vault: Address | undefined = process.env.ISSUER_VAULT && isAddress(process.env.ISSUER_VAULT) ? getAddress(process.env.ISSUER_VAULT) : undefined;
 if (!vault) {
+  // the newest live covenant this wallet runs (a wound-down one has nothing left to do)
+  await svc.discover().catch(() => undefined);
+  let fallback: Address | undefined;
   for (const c of svc.covenants()) {
     const s = await svc.sheet(c.vault).catch(() => null);
-    if (s?.issuer.teamWallet?.toLowerCase() === me.toLowerCase()) vault = c.vault;
+    if (s?.issuer.teamWallet?.toLowerCase() !== me.toLowerCase()) continue;
+    if (s.state === 'WIND_DOWN' || s.state === 'FAILED') fallback = c.vault;
+    else vault = c.vault;
   }
+  vault ??= fallback;
 }
 if (!vault) {
   console.error(`No covenant found whose team wallet is ${me}. Set ISSUER_VAULT.`);

@@ -17,6 +17,16 @@ const KIND: Record<string, LedgerEvent['kind']> = {
   Heartbeat: 'team',
   TapLowered: 'team',
   ReportPosted: 'team',
+  // real contracts' extra events (contracts/abi)
+  RevenueDeposited: 'tax',
+  TapAccrued: 'tap',
+  TokensClaimed: 'raise',
+  TeamReleased: 'team',
+  CooldownEnded: 'state',
+  Launched: 'raise',
+  LaunchFailed: 'raise',
+  VerdictRecorded: 'team',
+  OutcomeRecorded: 'state',
 };
 
 /** Which argument carries the BNB amount for ledger rows. */
@@ -28,6 +38,8 @@ const AMOUNT_ARG: Record<string, string[]> = {
   Contributed: ['amount', 'value'],
   Refunded: ['amount', 'value'],
   Finalized: ['accepted'],
+  RevenueDeposited: ['amount'],
+  TeamReleased: ['amount'],
 };
 
 function serialize(v: unknown): string | number | boolean | null {

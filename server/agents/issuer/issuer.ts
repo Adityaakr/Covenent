@@ -79,7 +79,7 @@ export class IssuerAgent {
     this.svc = opts.svc ?? new CovenantService({ cfg });
     if (!opts.wallet) {
       if (!opts.privateKey) throw new Error('ISSUER_PRIVATE_KEY is not set (the team wallet key, local chain only)');
-      assertSigningAllowed(cfg.chainId);
+      assertSigningAllowed(cfg.chainId, cfg.rpcUrl);
     }
     this.wallet = opts.wallet ?? walletClient(cfg, opts.privateKey!);
     this.store = new JsonStore<IssuerState>(path.join(cfg.dataDir, 'issuer', `${vault.toLowerCase()}.json`), {

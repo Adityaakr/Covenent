@@ -15,7 +15,7 @@ if (!key || !to || !isAddress(to)) {
   console.error('usage: CUSTOMER_PRIVATE_KEY=0x.. pnpm issuer:earn <agent address> [bnb]');
   process.exit(2);
 }
-assertSigningAllowed(cfg.chainId);
+assertSigningAllowed(cfg.chainId, cfg.rpcUrl);
 const w = walletClient(cfg, key);
 const hash = await w.sendTransaction({ account: w.account!, chain: w.chain, to: getAddress(to), value: amount });
 const r = await publicClient(cfg).waitForTransactionReceipt({ hash });
