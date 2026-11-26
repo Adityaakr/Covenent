@@ -1,5 +1,6 @@
 import { defineChain } from "viem";
 import { bscTestnet } from "viem/chains";
+import { LOCAL_MODE, TESTNET_RPCS } from "./target";
 
 export const LOCAL_RPC = process.env.NEXT_PUBLIC_LOCAL_RPC || "http://127.0.0.1:8545";
 
@@ -28,8 +29,8 @@ export function makeLocalChain(info: LocalChainInfo) {
  * /app layout reads from local.json on each request) replaces it before any wallet config is built; importers see
  * the new value through the ES module live binding.
  */
-export let anvil = makeLocalChain({ id: 31337, rpcUrl: LOCAL_RPC });
-let localIsLoopback = true;
+export let anvil = LOCAL_MODE ? makeLocalChain({ id: 31337, rpcUrl: LOCAL_RPC }) : makeLocalChain({ id: 97, rpcUrl: TESTNET_RPCS[0]! });
+let localIsLoopback = LOCAL_MODE;
 
 export function configureLocalChain(info: LocalChainInfo | null | undefined) {
   if (!info || (info.id === anvil.id && info.rpcUrl === anvil.rpcUrls.default.http[0])) return;
@@ -68,12 +69,14 @@ export type NetworkKind = "local" | "testnet" | "mainnet" | "other";
 
 /** What the configured chain is: a node on this machine (anvil, a BNB fork), BNB testnet or BNB Chain. */
 export function networkKind(id: number | undefined): NetworkKind {
-  if (id === undefined || isLocal(id)) return "local";
+  if (id === undefined) return LOCAL_MODE ? "local" : "testnet"; // not read yet: the build's target
+  if (isLocal(id)) return "local";
   return id === 97 ? "testnet" : id === 56 ? "mainnet" : "other";
 }
 
 /** Where test BNB comes from: the dev stack's faucet page locally, BNB Chain's faucet on testnet, none on mainnet. */
 export function faucetFor(id: number | undefined): { href: string; label: string; external: boolean } | null {
+  if (!LOCAL_MODE && id === undefined) id = 97;
   const k = networkKind(id);
   if (k === "local") return { href: "/app/faucet", label: "Get test funds", external: false };
   if (k === "testnet") return { href: TESTNET_FAUCET, label: "BNB testnet faucet", external: true };

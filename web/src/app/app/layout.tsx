@@ -5,15 +5,18 @@ import "./app.css";
 import { AppShell } from "@/components/app/shell";
 import { Providers } from "@/components/providers";
 import type { LocalChainInfo } from "@/lib/chain/chains";
+import { LOCAL_MODE, TESTNET_RPCS } from "@/lib/chain/target";
 
 export const metadata: Metadata = {
   title: { default: "App", template: "%s · Covenant" },
   description: "The operating stack for autonomous ventures. Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts. 24/7 on BNB Chain.",
 };
-// The wallet's local chain comes from contracts/deployments/local.json, which changes on every dev-up run.
+// A local dev chain comes from contracts/deployments/local.json, which changes on every dev-up run; the default build
+// serves BNB testnet from the record baked into the bundle and reads no file.
 export const dynamic = "force-dynamic";
 
 async function localChain(): Promise<LocalChainInfo | null> {
+  if (!LOCAL_MODE) return { id: 97, rpcUrl: TESTNET_RPCS[0]!, mode: "testnet" };
   const dir = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.COVENANT_CONTRACTS_DIR ?? "../contracts");
   try {
     const file = process.env.COVENANT_DEPLOYMENTS

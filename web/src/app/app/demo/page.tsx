@@ -12,6 +12,7 @@ import { poolSellQuote, redeemQuote } from "@/lib/covenant/math";
 import { DAY } from "@/lib/covenant/time";
 import type { CovenantView } from "@/lib/covenant/types";
 import { useCovenants } from "@/lib/data/hooks";
+import { LOCAL_MODE } from "@/lib/chain/target";
 import { bnb, pct, price, tokens } from "@/lib/format";
 
 /** The stage each scene shows. Every scene reads a real covenant on the local chain that is in that stage now. */
@@ -93,13 +94,13 @@ export default function DemoPage() {
         <p className="say rise" style={{ ["--i" as string]: 1 }}>{step.say}</p>
         <div className="rise" style={{ ["--i" as string]: 2 }}>
           {source.mode !== "live" && step.scene ? <ConnectChain source={source} title="Connect to run the demo on chain" />
-            : step.scene && !v ? <div className="tile t-s muted w5">No covenant on the chain is in this stage right now. <span className="mono">scripts/dev-all.sh</span> seeds one at every stage; the demo factory&apos;s clocks move in minutes, so stages come and go.</div>
+            : step.scene && !v ? <div className="tile t-s muted w5">No covenant on the chain is in this stage right now.{LOCAL_MODE ? <> <span className="mono">scripts/dev-all.sh</span> seeds one at every stage;</> : null} the demo factory&apos;s clocks move in minutes, so stages come and go.</div>
             : <Scene step={step} v={v} />}
         </div>
-        {(step.open && (v || !step.scene)) || step.cmd ? (
+        {(step.open && (v || !step.scene)) || (step.cmd && LOCAL_MODE) ? (
           <div className="row wrap-ok" style={{ gap: 10 }}>
             {step.open && (v || !step.scene) ? <Link className="btn btn-secondary" href={step.open(v!)}>{v && step.open(v).includes(v.id) ? `Open ${v.terms.name}` : "Open this screen"}<Icon name="arrowUpRight" size={14} /></Link> : null}
-            {step.cmd ? <CopyCode text={step.cmd} /> : null}
+            {step.cmd && LOCAL_MODE ? <CopyCode text={step.cmd} /> : null}
           </div>
         ) : null}
       </section>

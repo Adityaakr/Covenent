@@ -12,6 +12,7 @@ import { chainName, faucetFor, networkKind, stackCommand } from "@/lib/chain/cha
 import { useSource, type SourceStatus } from "@/lib/data/hooks";
 import { Icon } from "./icons";
 import { TokenAvatar } from "./ui";
+import { LOCAL_MODE } from "@/lib/chain/target";
 import { ThinkingMark } from "./mark";
 
 export function useLive(): { live: boolean; checking: boolean; source: SourceStatus } {
@@ -41,6 +42,24 @@ export function ConnectChain({ source, title }: { source: SourceStatus; title?: 
   const fc = faucetFor(id);
   title ??= `Connect to ${name}`;
   if (source.mode === "checking") return <p className="loading-line"><ThinkingMark size={16} />Looking for {name}…</p>;
+  if (!LOCAL_MODE) {
+    // A hosted build reads BNB testnet directly: the only way to be here is the public RPCs not answering for a moment.
+    return (
+      <section className="connect rise" aria-label={`Reading ${chainName(97)}`}>
+        <div className="connect-l">
+          <span className="eyebrow">{chainName(97)}</span>
+          <h2 className="h-page" style={{ fontSize: 28 }}>Reading the chain</h2>
+          <p className="t-s muted w5" style={{ maxWidth: "52ch" }}>Every figure here is read from the covenant contracts on {chainName(97)}. The network did not answer just now; this page tries again by itself.</p>
+          <div className="row wrap-ok" style={{ gap: 8, marginTop: 4 }}>
+            <button className="btn btn-primary" disabled={busy} onClick={() => { setBusy(true); void qc.invalidateQueries({ queryKey: ["source"] }).finally(() => setTimeout(() => setBusy(false), 600)); }}>
+              {busy ? <ThinkingMark size={16} /> : <Icon name="refresh" size={15} />}Try again
+            </button>
+            <Link className="btn btn-secondary" href="/features"><Icon name="book" size={15} />How it works</Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="connect rise" aria-label={title}>
       <div className="connect-l">

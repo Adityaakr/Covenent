@@ -10,6 +10,7 @@ import { API_BASE, sample, simulator, type SimToken, type SimulatorResult } from
 import { floorAfterMonths, startingFloorRatio } from "@/lib/covenant/math";
 import { DAY, date } from "@/lib/covenant/time";
 import { replay, type Candle, type SampleToken } from "@/lib/sim/replay";
+import { LOCAL_MODE } from "@/lib/chain/target";
 import { bps, pct } from "@/lib/format";
 
 type Token = SimToken & { candles?: Candle[] };
@@ -42,7 +43,9 @@ export default function SimulatorPage() {
       </header>
 
       {!real.isLoading && !r ? (
-        <div className="card"><Empty title="No simulator result to show" icon="flask" action={<CopyCode text="pnpm --dir server sim" />}>The Covenant server at <span className="mono">{API_BASE}</span> did not answer and there is no committed snapshot. Run the stack with <span className="mono">scripts/dev-all.sh</span>, or compute the result once. Nothing is shown in its place.</Empty></div>
+        <div className="card">{LOCAL_MODE
+          ? <Empty title="No simulator result to show" icon="flask" action={<CopyCode text="pnpm --dir server sim" />}>The Covenant server at <span className="mono">{API_BASE}</span> did not answer and there is no committed snapshot. Run the stack with <span className="mono">scripts/dev-all.sh</span>, or compute the result once. Nothing is shown in its place.</Empty>
+          : <Empty title="The simulator result did not load" icon="flask">The last result from real BNB Chain launches could not be loaded just now. Nothing is shown in its place; reload to try again.</Empty>}</div>
       ) : r ? (
         <>
           <Rules r={r} />
@@ -216,7 +219,7 @@ function Rerun({ r, sampleState }: { r: SimulatorResult; sampleState: { data?: {
     <section className="sect" aria-label="Rerun with other terms">
       <div><h2 className="h-sec" style={{ fontSize: 18 }}>Rerun with other terms</h2><p className="t-s muted w5">The same launches&apos; candles, replayed in your browser. Use it to see how terms move the result; the headline is the server&apos;s run.</p></div>
       {sampleState.isLoading ? <p className="loading-line"><ThinkingMark size={16} />Loading the server&apos;s candles…</p> : !result ? (
-        <p className="t-s muted w5">The server did not return candles{sampleState.error ? ` (${(sampleState.error as Error).message})` : ""}. Run <span className="mono">pnpm --dir server sim</span> to store them.</p>
+        <p className="t-s muted w5">{LOCAL_MODE ? <>The server did not return candles{sampleState.error ? ` (${(sampleState.error as Error).message})` : ""}. Run <span className="mono">pnpm --dir server sim</span> to store them.</> : <>Rerunning with other terms needs the launches&apos; daily candles from the Covenant market-data server, which this site does not run. The result above is the full run on real launches.</>}</p>
       ) : (
         <>
           <div className="hgrid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", borderRadius: 14 }}>

@@ -10,12 +10,14 @@ import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { WagmiProvider as PrivyWagmiProvider, createConfig as createPrivyConfig } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { http, type Address } from "viem";
+import { fallback, http, type Address } from "viem";
 import { WagmiProvider, createConfig, useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected, mock } from "wagmi/connectors";
 import { ANVIL_ACCOUNTS, ANVIL_ROLES, anvil, bscTestnet, configureLocalChain, localAccountsAllowed, type LocalChainInfo } from "@/lib/chain/chains";
+import { LOCAL_MODE, TESTNET_RPCS } from "@/lib/chain/target";
 
-const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
+/** The owner's Privy app (a public id, not a secret); NEXT_PUBLIC_PRIVY_APP_ID overrides it. */
+const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cmwxgt4at00fz0hjkdtasmncg";
 const DEV_WALLET_FLAG = process.env.NEXT_PUBLIC_DEV_WALLET === "1";
 /** anvil's public accounts only on a chain running on this machine, never on BNB testnet or BNB Chain. */
 const devWallet = () => DEV_WALLET_FLAG && localAccountsAllowed();
@@ -153,7 +155,7 @@ export function Providers({ children, localChain }: { children: ReactNode; local
   const theme = useSyncExternalStore(subscribeNoop, () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light"), () => "light" as const);
 
   const chainKey = `${anvil.id}:${anvil.rpcUrls.default.http[0]}`;
-  const transports = useMemo(() => Object.fromEntries(chainsFor().map((c) => [c.id, http(c.rpcUrls.default.http[0])])), [chainKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const transports = useMemo(() => Object.fromEntries(chainsFor().map((c) => [c.id, c.id === 97 && !LOCAL_MODE ? fallback(TESTNET_RPCS.map((u) => http(u))) : http(c.rpcUrls.default.http[0])])), [chainKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const browserConfig = useMemo(() => createConfig({ chains: chainsFor(), transports, connectors: [injected(), ...localConnectors()], ssr: true }), [transports]);
   const privyConfig = useMemo(() => createPrivyConfig({ chains: chainsFor(), transports, ssr: true }), [transports]);
 

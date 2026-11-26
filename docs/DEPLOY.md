@@ -67,10 +67,24 @@ nothing (`FlapTaxProcessorDispatchExecuted(token, 0, 0, 0)`). The threshold is p
 a fork of chain 97 one 5 BNB round trip (9.6 BNB of volume) crossed it and the vault received 0.3515 BNB. Within the
 0.05 tBNB this run allowed for trades, 1% tax yields about 0.0005 BNB, so it was not triggered on chain.
 
-**Hosting the web app (Vercel or any host).** Set `NEXT_PUBLIC_PRIVY_APP_ID` (the owner's Privy app id; public, not a
-secret) in the host's environment, and add the deployed domain to the Privy app's allowed origins in the Privy
-dashboard (and to `NEXT_PUBLIC_PRIVY_ORIGINS`), or Privy's login iframe is blocked there and the app falls back to
-browser wallets. `NEXT_PUBLIC_*` values are inlined at build time, so redeploy after changing them.
+**Hosting the web app (Vercel or any host, root directory `web`).** A default build serves BNB testnet with no
+environment variables: `pnpm build` runs `scripts/bake-testnet.mjs`, which bakes `contracts/deployments/97.json`, the
+Atlas push feeds and the public ABIs into `web/src/generated/testnet.json` (committed) and the simulator's last result
+into `web/public/data/`. The app reads every covenant straight from chain 97 through public RPCs (publicnode, then
+bnbchain.org, then blastapi) and needs no Covenant server. Nothing about a local chain appears unless a developer opts
+in with `NEXT_PUBLIC_CHAIN_ID=31337` (or 56 for a fork), which `scripts/dev-all.sh` sets.
+
+| Variable | Needed | What it does |
+|---|---|---|
+| none | | the default build is BNB testnet, Privy app `cmwxgt4at00fz0hjkdtasmncg` |
+| `NEXT_PUBLIC_PRIVY_APP_ID` | optional | another Privy app (public id, not a secret) |
+| `NEXT_PUBLIC_COVENANT_API` | optional | a running Covenant server: market data, rerunning the simulator with other terms, downside quotes. Without it those parts say they are not available on this site |
+| `NEXT_PUBLIC_BSC_TESTNET_RPC` | optional | a private BNB testnet RPC, tried before the public ones |
+| `NEXT_PUBLIC_SITE_URL` | optional | the canonical URL for link previews |
+
+In the Privy dashboard, add the deployed domain (for example `https://covenant.adibuilds.in`) to the app's allowed
+origins, or Privy's login iframe is blocked there. `NEXT_PUBLIC_*` values are inlined at build time, so redeploy after
+changing them.
 
 **Cost of a testnet covenant.** Flap's testnet Portal refuses a pool unless seed (BNB) × 700 ≥ 750 / pool share,
 so the seed must be at least 1.0714 BNB / pool share. A Portal facet (`0x756b91aB3ecA51191212A98a68917685161b8A30`,

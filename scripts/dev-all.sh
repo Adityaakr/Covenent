@@ -165,6 +165,9 @@ if [ -n "$ROUND_VAULT" ]; then
   issuer issuer-2 "$ROUND_VAULT"
 fi
 
+# The web app serves BNB testnet unless told otherwise: opt this local chain in explicitly.
+export NEXT_PUBLIC_CHAIN_ID="$CHAIN_ID"
+[ "$MODE" = "fork" ] && export NEXT_PUBLIC_LOCAL_RPC="${NEXT_PUBLIC_LOCAL_RPC:-http://127.0.0.1:8545}"
 if [ "$PROD" = "1" ]; then
   say "building the web app"
   pnpm --dir "$ROOT/web" build >"$RUN/web-build.log" 2>&1 || { tail -30 "$RUN/web-build.log" >&2; exit 1; }

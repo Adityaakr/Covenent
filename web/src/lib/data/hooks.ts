@@ -6,8 +6,9 @@
  * the app's status chip says why ("offline").
  */
 import { useQuery } from "@tanstack/react-query";
-import { createPublicClient, http, type PublicClient } from "viem";
+import { createPublicClient, fallback, http, type PublicClient } from "viem";
 import { anvil, bscTestnet, chainName, LOCAL_RPC, makeLocalChain } from "@/lib/chain/chains";
+import { LOCAL_MODE, TESTNET_PAYLOAD, TESTNET_RPCS } from "@/lib/chain/target";
 import { abiFor, addressOf, hasFn, launchersOf, type DeploymentPayload } from "@/lib/chain/deployment";
 import { readCovenant } from "@/lib/chain/reader";
 import type { Address, CovenantView } from "@/lib/covenant/types";
@@ -41,17 +42,24 @@ async function discover(client: PublicClient, payload: DeploymentPayload): Promi
 
 async function probe(): Promise<SourceStatus> {
   let payload: DeploymentPayload;
-  try {
-    payload = await (await fetch("/api/deployment", { cache: "no-store" })).json();
-  } catch {
-    return { mode: "offline", reason: "Deployment loader unavailable" };
+  if (!LOCAL_MODE) {
+    payload = TESTNET_PAYLOAD; // baked at build time: no file, no server needed
+  } else {
+    try {
+      payload = await (await fetch("/api/deployment", { cache: "no-store" })).json();
+    } catch {
+      return { mode: "offline", reason: "Deployment loader unavailable" };
+    }
   }
   if (payload.status !== "ok" || !payload.deployment) {
     return { mode: "offline", reason: payload.problems[0] ?? "No local deployment yet", payload };
   }
   const d = payload.deployment;
   const chain = d.chainId === anvil.id ? anvil : d.chainId === 97 ? bscTestnet : makeLocalChain({ id: d.chainId, rpcUrl: d.rpcUrl || LOCAL_RPC });
-  const client = createPublicClient({ chain, transport: http(d.rpcUrl || LOCAL_RPC, { timeout: 4000, retryCount: 0 }) }) as PublicClient;
+  const transport = !LOCAL_MODE
+    ? fallback(TESTNET_RPCS.map((u) => http(u, { timeout: 6000, retryCount: 1, batch: { batchSize: 32, wait: 16 } })))
+    : http(d.rpcUrl || LOCAL_RPC, { timeout: 4000, retryCount: 0 });
+  const client = createPublicClient({ chain, transport }) as PublicClient;
   try {
     const id = await client.getChainId();
     if (id !== d.chainId) return { mode: "offline", reason: `RPC answers chain ${id}, deployment is for ${d.chainId}`, payload };
@@ -67,7 +75,7 @@ async function probe(): Promise<SourceStatus> {
     if (!code || code === "0x") return { mode: "offline", reason: `Launcher has no code on ${chainName(d.chainId)}${d.chainId === 31337 || d.mode === "fork" ? ": the local chain was reset" : ""}`, payload };
     return { mode: "live", reason: `${launchers.length} covenant${launchers.length > 1 ? "s" : ""} on chain ${id}`, payload, client, chainId: id, launchers };
   } catch {
-    return { mode: "offline", reason: `${chainName(d.chainId)} not reachable at ${d.rpcUrl || LOCAL_RPC}`, payload };
+    return { mode: "offline", reason: LOCAL_MODE ? `${chainName(d.chainId)} not reachable at ${d.rpcUrl || LOCAL_RPC}` : `${chainName(d.chainId)} did not answer; trying again shortly`, payload };
   }
 }
 

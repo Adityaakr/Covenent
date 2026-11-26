@@ -53,6 +53,6 @@ export const faqs: FAQ[] = [
   },
   {
     q: "Is this token a security?",
-    a: "A redemption right raises that question in some places. Legal review comes before mainnet; the current build runs on a local chain and testnet.",
+    a: "A redemption right raises that question in some places. Legal review comes before mainnet; the current build runs on BNB testnet.",
   },
 ];

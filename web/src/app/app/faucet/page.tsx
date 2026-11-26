@@ -11,6 +11,7 @@ import { useSource } from "@/lib/data/hooks";
 import { requestFunds, useBalances, useFaucetStatus, useSwap } from "@/lib/data/faucet";
 import { short } from "@/lib/format";
 import { BnbCoin, withBnb } from "@/components/app/bnb";
+import { LOCAL_MODE } from "@/lib/chain/target";
 import { ThinkingMark } from "@/components/app/mark";
 
 /*
@@ -19,7 +20,7 @@ import { ThinkingMark } from "@/components/app/mark";
  */
 export default function FaucetPage() {
   const src = useSource();
-  if (src.chainId === 97) return <TestnetFunds />;
+  if (!LOCAL_MODE || src.chainId === 97) return <TestnetFunds />;
   return (
     <main className="page">
       <div className="sec-head">

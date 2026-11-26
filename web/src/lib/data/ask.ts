@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { parseEther } from "viem";
-import { API_BASE } from "@/lib/api/server";
+import { API_BASE, HAS_SERVER } from "@/lib/api/server";
 import { derive } from "@/lib/covenant/derive";
 import { poolSellQuote, redeemQuote } from "@/lib/covenant/math";
 import { duration, relative, span } from "@/lib/covenant/time";
@@ -27,7 +27,7 @@ function amountIn(q: string): number | null {
 }
 
 async function serverDownside(v: CovenantView, amount: number): Promise<string | null> {
-  if (v.source !== "live" || !v.vault) return null;
+  if (v.source !== "live" || !v.vault || !HAS_SERVER) return null;
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 2500);

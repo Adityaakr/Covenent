@@ -14,7 +14,8 @@ import { addressOf } from "@/lib/chain/deployment";
 import { useSource } from "@/lib/data/hooks";
 import { duration, span } from "@/lib/covenant/time";
 import { short, tokens } from "@/lib/format";
-import { chainName, networkKind } from "@/lib/chain/chains";
+import { chainName } from "@/lib/chain/chains";
+import { LOCAL_MODE } from "@/lib/chain/target";
 import { BnbCoin } from "./bnb";
 import { ConfirmAction } from "./confirm";
 import { Icon, type IconName } from "./icons";
@@ -251,10 +252,19 @@ export function FourmemeCreate() {
           </div>
         </div>
 
+        {!LOCAL_MODE ? (
+          <div className="card">
+            <div className="card-head ruled"><div><h2 className="h-card">Create the token on Four.meme</h2><p className="t-xs muted w5">Four.meme&apos;s create page makes the token and signs each launch on its own servers.</p></div></div>
+            <div className="card-body ruled stack">
+              <p className="t-s muted w5">Pick the Covenant Lite template when you create a tax token on Four.meme, and paste the vault data on the right. The founder&apos;s tax then goes to a Lite vault with these terms, and the token is listed here as a Four.meme covenant.</p>
+              <Note icon="info">Four.meme does not create tokens on {chainName(97)} yet, so this path runs on BNB Chain once it opens there. The Lite template is already deployed and verified on {chainName(97)}{template ? <> at <span className="mono">{short(template)}</span></> : null}.</Note>
+            </div>
+          </div>
+        ) : (
         <div className="card">
-          <div className="card-head ruled"><div><h2 className="h-card">{src.chainId && networkKind(src.chainId) !== "local" ? "Launch it on Four.meme" : "Launch it on the local chain"}</h2><p className="t-xs muted w5">A stand-in for Four.meme&apos;s token creation, which needs Four.meme&apos;s backend.</p></div></div>
+          <div className="card-head ruled"><div><h2 className="h-card">Launch it on the local chain</h2><p className="t-xs muted w5">A stand-in for Four.meme&apos;s token creation, which needs Four.meme&apos;s backend.</p></div></div>
           <div className="card-body ruled stack">
-            {src.mode !== "live" ? <ConnectChain source={src} /> : !launcher ? <Note icon="info">{src.chainId && networkKind(src.chainId) !== "local" ? <>No stand-in launcher on {chainName(src.chainId)}: Four.meme tokens are created on Four.meme&apos;s own site, and OpenFour&apos;s ForwardVault is deployed on BNB Chain only. The template address on the right is real.</> : <>No local launcher here: OpenFour&apos;s ForwardVault runs only on BNB Chain, so this needs the fork (<span className="mono">scripts/dev-all.sh --fork</span>).</>}</Note> : (
+            {src.mode !== "live" ? <ConnectChain source={src} /> : !launcher ? <Note icon="info">No local launcher here: OpenFour&apos;s ForwardVault runs only on BNB Chain, so this needs the fork (<span className="mono">scripts/dev-all.sh --fork</span>).</Note> : (
               <>
                 <p className="t-s muted w5">One transaction deploys a tax token, clones the live ForwardVault onto the Lite template with the bytes on the right, and seeds a PancakeSwap pool.</p>
                 <div className="grid2">
@@ -269,11 +279,12 @@ export function FourmemeCreate() {
             {msg ? <div className={msg.tone === "good" ? "mint-ok" : "mint-err"} role={msg.tone === "good" ? "status" : "alert"}><Icon name={msg.tone === "good" ? "check" : "alert"} size={16} /><span className="anywhere">{msg.text}</span></div> : null}
           </div>
         </div>
+        )}
       </div>
 
       <aside className="stack sticky" aria-label="Prepared for Four.meme">
         <div className="card">
-          <div className="card-head ruled"><div><h2 className="h-card">Prepared for Four.meme</h2><p className="t-xs muted w5">{template ? "Paste these on Four.meme's create page" : src.mode === "live" ? "This deployment names no Lite template" : "Connect to the local chain to read the template"}</p></div>{data ? <span className="badge good"><Icon name="check" size={13} />Ready</span> : null}</div>
+          <div className="card-head ruled"><div><h2 className="h-card">Prepared for Four.meme</h2><p className="t-xs muted w5">{template ? "Paste these on Four.meme's create page" : src.mode === "live" ? "This deployment names no Lite template" : LOCAL_MODE ? "Connect to the local chain to read the template" : "Reading the template address…"}</p></div>{data ? <span className="badge good"><Icon name="check" size={13} />Ready</span> : null}</div>
           <div className="card-body ruled stack">
             <LRow k="Tax vault template">{template ? <CopyCode text={template} /> : <span className="t-s muted w5">–</span>}</LRow>
             <LRow k="Vault data">{data ? <CopyCode text={data} wrap /> : <span className="t-s muted w5">{problems.length ? "Fix the terms first" : "–"}</span>}</LRow>

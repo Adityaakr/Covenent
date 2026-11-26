@@ -1,12 +1,16 @@
 /*
  * Typed client for the Covenant server (server/): keeper status, CoinMarketCap-backed market data, the simulator's
  * launch sample and a signed Atlas report for the public poke button. The base URL comes from
- * NEXT_PUBLIC_COVENANT_API (default http://localhost:8787). Every call reports where its data came from, and the
- * screens fall back to the mock layer, clearly labelled, when the server does not answer.
+ * NEXT_PUBLIC_COVENANT_API; a local dev chain defaults to http://localhost:8787, a hosted build has no server unless
+ * the variable is set. Every figure on a covenant is read from the chain directly; the server only adds what the chain
+ * cannot give (market data, the simulator's candles, a downside quote, a signed Atlas report).
  */
 import type { Candle, SampleToken } from "@/lib/sim/replay";
+import { LOCAL_MODE } from "@/lib/chain/target";
 
-export const API_BASE = (process.env.NEXT_PUBLIC_COVENANT_API || "http://localhost:8787").replace(/\/$/, "");
+export const API_BASE = (process.env.NEXT_PUBLIC_COVENANT_API || (LOCAL_MODE ? "http://localhost:8787" : "")).replace(/\/$/, "");
+/** Whether a Covenant server is configured for this build. */
+export const HAS_SERVER = API_BASE !== "";
 
 /** One place for the server's routes, so aligning with server/ is a one-line change. */
 export const ROUTES = {
@@ -37,6 +41,7 @@ export interface KeeperStatus { lastPoke: number | null; nextPoke: number | null
 export interface AtlasReport { bnbUsd: number; timestamp: number; payload: `0x${string}`; signer: string }
 
 async function get<T>(path: string, timeoutMs = 2500): Promise<T> {
+  if (!HAS_SERVER) throw new Error("no Covenant server is configured for this site");
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
@@ -142,7 +147,8 @@ export async function simulator(): Promise<{ result: SimulatorResult; from: "ser
     if (r) return { result: r, from: "server" };
   } catch { /* server not running */ }
   try {
-    const res = await fetch("/api/simulator", { cache: "no-store" });
+    // baked into public/ by scripts/bake-testnet.mjs from server/data/simulator/latest.json
+    const res = await fetch(LOCAL_MODE ? "/api/simulator" : "/data/simulator-latest.json", { cache: "no-store" });
     const r = res.ok ? ok(obj(await res.json())) : null;
     if (r) return { result: r, from: "snapshot" };
   } catch { /* no snapshot */ }

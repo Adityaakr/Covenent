@@ -19,6 +19,7 @@ import { DAY, span } from "@/lib/covenant/time";
 import type { Address, Terms } from "@/lib/covenant/types";
 import { useSource } from "@/lib/data/hooks";
 import { bnb, bps, multiple, pct, price, tokens, usd } from "@/lib/format";
+import { LOCAL_MODE } from "@/lib/chain/target";
 import { ThinkingMark } from "@/components/app/mark";
 
 type Mine = { state: "idle" | "mining" | "found"; tries: number; rate: number; salt?: `0x${string}`; address?: Address; ms?: number };
@@ -41,9 +42,10 @@ function CovenantCreate() {
   const wallet = useWallet();
   const config = useConfig();
   const qc = useQueryClient();
-  const [t, setT] = useState<Terms>({ ...DEFAULT_TERMS, name: "", symbol: "", meta: "", teamWallet: (wallet.address as Address) ?? DEFAULT_TERMS.teamWallet });
+  const [t, setT] = useState<Terms>({ ...DEFAULT_TERMS, name: "", symbol: "", meta: "", teamWallet: (wallet.address as Address) ?? (LOCAL_MODE ? DEFAULT_TERMS.teamWallet : ("" as Address)) });
   const [issuerKind, setIssuerKind] = useState<"agent" | "human">("agent");
-  const [agentId, setAgentId] = useState("4127");
+  // A local chain keeps the dev stack's worked example; a hosted build starts empty (the team wallet fills from the wallet).
+  const [agentId, setAgentId] = useState(LOCAL_MODE ? "4127" : "");
   // Live only: the short-timer demo factory (time in minutes) or the production factory (time in days)
   const [factory, setFactory] = useState<FactoryKind>("demo");
   const demo = src.mode === "live" && factory === "demo";
@@ -67,7 +69,7 @@ function CovenantCreate() {
   const [seenWallet, setSeenWallet] = useState<string | undefined>(undefined);
   if (wallet.address && seenWallet !== wallet.address) {
     setSeenWallet(wallet.address);
-    if (t.teamWallet === DEFAULT_TERMS.teamWallet) setT((x) => ({ ...x, teamWallet: wallet.address as Address }));
+    if (t.teamWallet === DEFAULT_TERMS.teamWallet || !t.teamWallet) setT((x) => ({ ...x, teamWallet: wallet.address as Address }));
   }
   const [mine, setMine] = useState<Mine>({ state: "idle", tries: 0, rate: 0 });
   const [busy, setBusy] = useState(false);
@@ -131,7 +133,7 @@ function CovenantCreate() {
   async function create() {
     setErr(null);
     const terms: Terms = { ...t, agentId: issuerKind === "agent" ? Number(agentId) : 0 };
-    if (src.mode !== "live") { setErr(`No chain to create on: ${src.reason}. Start the stack with scripts/dev-all.sh.`); return; }
+    if (src.mode !== "live") { setErr(LOCAL_MODE ? `No chain to create on: ${src.reason}. Start the stack with scripts/dev-all.sh.` : `${chainName(97)} did not answer just now; try again in a moment.`); return; }
     // Live: Portal.newLauncher(factory, abi.encode(Terms)), Terms encoded from the factory's own checkTerms input.
     const d = src.payload!.deployment!;
     const tg = createTargets(src.payload, factory);
@@ -227,7 +229,7 @@ function CovenantCreate() {
                   </div>
                 </div>
                 <div className="grid2">
-                  <Field label="Team wallet" hint="receives the tap, fixed forever"><input className="field mono" value={t.teamWallet} onChange={(e) => set("teamWallet", e.target.value.trim() as Address)} /></Field>
+                  <Field label="Team wallet" hint="receives the tap, fixed forever"><input className="field mono" value={t.teamWallet} placeholder="Your wallet, once connected" onChange={(e) => set("teamWallet", e.target.value.trim() as Address)} /></Field>
                   {issuerKind === "agent" ? <Field label="Agent id" hint="owned by the team wallet"><input className="field mono" value={agentId} inputMode="numeric" onChange={(e) => setAgentId(e.target.value.replace(/[^0-9]/g, ""))} /></Field> : <div />}
                 </div>
                 {src.mode === "live" && issuerKind === "agent" ? (
@@ -302,7 +304,7 @@ function CovenantCreate() {
                     ["Exit", `${span(t.exitStreak)} streak, ${span(t.roundLength)} round, ${bps(t.exitFeeBps)} fee`],
                     ["Heartbeat", span(t.heartbeat)],
                     ["Factory", src.mode === "live" ? (demo ? "Demo timers (minutes)" : "Production (days)") : "–"],
-                    ["Team wallet", `${t.teamWallet.slice(0, 8)}…${t.teamWallet.slice(-6)}`],
+                    ["Team wallet", t.teamWallet ? `${t.teamWallet.slice(0, 8)}…${t.teamWallet.slice(-6)}` : "Connect a wallet"],
                   ] as [string, string][]).map(([k, val]) => <div key={k}><span className="t-xs muted w5">{k}</span><span className="t-s ink w5 num">{val}</span></div>)}
                 </div>
                 <div className="tile stack-sm" style={{ display: "grid" }}>
@@ -321,7 +323,9 @@ function CovenantCreate() {
                   <button className="btn btn-secondary" onClick={startMining} disabled={mine.state === "mining"}><Icon name="sparkle" size={15} />{mine.state === "found" ? "Mine again" : mine.state === "mining" ? <><ThinkingMark size={15} />Mining…</> : "Mine a 7777 salt"}</button>
                 </div>
                 {problems.length ? <Problems list={problems} /> : null}
-                {src.mode !== "live" ? <Note tone="warn" icon="alert"><b>Not connected to {src.payload?.deployment && networkKind(src.payload.deployment.chainId) !== "local" ? chainName(src.payload.deployment.chainId) : "the local chain"}.</b> {src.reason}. Start the stack with <span className="mono">{stackCommand(src.payload?.deployment?.chainId)}</span>; creating sends the transaction there.</Note> : null}
+                {src.mode !== "live" ? (LOCAL_MODE
+                  ? <Note tone="warn" icon="alert"><b>Not connected to the local chain.</b> {src.reason}. Start the stack with <span className="mono">scripts/dev-all.sh</span>; creating sends the transaction there.</Note>
+                  : <Note tone="warn" icon="alert"><b>Reading {chainName(97)}…</b> The network did not answer just now; creating is available as soon as it does.</Note>) : null}
                 {err ? <Note tone="warn">{err}</Note> : null}
               </>
             )}
