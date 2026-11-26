@@ -108,6 +108,11 @@
 }
 .drawerButton.drawerButton { flex: 1 0 0; width: 1px; }
 
+/* Narrow tablet: Covenant's labels (Use cases, Milestones, Connect wallet) are ~45px wider than the template's, which
+   left ~22px between the groups at 810. A 24px link gap restores the template's ~40px of air between groups. */
+@media (max-width: 879.98px) {
+  .links { gap: 24px; }
+}
 @media (max-width: 809.98px) {
   .nav { padding: 0 16px; }
   .links,

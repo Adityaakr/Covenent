@@ -22,7 +22,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 20px;
-  padding: 24px;
+  /* Framer padding 24 with the 1px border drawn inside it (no layout space): 1px less here. */
+  padding: 23px;
   border: 1px solid var(--c-border);
   border-radius: 18px;
   background: var(--c-bg);

@@ -7,7 +7,9 @@
   align-items: center;
   padding: 0 32px;
   overflow: clip;
-  background: var(--c-bg);
+  /* Transparent like the live template (landing-root is white), so a PageCTA plate still settling its scroll lift
+     shows over the footer's top edge instead of being cut by it. */
+  background: transparent;
 }
 /* Framer draws borders inside the frame (no layout space); reproduced with overlays. */
 .footer::before {

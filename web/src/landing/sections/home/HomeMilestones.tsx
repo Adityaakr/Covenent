@@ -9,13 +9,12 @@ import s from "./HomeMilestones.module.css";
 
 const MotionLink = motion.create(Link);
 
-/* Phosphor regular "Arrow Right", width 1.5. */
+/* Template "Arrow Right" (tree.toSVG): short shaft plus a stroked closed triangle head, 24 viewBox, stroke 1.5. */
 function IconArrowRight() {
   return (
-    <svg width={14} height={14} viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth={16}
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="40" y1="128" x2="216" y2="128" />
-      <polyline points="144 56 216 128 144 200" />
+      <path d="M3.75 12H13.5M13.5 5.25L20.25 12L13.5 18.75Z" />
     </svg>
   );
 }
