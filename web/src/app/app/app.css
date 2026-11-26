@@ -659,6 +659,10 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 .srcpill.mock { color: var(--warn); background: var(--warn-bg); }
 .walletbtn { display: inline-flex; align-items: center; gap: 9px; height: 36px; padding: 0 12px 0 5px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); font-size: 13px; font-weight: 500; color: var(--ink); transition: background var(--t) var(--ease-framer); }
 .walletbtn:hover { background: var(--surface); }
+/* Header wallet buttons: a soft ring for keyboard focus, none after a click or when Privy's modal hands focus back. */
+.connectbtn:focus, .walletbtn:focus, .netpill:focus { outline: none; }
+.connectbtn:focus-visible, .walletbtn:focus-visible, .netpill:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-bg); }
+.srcpill .bnbmark { margin-right: 0; }
 .walletbtn .avatar { width: 26px; height: 26px; }
 .modal-wrap { position: fixed; inset: 0; z-index: 95; display: grid; justify-items: center; align-items: start; padding: 12vh 16px 16px; background: var(--overlay); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: fadein var(--t) var(--ease) both; }
 .cmdk { width: min(620px, 100%); border-radius: 18px; background: var(--card); border: 1px solid var(--line-strong); box-shadow: var(--shadow-lg); overflow: hidden; animation: pop var(--t) var(--ease) both; }

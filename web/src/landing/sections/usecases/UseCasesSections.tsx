@@ -181,10 +181,10 @@ export function QuoteWall() {
       <div className={s.quotesGrid}>
         {useCases.slice(1, 4).map((u) => (
           <div key={u.slug} className={s.quoteCard}>
-            <p className="t-lead c-text">{bnb(u.quote)}</p>
+            <p className="t-lead c-text">{bnb(u.quote ?? "")}</p>
             <div className={s.quoteAuthor}>
-              <p className="t-label">{bnb(u.quoteAuthor)}</p>
-              <p className="t-small c-text-2">{bnb(u.quoteRole)}</p>
+              <p className="t-label">{bnb(u.quoteAuthor ?? "")}</p>
+              <p className="t-small c-text-2">{bnb(u.quoteRole ?? "")}</p>
             </div>
           </div>
         ))}

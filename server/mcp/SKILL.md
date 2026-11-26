@@ -17,11 +17,13 @@ Book value = (vault BNB − tap owed) / (supply − burned − locked team token
 
 ## Two ways to use it
 
-**MCP server (recommended).** Run `pnpm --dir server mcp` (stdio). Point your MCP client at it:
+**MCP server (recommended).** Run `pnpm --dir server mcp` (stdio) from the repository root. Point your MCP client at it with an absolute path, so it starts from any directory:
 
 ```json
-{ "mcpServers": { "covenant": { "command": "pnpm", "args": ["--dir", "server", "mcp"] } } }
+{ "mcpServers": { "covenant": { "command": "pnpm", "args": ["--dir", "/absolute/path/to/Covenent/server", "mcp"] } } }
 ```
+
+Claude Code: `claude mcp add covenant -- pnpm --dir /absolute/path/to/Covenent/server mcp`. The server reads `contracts/deployments/local.json` by default. Set `COVENANT_DEPLOYMENTS` in the server's `env` to use another record, such as `contracts/deployments/97.local.json` for BNB testnet (written by `scripts/testnet-up.sh`).
 
 **HTTP, no server process of your own.** The Covenant API (default `http://127.0.0.1:8787`) exposes the same data:
 `GET /api/covenants`, `GET /api/covenants/{vault}`, `/downside?holder=`, `/history`, `/events`, `/tx/{commit|redeem|claim-tokens|claim-refund|declare-abandoned|claim-tap|heartbeat|lower-tap}`, and `GET /api/poke-report?vault=`.

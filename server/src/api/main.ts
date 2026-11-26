@@ -10,6 +10,6 @@ serve({ fetch: app.fetch, port: cfg.apiPort, hostname: host }, (info) => {
   console.log(
     `[api] http://${host}:${info.port}  chain ${cfg.chainId} (${cfg.rpcUrl}); covenants ${cfg.covenants.length}; ` +
       `deployments ${cfg.deployments ? 'loaded' : 'NOT FOUND (contracts/deployments/local.json)'}; ` +
-      `Atlas ${cfg.atlas.apiKey ? 'pull API' : 'local test signer'}; CMC ${cfg.cmc.apiKey ? 'key set' : 'keyless'}`,
+      `Atlas ${cfg.atlas.apiKey ? 'pull API' : cfg.atlas.localSignerAllowed ? 'local test signer' : cfg.atlas.pushFeed ? `push feed ${cfg.atlas.pushFeed}` : 'none'}; CMC ${cfg.cmc.apiKey ? 'key set' : 'keyless'}`,
   );
 });
