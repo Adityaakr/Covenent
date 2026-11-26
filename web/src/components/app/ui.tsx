@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { explorerAddress, explorerTx } from "@/lib/chain/chains";
 import type { CovenantState } from "@/lib/covenant/types";
 import { short } from "@/lib/format";
@@ -196,4 +197,15 @@ export function useCountdown(seconds: number): number {
 export function Countdown({ seconds, format }: { seconds: number; format: (s: number) => string }) {
   const left = useCountdown(seconds);
   return <span className="num">{format(left)}</span>;
+}
+
+/**
+ * Renders overlays (dialogs, the intent picker, ⌘K, the first-run guide) into document.body, outside the page wrapper:
+ * the page's enter animation transforms that wrapper, and a transformed ancestor turns position: fixed into position
+ * relative to it, which dropped the modals down the page.
+ */
+export function Portal({ children }: { children: ReactNode }) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => { setHost(document.body); }, []);
+  return host ? createPortal(children, host) : null;
 }

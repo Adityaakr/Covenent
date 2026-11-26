@@ -12,7 +12,7 @@ import { seedHue } from "@/components/app/bot";
 import { ThinkingMark } from "@/components/app/mark";
 import { duration } from "@/lib/covenant/time";
 import { reopenOnboarding, useIntents, useOnboarded, type Intent } from "@/components/app/prefs";
-import { Empty, SecHead, Skeleton, StateBadge, Ticker, TokenAvatar, cx, seedOf } from "@/components/app/ui";
+import { Empty, Portal, SecHead, Skeleton, StateBadge, Ticker, TokenAvatar, cx, seedOf } from "@/components/app/ui";
 import { derive } from "@/lib/covenant/derive";
 import { DAY } from "@/lib/covenant/time";
 import type { CovenantView } from "@/lib/covenant/types";
@@ -67,7 +67,7 @@ export default function DiscoverPage() {
 
   return (
     <main className="page">
-      {onboarded === "no" ? <IntentPicker seeds={list.map(seedOf)} /> : null}
+      {onboarded === "no" ? <Portal><IntentPicker seeds={list.map(seedOf)} /></Portal> : null}
       <section className="home-head rise">
         <div className="home-top">
           <div style={{ display: "grid", maxWidth: 640 }}>

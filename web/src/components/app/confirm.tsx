@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "./icons";
+import { Portal } from "./ui";
 
 /**
  * Confirmation for irreversible actions: what happens, in order, who pays the gas, and an explicit acknowledgement
@@ -23,6 +24,7 @@ export function ConfirmAction({ open, onClose, onConfirm, title, lead, points, g
   if (!open) return null;
   const close = () => { setAck(false); onClose(); };
   return (
+    <Portal>
     <div className="modal-wrap" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
       <div className="confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-lead">
         <div className="confirm-head">
@@ -46,5 +48,6 @@ export function ConfirmAction({ open, onClose, onConfirm, title, lead, points, g
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

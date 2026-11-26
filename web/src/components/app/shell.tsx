@@ -11,7 +11,7 @@ import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
 import { Icon, Mark, type IconName } from "./icons";
 import { hidePromo, reopenOnboarding, setCollapsed, useCollapsed, usePromoHidden } from "./prefs";
-import { CoverCut, Skeleton, TokenAvatar, coverVars, cx, seedOf } from "./ui";
+import { CoverCut, Portal, Skeleton, TokenAvatar, coverVars, cx, seedOf } from "./ui";
 import { withBnb } from "@/components/app/bnb";
 import { ThinkingMark } from "./mark";
 import { GetStarted } from "./funds";
@@ -72,9 +72,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <div className="pg" key={routeKey(path)}>{children}</div>
       </div>
-      {cmdk ? <CommandPalette onClose={() => setCmdk(false)} /> : null}
-      <GetStarted />
-      <Toasts />
+      {/* overlays live in body, outside the transformed page wrapper (.pg), so fixed positioning is the viewport's */}
+      {cmdk ? <Portal><CommandPalette onClose={() => setCmdk(false)} /></Portal> : null}
+      <Portal><GetStarted /></Portal>
+      <Portal><Toasts /></Portal>
     </div>
   );
 }
