@@ -409,20 +409,21 @@ CoinMarketCap endpoints used by the server: `/v4/dex/pairs/quotes/latest`, `/v1/
 ## Deployments
 
 Covenant is deployed on **BNB testnet** (chain 97). Nothing is on BNB Chain mainnet. The record is
-[`contracts/deployments/97.json`](contracts/deployments/97.json). Every contract is source-verified on Sourcify.
+[`contracts/deployments/97.json`](contracts/deployments/97.json). Every contract is source-verified on Sourcify. These are
+the 26 Nov 2026 redeploy with the fixes from Flap's audit review ([docs/DEPLOY.md](docs/DEPLOY.md#redeploy-with-the-audit-fixes-26-nov-2026)).
 
 | Contract | Address |
 |---|---|
-| CovenantOracle | [`0x3CC607931edaF307dC867111e48cAc28e31fF052`](https://testnet.bscscan.com/address/0x3CC607931edaF307dC867111e48cAc28e31fF052) |
-| CovenantLauncherFactory | [`0x373491d66f68FE2Acc370B12E6FA2bB488FC6A0B`](https://testnet.bscscan.com/address/0x373491d66f68FE2Acc370B12E6FA2bB488FC6A0B) |
-| CovenantVaultFactory | [`0x2665c44Ea346De54207b8E8C1A351aE3e82FCf57`](https://testnet.bscscan.com/address/0x2665c44Ea346De54207b8E8C1A351aE3e82FCf57) |
-| CovenantLauncherFactory (demo timers) | [`0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48`](https://testnet.bscscan.com/address/0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48) |
-| CovenantVaultFactory (demo timers) | [`0xF8Bf9A01457C45a8F53E7ae32D863B38d3876c97`](https://testnet.bscscan.com/address/0xF8Bf9A01457C45a8F53E7ae32D863B38d3876c97) |
-| CovenantLens | [`0x6c0D9CDDCbAA497a54fF5aDDCbf444E77b3d1A83`](https://testnet.bscscan.com/address/0x6c0D9CDDCbAA497a54fF5aDDCbf444E77b3d1A83) |
-| CovenantLiteVault template | [`0xC9aD3B8aC5baD26278EFc8F88D1073eB85791437`](https://testnet.bscscan.com/address/0xC9aD3B8aC5baD26278EFc8F88D1073eB85791437) |
+| CovenantOracle | [`0x749ec94844Bf50DDfd4CfAFD9167305213CcC11D`](https://testnet.bscscan.com/address/0x749ec94844Bf50DDfd4CfAFD9167305213CcC11D) |
+| CovenantLauncherFactory | [`0xA3884139b002AaCEd9Dd77d8fd89e4E65c1D10Da`](https://testnet.bscscan.com/address/0xA3884139b002AaCEd9Dd77d8fd89e4E65c1D10Da) |
+| CovenantVaultFactory | [`0x1c1819Ff2EbF723047C55E23a799b4dB9Ba7AA05`](https://testnet.bscscan.com/address/0x1c1819Ff2EbF723047C55E23a799b4dB9Ba7AA05) |
+| CovenantLauncherFactory (demo timers) | [`0xFC0a5dc742D21C4e36947762dbb4e36296BD1138`](https://testnet.bscscan.com/address/0xFC0a5dc742D21C4e36947762dbb4e36296BD1138) |
+| CovenantVaultFactory (demo timers) | [`0x35945180475B74e1C1CA37d71e5b721bD4b26843`](https://testnet.bscscan.com/address/0x35945180475B74e1C1CA37d71e5b721bD4b26843) |
+| CovenantLens | [`0x499BD0638C8299e1b5Bec10AfBc13dC6c617724f`](https://testnet.bscscan.com/address/0x499BD0638C8299e1b5Bec10AfBc13dC6c617724f) |
+| CovenantLiteVault template | [`0x68acB0d7d0736Fd410032898bC56C6A2827714af`](https://testnet.bscscan.com/address/0x68acB0d7d0736Fd410032898bC56C6A2827714af) |
 
-**The first testnet covenant.** `$CVT` was created through the demo launcher factory and taken through every stage on
-chain 97: create, commit, Flap launch, claim, keeper pokes and tax dispatch, issuer heartbeat and tap, abandonment,
+**The first testnet covenant.** `$CVT` was created through the previous demo launcher factory
+(`0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48`, before the audit fixes) and taken through every stage on chain 97: create, commit, Flap launch, claim, keeper pokes and tax dispatch, issuer heartbeat and tap, abandonment,
 redeem.
 
 | | Address |
