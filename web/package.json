@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 8080",
     "dev:3000": "next dev -p 3000",
-    "prebuild": "node scripts/bake-testnet.mjs",
+    "prebuild": "node scripts/bake-testnet.mjs && node scripts/bake-testnet-logs.mjs",
     "build": "next build",
     "start": "next start -p 8080",
     "start:3000": "next start -p 3000",

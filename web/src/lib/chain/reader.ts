@@ -8,6 +8,8 @@ import { DEFAULT_TERMS } from "@/lib/covenant/defaults";
 import { redeemableSupply, settleRaise, split } from "@/lib/covenant/math";
 import type { Address, CovenantState, CovenantView, FeedEvent, Hash, LedgerRow, PricePoint, Terms, Tranche } from "@/lib/covenant/types";
 import { abiFor, addressOf, hasFn, pickFn, type DeploymentPayload } from "./deployment";
+import { contractLogs, snapshotTime } from "./logs";
+import { LOCAL_MODE } from "./target";
 
 const DEAD: Address = "0x000000000000000000000000000000000000dEaD";
 const ERC20: Abi = [
@@ -141,8 +143,9 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   ]) : Promise.resolve(null);
   const fromBlockEarly = BigInt(d.startBlock ?? 0);
   const logsP = Promise.all([
-    L ? client.getContractEvents({ address: launcher, abi: L, fromBlock: fromBlockEarly }) : [],
-    vault && V ? client.getContractEvents({ address: vault, abi: V, fromBlock: fromBlockEarly }) : [],
+    // chunked, cached, and seeded from the baked snapshot on BNB testnet (public RPCs cap and prune log ranges)
+    L ? contractLogs(client, d.chainId, launcher, L, fromBlockEarly, LOCAL_MODE) : [],
+    vault && V ? contractLogs(client, d.chainId, vault, V, fromBlockEarly, LOCAL_MODE) : [],
   ]).catch(() => null);
   const [vStateRaw, bookRaw, rRaw, streakRaw, tapRaw, hbRaw, owedRaw, lockedRaw, roundEndRaw, cooldownEndRaw, pairRaw] = await Promise.all([
     call(ctx, vault, V, "state"),
@@ -209,7 +212,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   // ERC-8004 outcomes this vault wrote to the agent's reputation record (OutcomeRecorded mirrors giveFeedback)
   const outcomes: CovenantView["issuer"]["outcomes"] = [];
   const tsCache = new Map<bigint, number>();
-  const ts = async (bn: bigint) => { if (!tsCache.has(bn)) tsCache.set(bn, Number((await client.getBlock({ blockNumber: bn })).timestamp)); return tsCache.get(bn)!; };
+  const ts = async (bn: bigint) => { if (!tsCache.has(bn)) tsCache.set(bn, snapshotTime(d.chainId, bn) ?? Number((await client.getBlock({ blockNumber: bn })).timestamp)); return tsCache.get(bn)!; };
   try {
     if (!logsEarly) throw new Error("log query failed");
     const logs = logsEarly;

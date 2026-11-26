@@ -13,6 +13,8 @@ import { useConfig } from "wagmi";
 import { waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { useWallet } from "@/components/providers";
 import { addressOf } from "@/lib/chain/deployment";
+import { contractLogs } from "@/lib/chain/logs";
+import { LOCAL_MODE } from "@/lib/chain/target";
 import { useSource } from "./hooks";
 
 export const DEMO_USDC_ABI = [
@@ -65,11 +67,13 @@ export function useUsdcRevenue(to?: Address) {
       const c = src.client!;
       const fromBlock = BigInt(src.payload?.deployment?.startBlock ?? 0);
       const [logs, bal] = await Promise.all([
-        c.getLogs({ address: token!, event: TRANSFER, args: { to }, fromBlock }),
+        // chunked, cached, seeded from the baked snapshot on BNB testnet (public RPCs cap and prune log ranges)
+        contractLogs(c, src.chainId ?? 0, token!, [TRANSFER] as unknown as Abi, fromBlock, LOCAL_MODE)
+          .then((all) => all.filter((l) => String(l.args.to ?? "").toLowerCase() === to!.toLowerCase())),
         c.readContract({ address: token!, abi: DEMO_USDC_ABI, functionName: "balanceOf", args: [to!] }),
       ]);
-      const paid = logs.filter((l) => l.args.from && !/^0x0{40}$/i.test(l.args.from));
-      const total = paid.reduce((n, l) => n + (l.args.value ?? 0n), 0n);
+      const paid = logs.filter((l) => typeof l.args.from === "string" && !/^0x0{40}$/i.test(l.args.from));
+      const total = paid.reduce((n, l) => n + (typeof l.args.value === "bigint" ? l.args.value : 0n), 0n);
       return { total: Number(formatUnits(total, 6)), payments: paid.length, balance: Number(formatUnits(bal, 6)), last: paid.at(-1)?.transactionHash as Hash | undefined };
     },
   });

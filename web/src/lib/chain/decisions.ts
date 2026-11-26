@@ -12,6 +12,8 @@
 import { formatEther, keccak256, toBytes, type Abi, type PublicClient } from "viem";
 import type { Address, Hash } from "@/lib/covenant/types";
 import { abiFor, type DeploymentPayload } from "./deployment";
+import { contractLogs, snapshotTime } from "./logs";
+import { LOCAL_MODE } from "./target";
 
 export const DECISION_KIND = "covenant.decision";
 
@@ -71,10 +73,12 @@ export async function readDecisions(client: PublicClient, payload: DeploymentPay
   const V = abiFor(payload.abis, "CovenantVault", "Vault") as Abi | undefined;
   if (!V) return [];
   const fromBlock = BigInt(payload.deployment?.startBlock ?? 0);
-  const logs = await client.getContractEvents({ address: vault, abi: V, fromBlock });
+  const chainId = payload.deployment?.chainId ?? 0;
+  // chunked, cached, and seeded from the baked snapshot on BNB testnet (public RPCs cap and prune log ranges)
+  const logs = await contractLogs(client, chainId, vault, V, fromBlock, LOCAL_MODE);
   const times = new Map<bigint, number>();
   const ts = async (bn: bigint) => {
-    if (!times.has(bn)) times.set(bn, Number((await client.getBlock({ blockNumber: bn })).timestamp));
+    if (!times.has(bn)) times.set(bn, snapshotTime(chainId, bn) ?? Number((await client.getBlock({ blockNumber: bn })).timestamp));
     return times.get(bn)!;
   };
   const out: TimelineEntry[] = [];
