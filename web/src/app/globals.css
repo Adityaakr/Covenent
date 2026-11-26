@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+/*
+ * Covenant design tokens, shared by the landing page (src/landing, built from the Framer template) and the product
+ * app (src/app/app, which adds its own component styles in app.css). Visual language from the Framer site:
+ * Inter Display headings, Inter text, light-first white paper with calm spacing, rounded cards, soft sky gradients,
+ * one blue accent. Dark mode is a change of values on <html data-theme="dark">, set before first paint.
+ */
+:root {
+  --font-sans-stack: var(--font-inter), "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display-stack: var(--font-inter-display), var(--font-inter), "Inter Display", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono-stack: var(--font-mono), "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --bg: #ffffff;
+  --canvas: #fbfbfc;
+  --surface: #f5f6f8;
+  --card: #ffffff;
+  --ink: #0f1012;
+  --ink-2: #3d4048;
+  --muted: #6b6f7a;
+  --faint: #9a9ea8;
+  --line: #ececef;
+  --line-strong: #dfe0e5;
+  --accent: #2b5cff;
+  --accent-ink: #ffffff;
+  --accent-bg: #eef2ff;
+  --accent-line: #c9d5ff;
+  --good: #12804a;
+  --good-bg: #e9f8ef;
+  --warn: #b35a00;
+  --warn-bg: #fff4e5;
+  --bad: #c8331f;
+  --bad-bg: #fdeeeb;
+  --agent: #6a46f5;
+  --agent-bg: #f2eeff;
+  --neutral-bg: #f0f1f4;
+  --shadow-sm: 0 1px 2px rgba(16, 18, 24, 0.05);
+  --shadow: 0 1px 2px rgba(16, 18, 24, 0.04), 0 10px 30px -14px rgba(16, 18, 24, 0.16);
+  --shadow-lg: 0 2px 6px rgba(16, 18, 24, 0.05), 0 24px 60px -24px rgba(16, 18, 24, 0.28);
+  --overlay: rgba(15, 16, 18, 0.32);
+  --nav-bg: rgba(255, 255, 255, 0.82);
+  --sky:
+    radial-gradient(110% 80% at 8% 0%, #fbd9e2 0%, rgba(251, 217, 226, 0) 55%),
+    radial-gradient(90% 75% at 92% 8%, #cfdcff 0%, rgba(207, 220, 255, 0) 60%),
+    radial-gradient(110% 90% at 50% 110%, #e6ddff 0%, rgba(230, 221, 255, 0) 62%),
+    linear-gradient(180deg, #f2f5ff 0%, #f7f3ff 100%);
+  --sky-soft:
+    radial-gradient(80% 120% at 0% 0%, rgba(251, 217, 226, 0.55) 0%, rgba(251, 217, 226, 0) 60%),
+    radial-gradient(70% 120% at 100% 0%, rgba(207, 220, 255, 0.6) 0%, rgba(207, 220, 255, 0) 60%),
+    var(--card);
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b0c0e;
+  --canvas: #0e0f12;
+  --surface: #15161a;
+  --card: #121317;
+  --ink: #f1f2f4;
+  --ink-2: #c3c6ce;
+  --muted: #8f939d;
+  --faint: #656a74;
+  --line: #22242a;
+  --line-strong: #2e3138;
+  --accent: #6b8bff;
+  --accent-ink: #0b0c0e;
+  --accent-bg: rgba(107, 139, 255, 0.14);
+  --accent-line: rgba(107, 139, 255, 0.35);
+  --good: #4fd18b;
+  --good-bg: rgba(79, 209, 139, 0.12);
+  --warn: #f0a54a;
+  --warn-bg: rgba(240, 165, 74, 0.13);
+  --bad: #ff7a66;
+  --bad-bg: rgba(255, 122, 102, 0.13);
+  --agent: #a993ff;
+  --agent-bg: rgba(169, 147, 255, 0.14);
+  --neutral-bg: #1c1d22;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -16px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.4), 0 28px 64px -24px rgba(0, 0, 0, 0.75);
+  --overlay: rgba(0, 0, 0, 0.55);
+  --nav-bg: rgba(11, 12, 14, 0.8);
+  --sky:
+    radial-gradient(110% 80% at 8% 0%, rgba(120, 52, 92, 0.55) 0%, rgba(120, 52, 92, 0) 55%),
+    radial-gradient(90% 75% at 92% 8%, rgba(46, 74, 160, 0.6) 0%, rgba(46, 74, 160, 0) 60%),
+    radial-gradient(110% 90% at 50% 110%, rgba(84, 60, 160, 0.5) 0%, rgba(84, 60, 160, 0) 62%),
+    linear-gradient(180deg, #11131c 0%, #141120 100%);
+  --sky-soft:
+    radial-gradient(80% 120% at 0% 0%, rgba(120, 52, 92, 0.22) 0%, rgba(120, 52, 92, 0) 60%),
+    radial-gradient(70% 120% at 100% 0%, rgba(46, 74, 160, 0.26) 0%, rgba(46, 74, 160, 0) 60%),
+    var(--card);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-agent: var(--agent);
+  --font-sans: var(--font-sans-stack);
+  --font-display: var(--font-display-stack);
+  --font-mono: var(--font-mono-stack);
+}
+
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body { margin: 0; min-height: 100dvh; background: var(--bg); color: var(--ink); font-family: var(--font-sans-stack); font-size: 15px; line-height: 1.55; letter-spacing: -0.006em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-feature-settings: "cv11", "ss01"; }
+::selection { background: var(--accent-bg); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
