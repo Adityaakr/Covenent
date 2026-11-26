@@ -5,8 +5,8 @@
  * - AgentDecisions: the issuer agent's decision log. Each decision it acted on is a ReportPosted data URI holding the
  *   action, its reasoning, who decided (the model or the fixed rule) and the numbers it read, checked against the hash
  *   posted with it; tap claims, tap cuts, heartbeats and revenue deposits are merged in from the vault's events.
- * - AgentEconomy: the agent's dollar revenue in Demo USDC (test funds) beside its BNB treasury, and a button to pay it
- *   for a service. dUSDC never enters the vault: treasuries are BNB because Flap's pools are BNB-quoted.
+ * - AgentEconomy: the agent's dollar revenue in test USDT (test funds) beside its BNB treasury, and a button to pay it
+ *   for a service. USDT never enters the vault: treasuries are BNB because Flap's pools are BNB-quoted.
  */
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -47,7 +47,7 @@ function Inputs({ inputs }: { inputs: Record<string, unknown> }) {
     ["Tap accrued", num(inputs.tapAccruedBnb, 6) && `${num(inputs.tapAccruedBnb, 6)} BNB`],
     ["Tap", num(inputs.tapUsdPer30d, 0) && `$${num(inputs.tapUsdPer30d, 0)}/30d`],
     ["Last beat", typeof inputs.heartbeatAgeSeconds === "number" && inputs.heartbeatAgeSeconds >= 0 ? `${Math.round(inputs.heartbeatAgeSeconds)}s ago` : null],
-    ["dUSDC in", typeof inputs.usdcRevenue === "number" && inputs.usdcRevenue > 0 ? `${num(inputs.usdcRevenue, 2)}` : null],
+    ["USDT in", typeof inputs.usdcRevenue === "number" && inputs.usdcRevenue > 0 ? `${num(inputs.usdcRevenue, 2)}` : null],
   ].filter((r): r is [string, string] => Boolean(r[1]));
   if (!rows.length) return null;
   return <div className="dec-inputs">{rows.map(([k, v]) => <span key={k}><span className="faint">{k}</span> {v}</span>)}</div>;
@@ -140,25 +140,25 @@ export function AgentEconomy({ v }: { v: CovenantView }) {
       <div className="card-head">
         <div style={{ minWidth: 0 }}>
           <h3 className="h-card">Agent revenue</h3>
-          <p className="t-xs muted w5">{who} sells its service for Demo USDC (test funds)</p>
+          <p className="t-xs muted w5">{who} sells its service for test USDT (test funds)</p>
         </div>
-        <span className="badge plain">dUSDC</span>
+        <span className="badge plain">USDT</span>
       </div>
       <div style={{ padding: "0 22px 18px", display: "grid", gap: 12 }}>
         <dl className="kv">
-          <dt>Paid by customers</dt><dd>{rev.data ? `${rev.data.total.toLocaleString("en-US", { maximumFractionDigits: 2 })} dUSDC in ${rev.data.payments} payment${rev.data.payments === 1 ? "" : "s"}` : rev.isLoading ? "…" : "–"}</dd>
-          <dt>In the agent wallet</dt><dd>{rev.data ? `${rev.data.balance.toLocaleString("en-US", { maximumFractionDigits: 2 })} dUSDC` : "–"}</dd>
+          <dt>Paid by customers</dt><dd>{rev.data ? `${rev.data.total.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT in ${rev.data.payments} payment${rev.data.payments === 1 ? "" : "s"}` : rev.isLoading ? "…" : "–"}</dd>
+          <dt>In the agent wallet</dt><dd>{rev.data ? `${rev.data.balance.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT` : "–"}</dd>
           <dt>Treasury (BNB)</dt><dd>{v.treasury.toLocaleString("en-US", { maximumFractionDigits: 4 })} BNB</dd>
         </dl>
-        <p className="t-xs muted w5">The treasury stays BNB because Flap&apos;s pools are BNB-quoted; dUSDC goes to the agent&apos;s wallet, never into the vault. A USDC-quoted treasury is on the roadmap.</p>
+        <p className="t-xs muted w5">The treasury stays BNB because Flap&apos;s pools are BNB-quoted; USDT goes to the agent&apos;s wallet, never into the vault. A USDC-quoted treasury is on the roadmap.</p>
         <div className="row wrap-ok" style={{ gap: 8 }}>
-          <input className="field mono" style={{ width: 96 }} inputMode="decimal" value={amount} aria-label="dUSDC to pay" onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} />
+          <input className="field mono" style={{ width: 96 }} inputMode="decimal" value={amount} aria-label="USDT to pay" onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} />
           <button className="btn btn-primary btn-sm" disabled={w.busy || !(amt > 0) || (Boolean(wallet.address) && amt > balance)} onClick={() => void w.run({ kind: "pay", to: v.issuer.teamWallet, amount: amt })}>
-            {w.busy ? <><ThinkingMark size={14} />Paying…</> : !wallet.address ? <><Icon name="wallet" size={14} />Connect to pay</> : <><Icon name="send" size={14} />Pay {amt > 0 ? amt : ""} dUSDC for a service</>}
+            {w.busy ? <><ThinkingMark size={14} />Paying…</> : !wallet.address ? <><Icon name="wallet" size={14} />Connect to pay</> : <><Icon name="send" size={14} />Pay {amt > 0 ? amt : ""} USDT for a service</>}
           </button>
-          {wallet.address && mine.data?.deployed && balance < Math.max(amt, 1) ? <button className="btn btn-secondary btn-sm" disabled={w.busy || mine.data.nextAt > 0} onClick={() => void w.run({ kind: "mint" })}><Icon name="drop" size={14} />{mine.data.nextAt > 0 ? "Minted today" : "Mint 1,000 dUSDC"}</button> : null}
+          {wallet.address && mine.data?.deployed && balance < Math.max(amt, 1) ? <button className="btn btn-secondary btn-sm" disabled={w.busy || mine.data.nextAt > 0} onClick={() => void w.run({ kind: "mint" })}><Icon name="drop" size={14} />{mine.data.nextAt > 0 ? "Minted today" : "Mint 1,000 test USDT"}</button> : null}
         </div>
-        {wallet.address && mine.data?.deployed ? <p className="t-xs faint w5">Your wallet: {balance.toLocaleString("en-US", { maximumFractionDigits: 2 })} dUSDC</p> : null}
+        {wallet.address && mine.data?.deployed ? <p className="t-xs faint w5">Your wallet: {balance.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT</p> : null}
         {w.hash ? <p className="t-xs good w5"><Icon name="check" size={12} /> Sent <TxLink chainId={v.chainId ?? 97} hash={w.hash} /></p> : null}
         {w.error ? <p className="t-xs warn w5">{w.error}</p> : null}
       </div>

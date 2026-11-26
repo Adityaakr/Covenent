@@ -13,7 +13,7 @@
  * the session (and in localStorage), so a refresh reads only the blocks after the last one read.
  *
  * Underneath sits a snapshot baked at build time (web/scripts/bake-testnet-logs.mjs, src/generated/testnet-logs.json)
- * of every known covenant's launcher and vault logs and Demo USDC transfers, with block times: the page shows the
+ * of every known covenant's launcher and vault logs and test USDT transfers, with block times: the page shows the
  * history at once, server-free, and the browser reads only the blocks after the snapshot.
  *
  * On a local chain (anvil, or a fork) there is no range limit and the dev node is the only source: one query.

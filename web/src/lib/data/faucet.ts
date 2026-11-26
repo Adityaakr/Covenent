@@ -1,8 +1,8 @@
 "use client";
 
 /*
- * Test funds from the server's faucet. On the local dev chain: test BNB from an anvil account plus Demo USDC, and a
- * dUSDC -> BNB swap on the local PancakeSwap pool scripts/dev-funds.sh seeds. On BNB testnet (chain 97): a small tBNB
+ * Test funds from the server's faucet. On the local dev chain: test BNB from an anvil account plus test USDT, and a
+ * USDT -> BNB swap on the local PancakeSwap pool scripts/dev-funds.sh seeds. On BNB testnet (chain 97): a small tBNB
  * drip for gas and a first commitment, once per wallet a day, with BNB Chain's public faucets as the fallback. Anywhere
  * else the server refuses and the app shows its reason instead of a button.
  */

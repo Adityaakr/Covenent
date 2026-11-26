@@ -276,13 +276,13 @@ is a recorded session against the live testnet covenant (`pnpm --dir server demo
 
 One command starts anvil (a BNB Chain fork with chain id 56 when a BNB RPC that serves older state answers, else the
 offline mock stack on 31337; `--fork` / `--mock` force one; a block every second), deploys every contract, deploys the
-local test funds (Demo USDC and a dUSDC/WBNB pool on the local PancakeSwap), and seeds a covenant at every stage by real
+local test funds (Demo USDC, shown in the app as test USDT, and its pool against WBNB on the local PancakeSwap), and seeds a covenant at every stage by real
 transactions: abandoned by its agent, wound down by its team, ACTIVE with tax and tap, an exit round open, and a raise
 under way (recorded under `.seeded` in `contracts/deployments/local.json`). It then starts the server API on `:8787`,
 the keeper (pokes every 20 s with the local Atlas test signer), an issuer agent on each live covenant and the web app
 on http://localhost:8080 (`WEB_PORT` moves it; 8081-8083 and 8085 are also Privy origins; `--prod` serves a build).
 Every screen reads the chain or the server; there is no stand-in data. Settings, Test funds (`/app/settings/funds`)
-sends a connected wallet test BNB and Demo USDC on the dev chain (and swaps dUSDC to BNB on the local pool), or a
+sends a connected wallet test BNB and test USDT on the dev chain (and swaps it to BNB on the local pool), or a
 0.003 tBNB drip on BNB testnet, once per wallet a day.
 
 Agents that read skills can use [server/mcp/SKILL.md](server/mcp/SKILL.md). The site serves
@@ -383,6 +383,8 @@ table is in [server/README.md](server/README.md#api-8787).
 | **ERC-8004** | Agent identity. The vault writes abandonment (-100), wind-down (0) and unlocks (+multiple) | Fork, against the live registries |
 | **Four.meme** | Covenant Lite: a tax vault template that OpenFour's `ForwardVault` clones per token | Fork |
 | **Cournot** | Would check each period report. A failed check pauses the tap | Planned. The vault hook exists, no relayer runs |
+
+Raises are in BNB today. USDT and USD1 raises are in progress: Flap mainnet already accepts both as launch quotes.
 | **BNB Chain** | Every contract | BNB testnet. Not on mainnet |
 
 <details>

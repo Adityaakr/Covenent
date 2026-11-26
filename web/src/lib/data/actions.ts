@@ -146,7 +146,7 @@ export function useActions(view?: CovenantView) {
       const rc = await waitForTransactionReceipt(config, { hash, chainId });
       if (rc.status !== "success") throw new Error("Transaction reverted");
       patchToast(id, { status: "done", detail: `Included in block ${rc.blockNumber}`, hash });
-      // the covenant views and the header's wallet balances (BNB moved, maybe dUSDC)
+      // the covenant views and the header's wallet balances (BNB moved, maybe USDT)
       await Promise.all([qc.invalidateQueries({ queryKey: ["covenants"] }), qc.invalidateQueries({ queryKey: ["native-balance"] }), qc.invalidateQueries({ queryKey: ["usdc"] })]);
       return true;
     } catch (e) {

@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * The connected wallet's balances for the header: native BNB (tBNB on BNB testnet) and Demo USDC, read on the chain
+ * The connected wallet's balances for the header: native BNB (tBNB on BNB testnet) and test USDT, read on the chain
  * the app reads (the deployment's chain). Both come from the queries the funds page already uses, so a mint or a
  * drip there updates the header too. They refresh when a new block arrives (watched by polling, at most every few
  * seconds) and after any transaction the app sends (see actions.ts). Nothing is shown until the chain answers.

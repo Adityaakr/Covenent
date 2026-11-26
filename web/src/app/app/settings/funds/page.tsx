@@ -12,13 +12,14 @@ import { useSource } from "@/lib/data/hooks";
 import { requestFunds, useBalances, useFaucetStatus, useSwap } from "@/lib/data/faucet";
 import { short } from "@/lib/format";
 import { BnbCoin, withBnb } from "@/components/app/bnb";
+import { UsdtCoin } from "@/components/app/usdt";
 import { LOCAL_MODE } from "@/lib/chain/target";
 import { ThinkingMark } from "@/components/app/mark";
 
 /*
  * Settings, Test funds. BNB testnet (chain 97): the server's tBNB drip (components/app/funds.tsx). Local dev chain:
- * test BNB from an anvil account and Demo USDC minted by the dev stack; the swap trades dUSDC for BNB on the local
- * PancakeSwap pool. Covenant raises stay BNB-quoted; dUSDC never enters a vault.
+ * test BNB from an anvil account and test USDT minted by the dev stack; the swap trades USDT for BNB on the local
+ * PancakeSwap pool. Covenant raises stay BNB-quoted; USDT never enters a vault.
  */
 export default function FundsPage() {
   const src = useSource();
@@ -30,7 +31,7 @@ export default function FundsPage() {
         <h2 className="h-sec">Test funds</h2>
         <p className="t-s muted w5">{testnet
           ? "Everything on Covenant runs on BNB testnet with test BNB, which has no value. Get a little for gas here, then commit to a raise."
-          : "For the local dev chain only, worthless anywhere else: test BNB from one of anvil\u2019s public accounts and Demo USDC minted by the dev stack. Raises are in BNB, as Flap requires; dUSDC swaps to BNB on the local pool."}</p>
+          : "For the local dev chain only, worthless anywhere else: test BNB from one of anvil\u2019s public accounts and test USDT minted by the dev stack. Raises are in BNB, as Flap requires; USDT swaps to BNB on the local pool."}</p>
       </div>
       {testnet ? <TestnetFunds /> : src.mode === "checking" ? <Skeleton h={360} r={18} /> : src.mode === "live" ? <Funds /> : <ConnectChain source={src} />}
     </div>
@@ -55,7 +56,7 @@ function Funds() {
     setBusy("funds"); setMsg(null);
     try {
       const r = await requestFunds(wallet.address);
-      setMsg({ tone: "good", text: `Sent ${Number(r.bnbWei) / 1e18} test BNB (${short(r.bnbTx)})${r.usdc ? ` and minted ${Number(r.usdc).toLocaleString("en-US")} dUSDC (${short(r.usdcTx ?? "")})` : ""} on the local chain.` });
+      setMsg({ tone: "good", text: `Sent ${Number(r.bnbWei) / 1e18} test BNB (${short(r.bnbTx)})${r.usdc ? ` and minted ${Number(r.usdc).toLocaleString("en-US")} USDT (${short(r.usdcTx ?? "")})` : ""} on the local chain.` });
       await qc.invalidateQueries({ queryKey: ["balances"] });
     } catch (e) {
       setMsg({ tone: "warn", text: (e as Error).message });
@@ -69,7 +70,7 @@ function Funds() {
     setBusy("swap"); setMsg(null);
     try {
       const h = await swap.swap(Number(amount));
-      setMsg({ tone: "good", text: `Swapped ${Number(amount).toLocaleString("en-US")} dUSDC for BNB on the local PancakeSwap pool (${short(h)}).` });
+      setMsg({ tone: "good", text: `Swapped ${Number(amount).toLocaleString("en-US")} USDT for BNB on the local PancakeSwap pool (${short(h)}).` });
     } catch (e) {
       setMsg({ tone: "warn", text: (e as { shortMessage?: string }).shortMessage ?? (e as Error).message });
     } finally {
@@ -97,7 +98,7 @@ function Funds() {
             ) : bal.isLoading ? <Skeleton h={64} /> : (
               <div className="row wrap-ok" style={{ gap: 36, alignItems: "flex-end" }}>
                 <div style={{ display: "grid", gap: 4 }}><span className="lbl">BNB</span><span className="mint-bal">{bal.data ? <Ticker value={bal.data.bnb} format={(n) => n.toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 })} /> : "–"}</span></div>
-                <div style={{ display: "grid", gap: 4 }}><span className="lbl">dUSDC <span className="faint">local test token</span></span><span className="mint-bal" style={{ fontSize: 30 }}>{bal.data?.usdc === null || bal.data?.usdc === undefined ? <span className="t-s muted">not deployed</span> : <Ticker value={bal.data.usdc} format={(n) => n.toLocaleString("en-US", { maximumFractionDigits: 2 })} />}</span></div>
+                <div style={{ display: "grid", gap: 4 }}><span className="lbl">USDT <span className="faint">local test token</span></span><span className="mint-bal" style={{ fontSize: 30 }}>{bal.data?.usdc === null || bal.data?.usdc === undefined ? <span className="t-s muted">not deployed</span> : <Ticker value={bal.data.usdc} format={(n) => n.toLocaleString("en-US", { maximumFractionDigits: 2 })} />}</span></div>
               </div>
             )}
           </div>
@@ -107,7 +108,7 @@ function Funds() {
               <span className="label">You receive</span>
               <div className="mint-amts" style={{ gridTemplateColumns: usdcOut ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)" }}>
                 <div className="mint-get"><BnbCoin size={36} /><span><b className="num">{status.data?.bnb ?? "–"}</b><span>test BNB from an anvil account</span></span></div>
-                {usdcOut ? <div className="mint-get"><span className="mint-coin sm usdc">$</span><span><b className="num">{usdcOut.toLocaleString("en-US")}</b><span>Demo USDC, minted</span></span></div> : null}
+                {usdcOut ? <div className="mint-get"><UsdtCoin size={36} /><span><b className="num">{usdcOut.toLocaleString("en-US")}</b><span>Test USDT, minted</span></span></div> : null}
               </div>
             </div>
             <button className="btn btn-primary btn-xl btn-block" disabled={busy !== null || Boolean(off) || !status.data} onClick={() => void getFunds()}>
@@ -118,16 +119,16 @@ function Funds() {
         </div>
 
         <div className="card rise" style={{ ["--i" as string]: 1 }}>
-          <div className="card-head ruled"><div><h2 className="h-card">Swap dUSDC to BNB</h2><p className="t-xs muted w5">Local PancakeSwap pool {status.data?.demoUsdcPair ? short(status.data.demoUsdcPair) : ""}</p></div></div>
+          <div className="card-head ruled"><div><h2 className="h-card">Swap USDT to BNB</h2><p className="t-xs muted w5">Local PancakeSwap pool {status.data?.demoUsdcPair ? short(status.data.demoUsdcPair) : ""}</p></div></div>
           <div className="card-body ruled stack">
-            {!swap.ready ? <p className="t-s muted w5">No dUSDC pool on this chain. <span className="mono">scripts/dev-up.sh</span> seeds one (<span className="mono">scripts/dev-funds.sh</span>).</p> : (
+            {!swap.ready ? <p className="t-s muted w5">No USDT pool on this chain. <span className="mono">scripts/dev-up.sh</span> seeds one (<span className="mono">scripts/dev-funds.sh</span>).</p> : (
               <>
                 <div className="swap">
                   <div className="swap-box">
                     <div className="row between t-s w5"><span className="muted">You pay</span>{bal.data?.usdc != null ? <span className="muted">Balance <span className="num ink">{bal.data.usdc.toLocaleString("en-US", { maximumFractionDigits: 2 })}</span></span> : null}</div>
                     <div className="row" style={{ gap: 12 }}>
-                      <input className="amt" inputMode="decimal" value={amount} aria-label="dUSDC to swap" onChange={(e) => { const v = e.target.value.replace(/[^0-9.]/g, ""); setAmount(v); void swap.quote(Number(v)).then(setQuote); }} />
-                      <span className="tokchip"><span className="mint-coin sm usdc">$</span>dUSDC</span>
+                      <input className="amt" inputMode="decimal" value={amount} aria-label="USDT to swap" onChange={(e) => { const v = e.target.value.replace(/[^0-9.]/g, ""); setAmount(v); void swap.quote(Number(v)).then(setQuote); }} />
+                      <span className="tokchip"><UsdtCoin size={28} />USDT</span>
                     </div>
                   </div>
                   <span className="swap-arrow" aria-hidden><Icon name="down" size={16} /></span>

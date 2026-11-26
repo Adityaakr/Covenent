@@ -31,7 +31,7 @@ const SUGGEST = [
   "Which covenants trade under book value?",
   "Should I redeem my tokens?",
   "Commit 0.01 BNB to the open raise",
-  "Mint me some demo USDC",
+  "Mint me some test USDT",
   "What has the issuer agent been doing?",
 ];
 
@@ -40,7 +40,7 @@ const TOOL_LABEL: Record<string, string> = {
   quote_redeem: "Quoting a redemption", flap_floor: "Checking Flap's floor", get_agent_decisions: "Reading the agent's decisions", draft_covenant: "Drafting the covenant",
   commit: "Building the commitment", finalize: "Building finalize", claim_tokens: "Building the claim", claim_refund: "Building the refund", redeem: "Building the redemption",
   poke: "Building a poke", deposit_revenue: "Building the deposit", claim_tap: "Building the tap claim", heartbeat: "Building a heartbeat", lower_tap: "Building the tap cut",
-  mint_demo_usdc: "Building the dUSDC mint", pay_agent_usdc: "Building the agent payment",
+  mint_demo_usdc: "Building the USDT mint", pay_agent_usdc: "Building the agent payment",
 };
 
 function useAskStatus() {

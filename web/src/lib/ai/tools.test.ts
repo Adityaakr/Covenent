@@ -111,7 +111,7 @@ describe("Ask AI transaction builders", () => {
     expect(p.txs[0]!.simulation.detail).toMatch(/Only 0x3C44/);
   });
 
-  it("mint_demo_usdc: faucet() on the deployed dUSDC; pay_agent_usdc: a transfer to the covenant's team wallet", async () => {
+  it("mint_demo_usdc: faucet() on the deployed USDT; pay_agent_usdc: a transfer to the covenant's team wallet", async () => {
     const mint = await proposal("mint_demo_usdc", {});
     expect(mint.txs[0]!.to).toBe(USDC);
     expect(mint.txs[0]!.data).toBe("0xde5f72fd"); // faucet()

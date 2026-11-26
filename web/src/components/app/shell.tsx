@@ -13,7 +13,7 @@ import { Icon, Mark, type IconName } from "./icons";
 import { hidePromo, reopenOnboarding, setCollapsed, useCollapsed, usePromoHidden } from "./prefs";
 import { Portal, Skeleton, TokenAvatar, cx, seedOf } from "./ui";
 import { BnbCoin, withBnb } from "@/components/app/bnb";
-import { UsdcCoin } from "./usdc";
+import { STABLE, TestnetTag, UsdtCoin } from "./usdt";
 import { fmtBnbBalance, fmtUsdBalance, useWalletBalances } from "@/lib/data/wallet-balances";
 import { ThinkingMark } from "./mark";
 import { GetStarted } from "./funds";
@@ -250,8 +250,8 @@ function useDismiss(open: boolean, close: () => void) {
   return ref;
 }
 
-/** The wallet's live balances inside the header button: "[coin] 0.10 | [coin] 1,000". Desktop only; nothing until
- *  the chain answers (a short skeleton), and no dUSDC slot where the deployment has no Demo USDC. */
+/** The wallet's live balances inside the header button: "[coin] 0.10 | [coin] 1,000" (BNB, then test USDT). Desktop only; nothing until
+ *  the chain answers (a short skeleton), and no USDT slot where the deployment has no test stablecoin. */
 function ButtonBalances({ b }: { b: ReturnType<typeof useWalletBalances> }) {
   if (!b.live) return null;
   const showUsdc = b.usdc.deployed !== false;
@@ -261,7 +261,7 @@ function ButtonBalances({ b }: { b: ReturnType<typeof useWalletBalances> }) {
         ? <span className="wb-amt num" aria-label={`${fmtBnbBalance(b.bnb.value)} BNB`}><BnbCoin size={15} title="BNB" />{fmtBnbBalance(b.bnb.value)}</span>
         : b.bnb.loading ? <Skeleton h={12} w={44} r={6} /> : null}
       {showUsdc ? (b.usdc.value !== undefined
-        ? <span className="wb-amt num" aria-label={`${fmtUsdBalance(b.usdc.value)} Demo USDC`}><UsdcCoin size={15} />{fmtUsdBalance(b.usdc.value, true)}</span>
+        ? <span className="wb-amt num" aria-label={`${fmtUsdBalance(b.usdc.value)} ${STABLE.name}`}><UsdtCoin size={15} />{fmtUsdBalance(b.usdc.value, true)}</span>
         : b.usdc.loading ? <Skeleton h={12} w={44} r={6} /> : null) : null}
     </span>
   );
@@ -280,8 +280,8 @@ function MenuBalances({ b, chainId }: { b: ReturnType<typeof useWalletBalances>;
       </div>
       {b.usdc.deployed !== false ? (
         <div className="wb-row">
-          <UsdcCoin size={28} />
-          <div className="wb-name"><b>Demo USDC</b><span>Test token · dUSDC</span></div>
+          <UsdtCoin size={28} />
+          <div className="wb-name"><b>{STABLE.symbol} <TestnetTag /></b><span>Test token · open faucet</span></div>
           <div className="wb-val num">{b.usdc.value !== undefined ? fmtUsdBalance(b.usdc.value) : b.usdc.loading ? <Skeleton h={14} w={56} r={6} /> : "–"}</div>
         </div>
       ) : null}

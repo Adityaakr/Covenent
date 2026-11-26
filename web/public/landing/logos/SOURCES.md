@@ -18,6 +18,7 @@ below, swap the fills and crop the viewBox to the mark.
 | `erc-8004.svg` | ERC-8004 network diamond | 8004.org logo, https://www.8004.org/8004_logo_purple%20copy.png (PNG only; no SVG is published) | Traced by hand: the same nine nodes and thirteen edges as strokes and dots, line weight raised to stay visible at 20px. The "8004" numerals are left out, since the ticker sets the name in text |
 | `cournot.svg` | Cournot dot grid | https://cournot.ai/icon.svg (Cournot's site icon) | Dark disc dropped; the nine white dots to ink |
 | `bnb-chain.svg` | BNB Chain cube | Simple Icons `bnbchain` (https://simpleicons.org/?q=bnbchain, CC0) | Fill set to ink |
+| `tether.svg` | Tether (USDT) mark | Simple Icons `tether` (https://simpleicons.org/?q=tether, CC0) | Unchanged. Not in the ticker: the app uses it as a CSS mask, white on Tether green `#26A17B`, for the test USDT token glyph |
 
 The marks are trademarks of their owners. They are used here only to name the integrations Covenant is built on,
 not to suggest an endorsement.

@@ -258,7 +258,7 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "get_wallet",
-    description: "The connected wallet's BNB balance, Demo USDC (dUSDC, test funds) balance, and when it can next mint dUSDC.",
+    description: "The connected wallet's BNB balance, test USDT (test funds) balance, and when it can next mint USDT.",
     schema: z.object({}),
     async run(ctx) {
       const a = needAccount(ctx);
@@ -269,7 +269,7 @@ export const TOOLS: ToolDef[] = [
         usdc ? ctx.client.readContract({ address: usdc, abi: DEMO_USDC_ABI, functionName: "faucetAvailableAt", args: [a] }).catch(() => null) : null,
       ]);
       return {
-        data: { account: a, bnb: Number(formatEther(bal)), demoUsdc: usdc ? { address: usdc, balance: ub === null ? null : Number(formatUnits(ub, 6)), canMintNow: next === 0n, nextMintAt: next && next > 0n ? iso(Number(next)) : null } : "Demo USDC is not deployed on this chain" },
+        data: { account: a, bnb: Number(formatEther(bal)), demoUsdc: usdc ? { address: usdc, balance: ub === null ? null : Number(formatUnits(ub, 6)), canMintNow: next === 0n, nextMintAt: next && next > 0n ? iso(Number(next)) : null } : "Test USDT is not deployed on this chain" },
         summary: `${n6(Number(formatEther(bal)), 4)} BNB`,
       };
     },
@@ -595,36 +595,36 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "mint_demo_usdc",
-    description: "Mint 1,000 Demo USDC (dUSDC, worthless test funds) to the connected wallet from the open faucet, once a day. dUSDC is for paying agents in the agent economy demo; covenant raises and treasuries are BNB.",
+    description: "Mint 1,000 test USDT (worthless test funds) to the connected wallet from the open faucet, once a day. USDT is for paying agents in the agent economy demo; covenant raises and treasuries are BNB.",
     schema: z.object({}),
     async run(ctx) {
       const me = needAccount(ctx);
       const usdc = demoUsdc(ctx);
-      if (!usdc) throw new Error("Demo USDC is not deployed on this chain.");
+      if (!usdc) throw new Error("Test USDT is not deployed on this chain.");
       const p = await propose(ctx, {
-        kind: "mint_demo_usdc", title: "Mint 1,000 demo USDC", summary: "faucet() on the Demo USDC contract: test funds, worthless anywhere.", signer: me,
-        facts: [{ label: "Amount", value: "1,000 dUSDC" }, { label: "Limit", value: "once per wallet per day" }, { label: "Token", value: usdc }],
-        risks: ["Test funds only. Covenant treasuries stay BNB because Flap's pools are BNB-quoted; dUSDC never enters a vault."],
-        txs: [call(ctx, usdc, DEMO_USDC_ABI as unknown as Abi, "faucet", [], "Mint 1,000 dUSDC to your wallet.", { from: me })],
+        kind: "mint_demo_usdc", title: "Mint 1,000 test USDT", summary: "faucet() on the test USDT contract: test funds, worthless anywhere.", signer: me,
+        facts: [{ label: "Amount", value: "1,000 USDT" }, { label: "Limit", value: "once per wallet per day" }, { label: "Token", value: usdc }],
+        risks: ["Test funds only. Covenant treasuries stay BNB because Flap's pools are BNB-quoted; USDT never enters a vault."],
+        txs: [call(ctx, usdc, DEMO_USDC_ABI as unknown as Abi, "faucet", [], "Mint 1,000 test USDT to your wallet.", { from: me })],
       });
       return proposalResult(p);
     },
   },
   {
     name: "pay_agent_usdc",
-    description: "Agent economy demo: pay a covenant's issuer agent for a service in Demo USDC (a dUSDC transfer to its team wallet). The agent's dollar revenue then shows on the covenant page beside its BNB treasury. It does not enter the vault.",
+    description: "Agent economy demo: pay a covenant's issuer agent for a service in test USDT (a USDT transfer to its team wallet). The agent's dollar revenue then shows on the covenant page beside its BNB treasury. It does not enter the vault.",
     schema: z.object({ covenant: covenantRef, amount_usdc: z.number().positive().max(1000), service: z.string().max(80).optional().describe("what the payment is for, e.g. 'one market brief'") }),
     async run(ctx, input) {
       const me = needAccount(ctx);
       const usdc = demoUsdc(ctx);
-      if (!usdc) throw new Error("Demo USDC is not deployed on this chain.");
+      if (!usdc) throw new Error("Test USDT is not deployed on this chain.");
       const v = await ctx.find(String(input.covenant));
       const amount = parseUnits(String(input.amount_usdc), 6);
       const p = await propose(ctx, {
-        kind: "pay_agent_usdc", title: `Pay ${n6(Number(input.amount_usdc), 2)} dUSDC to ${v.terms.symbol}'s ${v.issuer.kind === "agent" ? "agent" : "team"}`, summary: `${input.service ? `For ${String(input.service)}. ` : ""}A dUSDC transfer to the team wallet ${short(v.issuer.teamWallet)}.`, covenant: covenantOf(v), signer: me,
-        facts: [{ label: "To", value: `${v.issuer.kind === "agent" ? `agent #${v.issuer.agentId}` : "team"} wallet ${v.issuer.teamWallet}` }, { label: "Amount", value: `${n6(Number(input.amount_usdc), 2)} dUSDC (test funds)` }, { label: "Memo", value: AGENT_SERVICE_TAG }],
+        kind: "pay_agent_usdc", title: `Pay ${n6(Number(input.amount_usdc), 2)} USDT to ${v.terms.symbol}'s ${v.issuer.kind === "agent" ? "agent" : "team"}`, summary: `${input.service ? `For ${String(input.service)}. ` : ""}A USDT transfer to the team wallet ${short(v.issuer.teamWallet)}.`, covenant: covenantOf(v), signer: me,
+        facts: [{ label: "To", value: `${v.issuer.kind === "agent" ? `agent #${v.issuer.agentId}` : "team"} wallet ${v.issuer.teamWallet}` }, { label: "Amount", value: `${n6(Number(input.amount_usdc), 2)} USDT (test funds)` }, { label: "Memo", value: AGENT_SERVICE_TAG }],
         risks: ["Test funds. This is revenue for the agent's business, shown beside the covenant; the covenant treasury stays BNB and does not receive it."],
-        txs: [call(ctx, usdc, DEMO_USDC_ABI as unknown as Abi, "transfer", [v.issuer.teamWallet, amount], `Send ${n6(Number(input.amount_usdc), 2)} dUSDC to the team wallet.`, { from: me })],
+        txs: [call(ctx, usdc, DEMO_USDC_ABI as unknown as Abi, "transfer", [v.issuer.teamWallet, amount], `Send ${n6(Number(input.amount_usdc), 2)} USDT to the team wallet.`, { from: me })],
       });
       return proposalResult(p);
     },

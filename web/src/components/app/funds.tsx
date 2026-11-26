@@ -8,10 +8,10 @@
  * - GetStarted: the first-run guide. After login, a wallet with no gas on chain 97 gets three steps (gas, a first
  *   commitment, the portfolio), each checked off from chain reads, never from clicks alone.
  *
- * - DemoUsdcPanel: mint 1,000 Demo USDC a day from the contract's open faucet with your own wallet (no server). It is
+ * - DemoUsdcPanel: mint 1,000 test USDT a day from the contract's open faucet with your own wallet (no server). It is
  *   test money for the agent economy demo: pay an issuer agent for a service and see its dollar revenue on the
  *   covenant page. Covenants stay BNB-denominated end to end (raise, treasury, redemption) because Flap's pools are
- *   BNB-quoted; dUSDC never enters a vault.
+ *   BNB-quoted; USDT never enters a vault.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,6 +24,7 @@ import { useCovenants, useSource } from "@/lib/data/hooks";
 import { FaucetRefusal, requestFunds, useFaucetStatus, useNativeBalance, type PublicFaucet } from "@/lib/data/faucet";
 import { HAS_SERVER } from "@/lib/api/server";
 import { useDemoUsdc, useUsdcWrite } from "@/lib/data/usdc";
+import { TestnetTag, UsdtCoin } from "./usdt";
 import { short } from "@/lib/format";
 import { BnbCoin } from "./bnb";
 import { Icon } from "./icons";
@@ -176,7 +177,7 @@ export function TestnetFunds() {
             <dt>Faucet wallet</dt><dd>{t?.faucetAddress ? <a className="mono" href={explorerAddress(97, t.faucetAddress) ?? undefined} target="_blank" rel="noreferrer">{short(t.faucetAddress)}</a> : "–"}</dd>
             <dt>Faucet balance</dt><dd className="num">{t?.faucetBalance ? `${tbnb(Number(t.faucetBalance))} tBNB` : "–"}</dd>
           </dl>
-          <p className="t-xs muted w5">Test BNB has no value. Raises, treasuries and redemptions on Covenant are all in BNB; Demo USDC below is only for paying agents.</p>
+          <p className="t-xs muted w5">Test BNB has no value. Raises, treasuries and redemptions on Covenant are all in BNB; test USDT below is only for paying agents.</p>
         </section> : null}
         <DemoUsdcPanel />
         <section className="set-card">
@@ -189,7 +190,7 @@ export function TestnetFunds() {
   );
 }
 
-/* ---------- Demo USDC: open faucet, from the user's own wallet ---------- */
+/* ---------- test USDT: open faucet, from the user's own wallet ---------- */
 
 function DemoUsdcPanel() {
   const wallet = useWallet();
@@ -201,17 +202,17 @@ function DemoUsdcPanel() {
   return (
     <section className="set-card" aria-labelledby="usdc-title">
       <div className="row between" style={{ gap: 10 }}>
-        <h3 id="usdc-title" className="h-card">Demo USDC</h3>
-        <span className="badge plain">dUSDC · test funds</span>
+        <h3 id="usdc-title" className="h-card row" style={{ gap: 8 }}><UsdtCoin size={22} />USDT <TestnetTag /></h3>
+        <span className="badge plain">test funds</span>
       </div>
-      <p className="t-s muted w5">Pay an issuer agent for its service in dUSDC and watch its revenue on the covenant page. Treasuries stay BNB because Flap&apos;s pools are BNB-quoted, so dUSDC never enters a vault.</p>
+      <p className="t-s muted w5">Pay an issuer agent for its service in test USDT and watch its revenue on the covenant page. Raises and treasuries are BNB-only today, so USDT never enters a vault; USDT and USD1 raises are in progress.</p>
       <dl className="kv">
-        <dt>Your balance</dt><dd className="num">{!wallet.address ? "–" : !d ? "…" : d.deployed ? `${d.balance.toLocaleString("en-US", { maximumFractionDigits: 2 })} dUSDC` : "not deployed"}</dd>
-        <dt>Faucet</dt><dd>1,000 dUSDC, once a day per wallet</dd>
+        <dt>Your balance</dt><dd className="num">{!wallet.address ? "–" : !d ? "…" : d.deployed ? `${d.balance.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT` : "not deployed"}</dd>
+        <dt>Faucet</dt><dd>1,000 USDT, once a day per wallet</dd>
         <dt>Contract</dt><dd><a className="mono" href={explorerAddress(97, w.token) ?? undefined} target="_blank" rel="noreferrer">{short(w.token)}</a></dd>
       </dl>
       <button className="btn btn-secondary btn-block" disabled={w.busy || waitH > 0 || (Boolean(wallet.address) && !d?.deployed)} onClick={() => void w.run({ kind: "mint" })}>
-        {w.busy ? <><ThinkingMark size={15} />Minting on BNB testnet…</> : !wallet.address ? <><Icon name="wallet" size={15} />Connect to mint dUSDC</> : waitH > 0 ? <><Icon name="clock" size={15} />Minted today: again in about {waitH} h</> : <><Icon name="drop" size={15} />Mint 1,000 demo USDC</>}
+        {w.busy ? <><ThinkingMark size={15} />Minting on BNB testnet…</> : !wallet.address ? <><Icon name="wallet" size={15} />Connect to mint USDT</> : waitH > 0 ? <><Icon name="clock" size={15} />Minted today: again in about {waitH} h</> : <><Icon name="drop" size={15} />Mint 1,000 test USDT</>}
       </button>
       {w.hash ? <div className="drip-ok" role="status"><Icon name="check" size={16} /><span>Minted. <a className="mono" href={explorerTx(97, w.hash) ?? undefined} target="_blank" rel="noreferrer">{short(w.hash, 10, 6)}<Icon name="arrowUpRight" size={12} /></a></span></div> : null}
       {w.error ? <p className="drip-note warn">{w.error}</p> : null}

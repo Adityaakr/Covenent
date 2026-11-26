@@ -231,6 +231,14 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 .seg button { height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; transition: color var(--t) var(--ease-framer), background var(--t) var(--ease-framer), box-shadow var(--t) var(--ease-framer); }
 .seg button:hover { color: var(--ink); }
 .seg button[aria-pressed="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px var(--line); }
+/* Create > Raise: the raise currency. BNB today; USDT disabled with an "In progress" tag. */
+.raise-in { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 16px; }
+.raise-in .seg button { display: inline-flex; align-items: center; gap: 7px; }
+.raise-in .seg button[aria-checked="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px var(--line); }
+.raise-in .seg button:disabled { cursor: not-allowed; color: var(--faint); }
+.raise-in .seg button:disabled > [role="img"] { filter: grayscale(0.6); opacity: 0.6; }
+.soon-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 10.5px; font-weight: 600; color: var(--accent); background: var(--accent-bg); }
+.raise-in-note { min-width: 0; }
 .seg.sm button { height: 26px; padding: 0 10px; font-size: 12.5px; }
 .ptabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
 .ptabs::-webkit-scrollbar { display: none; }
@@ -667,6 +675,8 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 .wb-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 7px 10px; border-radius: 10px; }
 .wb-name { min-width: 0; display: grid; gap: 1px; }
 .wb-name b { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+/* "Testnet" after a test token's symbol (USDT): small, quiet, never mistaken for the real asset. */
+.tn-tag { display: inline-flex; align-items: center; height: 17px; padding: 0 6px; margin-left: 4px; border-radius: 999px; font-family: var(--font-sans-stack); font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em; line-height: 1; vertical-align: 0.12em; color: var(--warn); background: var(--warn-bg); white-space: nowrap; }
 .wb-name span { font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wb-val { font-family: var(--font-display-stack); font-size: 15px; font-weight: 500; letter-spacing: -0.01em; color: var(--ink); text-align: right; }
 .modal-wrap { position: fixed; inset: 0; z-index: 95; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overscroll-behavior: contain; padding: 12vh 16px 16px; background: var(--overlay); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: fadein var(--t) var(--ease) both; }

@@ -10,7 +10,8 @@ import { BnbUnit, Meter, Note, Segmented, TokenAvatar, cx } from "@/components/a
 import { useWallet } from "@/components/providers";
 import { agentOwner, checkTerms, createCovenantLive, createTargets, flapFloor, registerAgent, type FactoryKind } from "@/lib/chain/create";
 import { chainName, networkKind } from "@/lib/chain/chains";
-import { withBnb } from "@/components/app/bnb";
+import { BnbCoin, withBnb } from "@/components/app/bnb";
+import { UsdtCoin } from "@/components/app/usdt";
 import { addressOf } from "@/lib/chain/deployment";
 import type { MineMessage } from "@/lib/chain/salt";
 import { BOUNDS, DEFAULT_TERMS, DEMO_TIMERS, FLAP, FLAP_TAX } from "@/lib/covenant/defaults";
@@ -261,6 +262,7 @@ function CovenantCreate() {
               </>
             ) : step === 1 ? (
               <>
+                <RaiseIn />
                 <div className="grid3">
                   <Field label="Minimum" hint="BNB"><Num value={t.minRaise} onChange={(n) => set("minRaise", n)} unit="BNB" /></Field>
                   <Field label="Cap" hint="BNB"><Num value={t.cap} onChange={(n) => set("cap", n)} unit="BNB" /></Field>
@@ -438,4 +440,20 @@ function readDraft(raw: string | null): { factory: FactoryKind; terms: Terms } |
   } catch {
     return null;
   }
+}
+
+const STABLE_RAISES_SOON = "USDT and USD1 raises are next; Flap mainnet already accepts them as launch quotes.";
+
+/** What buyers commit: BNB today. USDT is shown, disabled, as in progress (it needs a stablecoin-quoted Flap pool). */
+function RaiseIn() {
+  return (
+    <div className="raise-in">
+      <span className="lbl">Raise in</span>
+      <div className="seg" role="radiogroup" aria-label="Raise in">
+        <button type="button" role="radio" aria-checked="true"><BnbCoin size={16} />BNB</button>
+        <button type="button" role="radio" aria-checked="false" aria-disabled="true" disabled title={STABLE_RAISES_SOON}><UsdtCoin size={16} />USDT<span className="soon-tag">In progress</span></button>
+      </div>
+      <span className="t-xs faint w5 raise-in-note">{STABLE_RAISES_SOON}</span>
+    </div>
+  );
 }

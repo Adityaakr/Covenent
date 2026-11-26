@@ -79,7 +79,7 @@ Test BNB: with `TESTNET_FAUCET_PRIVATE_KEY` in the wallets file (or appended to 
 a 0.003 tBNB drip (`TESTNET_FAUCET_BNB`) from that wallet, once per wallet and once per IP every 24 hours, at most
 0.03 tBNB a day (`TESTNET_FAUCET_DAILY_BNB`), refusing a wallet that already holds 0.01 tBNB; the ledger is
 `.dev/testnet/server-data/faucet-97.json`. When the faucet wallet runs low it points to BNB Chain's public faucets.
-Covenants are BNB-denominated, so there is no Demo USDC on testnet.
+Covenants are BNB-denominated: the server faucet drips BNB only; Demo USDC is minted from its own contract (below).
 
 ### End-to-end run on BNB testnet (26 Nov 2026)
 
@@ -133,7 +133,7 @@ own wallet signs after a confirmation card. Limits per question: 8 model turns, 
 IP, 20 questions per 10 minutes on each server instance (set a spend limit in the Anthropic console as the backstop).
 
 **Demo USDC on testnet.** `script/DemoUSDC.s.sol` deployed `DemoUSDC` (test funds, an open `faucet()` of 1,000 dUSDC
-per wallet per day) at `0x85D09A18824421FfC9dC5197DA7a95b9643B3ba5`, recorded as `demoUsdc` in `deployments/97.json`
+per wallet per day; the app labels it USDT with the Tether mark and a Testnet tag, and the contract is unchanged) at `0x85D09A18824421FfC9dC5197DA7a95b9643B3ba5`, recorded as `demoUsdc` in `deployments/97.json`
 (`Deploy.s.sol` rewrites that file, so add the key back after a redeploy). Visitors mint it from Settings, Test funds
 or through Ask AI and pay issuer agents with it. Covenant treasuries stay BNB: Flap's pools are BNB-quoted, and a
 stablecoin-quoted treasury waits on Flap supporting that pair (docs/DESIGN.md, Roadmap).

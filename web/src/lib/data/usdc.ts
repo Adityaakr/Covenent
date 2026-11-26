@@ -1,9 +1,9 @@
 "use client";
 
 /*
- * Demo USDC (dUSDC): worthless test funds, deployed on BNB testnet (deployments/97.json demoUsdc) and by the local dev
+ * test USDT: worthless test funds, deployed on BNB testnet (deployments/97.json demoUsdc) and by the local dev
  * stack. Anyone mints 1,000 a day from the contract's open faucet() with their own wallet; no server is involved. It
- * exists for the agent economy demo: a visitor pays an issuer agent for a service in dUSDC and sees the agent's
+ * exists for the agent economy demo: a visitor pays an issuer agent for a service in USDT and sees the agent's
  * dollar revenue next to its BNB treasury. Covenant treasuries stay BNB because Flap's pools are BNB-quoted.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,13 +25,13 @@ export const DEMO_USDC_ABI = [
 ] as const satisfies Abi;
 const TRANSFER = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
 
-/** The dUSDC address on the chain the app reads, if the deployment names one and it has code there. */
+/** The USDT address on the chain the app reads, if the deployment names one and it has code there. */
 export function useDemoUsdcAddress(): Address | undefined {
   const src = useSource();
   return src.payload?.deployment ? addressOf(src.payload.deployment, "demoUsdc") : undefined;
 }
 
-/** A wallet's dUSDC balance and when it can mint again (0 = now). */
+/** A wallet's USDT balance and when it can mint again (0 = now). */
 export function useDemoUsdc(owner?: string) {
   const src = useSource();
   const token = useDemoUsdcAddress();
@@ -55,7 +55,7 @@ export function useDemoUsdc(owner?: string) {
   });
 }
 
-/** dUSDC paid to an address (an agent's team wallet): total and payments, from Transfer logs. */
+/** USDT paid to an address (an agent's team wallet): total and payments, from Transfer logs. */
 export function useUsdcRevenue(to?: Address) {
   const src = useSource();
   const token = useDemoUsdcAddress();
@@ -79,7 +79,7 @@ export function useUsdcRevenue(to?: Address) {
   });
 }
 
-/** Send one dUSDC call from the connected wallet and wait for it: faucet() or a transfer to an agent. */
+/** Send one USDT call from the connected wallet and wait for it: faucet() or a transfer to an agent. */
 export function useUsdcWrite() {
   const wallet = useWallet();
   const src = useSource();
