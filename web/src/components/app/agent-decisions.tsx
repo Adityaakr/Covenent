@@ -61,7 +61,7 @@ export function decisionItem(e: TimelineEntry, i: number): TimelineItem {
           <blockquote className="dec-reason" title="Written by the agent; posted on-chain">{e.record.reason}</blockquote>
           <Inputs inputs={e.record.inputs} />
           <div className="row wrap-ok" style={{ gap: 6 }}>
-            <span className={cx("badge", e.record.author.kind === "llm" ? "agent" : "plain")}>{e.record.author.kind === "llm" ? `Decided by ${e.record.author.model}` : `Fixed rule: ${e.record.author.why}`}</span>
+            <span className={cx("badge", e.record.author.kind === "llm" ? "agent" : "plain")} title={e.record.author.kind === "llm" ? `Model: ${e.record.author.model}` : undefined}>{e.record.author.kind === "llm" ? "Decided by the agent's model" : `Fixed rule: ${e.record.author.why}`}</span>
             <span className={cx("badge", e.verified ? "good" : "warn")} title="keccak256 of the record equals the hash posted with it">{e.verified ? <><Icon name="shieldCheck" size={12} />Hash verified</> : <><Icon name="alert" size={12} />Hash mismatch</>}</span>
           </div>
         </div>

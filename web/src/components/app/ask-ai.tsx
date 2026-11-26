@@ -76,9 +76,10 @@ export function AskAI({ initial }: { initial?: string }) {
         <span className="ag-head-mark" aria-hidden="true"><ThinkingMark size={16} still /></span>
         <div className="ag-head-title">
           <h1>Ask AI</h1>
-          <p>{model ? `${model} · ` : ""}reads {chain} · drafts transactions you sign</p>
+          <p>Raise, run and exit autonomous ventures in plain words</p>
         </div>
-        <span className={cx("ag-pill", `tone-${pill.tone}`)}>{pill.t}</span>
+        {/* the model and what Ask AI touches stay out of the headline: a tooltip on the status */}
+        <span className={cx("ag-pill", `tone-${pill.tone}`)} title={`${model ? `${model} · ` : ""}reads ${chain} · drafts transactions you sign`}>{pill.t}</span>
         {s.items.length ? <button type="button" className="btn btn-secondary btn-sm ag-head-new" onClick={reset}><Icon name="plus" size={14} /><span>New chat</span></button> : null}
       </header>
 
