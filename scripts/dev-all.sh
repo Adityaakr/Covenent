@@ -156,6 +156,7 @@ issuer() {
   ISSUER_PRIVATE_KEY="$TEAM_KEY" ISSUER_VAULT="$2" \
   ISSUER_TICK_SECONDS=15 ISSUER_HEARTBEAT_EVERY_SECONDS=120 ISSUER_PERIOD_SECONDS=300 ISSUER_MIN_CLAIM_BNB=0.0001 \
     start "$1" "$ROOT/server" pnpm issuer
+  echo "$2" >"$RUN/$1.vault"   # dev-demo.sh advance heartbeats for agents that are still running
 }
 say "issuer agent on $LIVE_VAULT (the team wallet, anvil #$(jq -r .accounts.team.anvilIndex "$DEPLOY"))"
 issuer issuer "$LIVE_VAULT"

@@ -89,7 +89,7 @@ export default function DemoPage() {
               <p className="small muted" style={{ margin: 0, padding: 12 }}>{source.mode === "live" ? "No covenant on the chain is in this stage right now. scripts/dev-all.sh seeds one at every stage; the demo factory's clocks move in minutes, so stages come and go." : `No chain to read: ${source.reason}.`}</p>
             ) : <Scene step={step} v={v} />}
           </div>
-          {step.open && (v || !step.scene) ? <div><Link className="btn btn-ghost" href={step.open(v!)}>{v ? `Open ${v.terms.name}` : "Open this screen"}<Icon name="ext" size={15} /></Link></div> : null}
+          {step.open && (v || !step.scene) ? <div><Link className="btn btn-ghost" href={step.open(v!)}>{v && step.open(v).includes(v.id) ? `Open ${v.terms.name}` : "Open this screen"}<Icon name="ext" size={15} /></Link></div> : null}
         </div>
       </section>
       <p className="tiny muted" style={{ margin: 0 }}>Every scene reads a real covenant on the local chain that is in that stage now: the contracts&apos; demo factory runs the same rules with short timers (exit streak 3 minutes, round 5 minutes, heartbeat 10 minutes). Use ← and → to step.</p>

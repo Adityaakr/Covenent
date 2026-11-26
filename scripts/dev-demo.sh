@@ -54,14 +54,23 @@ scene() {
 KEEPALIVE="$C/.anvil/keepalive"
 keepalive_add() { mkdir -p "$C/.anvil"; jq -r .demo.vault "$C/deployments/local.json" >>"$KEEPALIVE"; }
 heartbeat_all() {
-  [ -s "$KEEPALIVE" ] || return 0
-  local key v st
+  # While seeding: every vault on the keep-alive list. Otherwise: only the vaults of issuer agents scripts/dev-all.sh
+  # still runs (.dev/<name>.vault beside a live .dev/<name>.pid), since a running agent would have checked in during
+  # the jump; a stopped agent's covenant is left to lapse, which is the point of the stage moment.
+  local key v st list f
+  list="$(mktemp)"
+  [ "${KEEP_ALIVE:-0}" = "1" ] && [ -s "$KEEPALIVE" ] && cat "$KEEPALIVE" >>"$list"
+  for f in "$ROOT"/.dev/*.vault; do
+    [ -f "$f" ] && [ -f "${f%.vault}.pid" ] && kill -0 "$(cat "${f%.vault}.pid")" 2>/dev/null && cat "$f" >>"$list"
+  done
+  [ -s "$list" ] || { rm -f "$list"; return 0; }
   key="$(cast wallet private-key "test test test test test test test test test test test junk" 1)"
   while read -r v; do
     [ -n "$v" ] || continue
     st="$(cast call --rpc-url "$RPC" "$v" 'state()(uint8)' 2>/dev/null || echo 9)"
     case "$st" in 2|3|4) cast send --rpc-url "$RPC" --private-key "$key" "$v" 'heartbeat()' >/dev/null 2>&1 || true ;; esac
-  done <"$KEEPALIVE"
+  done < <(sort -u "$list")
+  rm -f "$list"
 }
 
 advance() {
@@ -92,6 +101,7 @@ trading_window() { if [ "$MODE" = "fork" ]; then advance 601; else advance 30; f
 # The story plus one covenant at every other stage, all by real transactions on the dev chain.
 seed() {
   rm -f "$KEEPALIVE"
+  export KEEP_ALIVE=1
   story
   record abandoned
   # wound down by its own human team (no ERC-8004 id)
