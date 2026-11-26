@@ -11,15 +11,18 @@ import s from "./hero/HomeHero.module.css";
    Copy and sources: docs/landing/content/home-a.md. */
 
 /* Integrations Covenant is built on (DESIGN.md "Summary", "Sponsor integrations"), not customers.
-   The marks are generic shapes from the template's logo row, not the projects' own logos. */
+   The marks are the projects' own logos (web/public/landing/logos/SOURCES.md). ERC-8004 has no published mark,
+   so it shows its name alone. Heights are optical: wide marks sit lower, round and sparse marks a little taller. */
+const logo = (file: string, ratio: number, height: number) => ({ src: `/landing/logos/${file}.svg`, ratio, height });
 const builtOn: TickerItem[] = [
-  { name: "Flap", icon: "circleBold" },
-  { name: "Atlas", icon: "triangleBold" },
-  { name: "CoinMarketCap", icon: "hexagonBold" },
-  { name: "OpenFour", icon: "sunBold" },
-  { name: "PancakeSwap", icon: "diamondBold" },
-  { name: "ERC-8004", icon: "treeBold" },
-  { name: "Cournot", icon: "squareBold" },
+  { name: "Flap", logo: logo("flap", 28.676 / 23.63, 18) },
+  { name: "Atlas", logo: logo("atlas", 47.602 / 42.257, 19) },
+  { name: "CoinMarketCap", logo: logo("coinmarketcap", 23.645 / 24, 21) },
+  { name: "BNB Chain", logo: logo("bnb-chain", 20.745 / 24, 21) },
+  { name: "OpenFour", logo: logo("four-meme", 21.431 / 23.43, 22) },
+  { name: "PancakeSwap", logo: logo("pancakeswap", 191.252 / 198.607, 20) },
+  { name: "ERC-8004" },
+  { name: "Cournot", logo: logo("cournot", 33 / 43, 21) },
 ];
 
 export function HomeHero() {
