@@ -42,14 +42,15 @@ There is no hosted public API or hosted MCP endpoint yet. Run the MCP server fro
 
 ## BNB testnet (chain 97)
 
-- CovenantOracle: 0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d
-- CovenantLauncherFactory (production): 0x270dE514C8cbE98E574D842e42c724335E742Fd1
-- CovenantVaultFactory (production): 0xCD43CDEc6d587110510c9946BF0791a8eA07D58E
-- CovenantLauncherFactory (demo timers): 0x502d78a835e68DeB940191Da83AF0Cb838ef8693
-- CovenantVaultFactory (demo timers): 0xA981585c8D26C1169Fb73F25764A5b18c006D075
-- CovenantLens: 0x61a33a14752C7Abbe6A71A211096f19F6E917309
-- CovenantLiteVault template (Four.meme): 0x8C86A73a40Bf25Ae445F1B142d3db219e80a31D1
+- CovenantOracle: 0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775
+- CovenantLauncherFactory (production): 0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF
+- CovenantVaultFactory (production): 0xAbb9811f529B793c86848211522B789071671ebC
+- CovenantLauncherFactory (demo timers): 0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE
+- CovenantVaultFactory (demo timers): 0x6d3a421708F8b45FbD92342d33a841de40E6cC8F
+- CovenantLens: 0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4
+- CovenantLiteVault template (Four.meme): 0x411c4560f9D8F9b06a730D9652FCb9D71290D285
 - Flap Portal: 0x000042108465206185A077Edc3F3fd2b49060000
+- Flap's test launch, CVD (demo factory, 27 Nov 2026; ACTIVE): token 0xCD4CB77A6D970FDfddE04Ab9D9a89349995e7777, launcher 0xFb40790832BBAF5ABe61Db0beEc575468c973045, vault 0xFdC8dA0C251ED1f24cef6d9220aDa60E311638bE, pool 0x464AF9543120B9a83Da2196BC6C3d1FC67E7860b
 - First testnet covenant, CVT (previous demo factory 0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48, before the audit fixes; taken through every stage and now wound down): token 0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777, launcher 0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E, vault 0x524059B1424101D4CAFD33B9a1A8D332dD71193D
 
 ## What it does not protect

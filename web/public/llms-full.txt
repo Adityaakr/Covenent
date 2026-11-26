@@ -387,19 +387,19 @@ Arguments:
 Chain id 97. Explorer https://testnet.bscscan.com. Public RPC https://bsc-testnet-rpc.publicnode.com.
 
 - atlasSigner: 0x59eD4701224fD9e2a85Ef2946c2ab828C1dDC600
-- demoLauncherFactory: 0x502d78a835e68DeB940191Da83AF0Cb838ef8693
+- demoLauncherFactory: 0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE
 - demoUsdc: 0x85D09A18824421FfC9dC5197DA7a95b9643B3ba5
-- demoVaultFactory: 0xA981585c8D26C1169Fb73F25764A5b18c006D075
+- demoVaultFactory: 0x6d3a421708F8b45FbD92342d33a841de40E6cC8F
 - deployer: 0x6A23244b34bFAFB9594d34c723b886bE89E0cC02
 - dockRouter: 0x000048E888aBf09f690a952E1b386b2D031a0000
 - guardian: 0x00004d58290854c5E9880F4b5B1993c6Ad8b0000
 - identityRegistry: 0x8004A818BFB912233c491871b3d84c89A494BD9e
-- launcherFactory: 0x270dE514C8cbE98E574D842e42c724335E742Fd1
+- launcherFactory: 0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF
 - legacyCovenantLauncher: 0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E
 - legacyCovenantVault: 0x524059B1424101D4CAFD33B9a1A8D332dD71193D
-- lens: 0x61a33a14752C7Abbe6A71A211096f19F6E917309
-- liteVaultTemplate: 0x8C86A73a40Bf25Ae445F1B142d3db219e80a31D1
-- oracle: 0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d
+- lens: 0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4
+- liteVaultTemplate: 0x411c4560f9D8F9b06a730D9652FCb9D71290D285
+- oracle: 0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775
 - portal: 0x000042108465206185A077Edc3F3fd2b49060000
 - previousDemoLauncherFactory: 0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48
 - previousDemoVaultFactory: 0xF8Bf9A01457C45a8F53E7ae32D863B38d3876c97
@@ -407,6 +407,13 @@ Chain id 97. Explorer https://testnet.bscscan.com. Public RPC https://bsc-testne
 - previousOracle: 0x3CC607931edaF307dC867111e48cAc28e31fF052
 - previousVaultFactory: 0x2665c44Ea346De54207b8E8C1A351aE3e82FCf57
 - reputationRegistry: 0x8004B663056A597Dffe9eCcC1965A193B7388713
-- vaultFactory: 0xCD43CDEc6d587110510c9946BF0791a8eA07D58E
+- round1CovenantLauncher: 0x9C8c01A54DE25Ac95A425535F650644055678c73
+- round1DemoLauncherFactory: 0x502d78a835e68DeB940191Da83AF0Cb838ef8693
+- round1DemoVaultFactory: 0xA981585c8D26C1169Fb73F25764A5b18c006D075
+- round1LauncherFactory: 0x270dE514C8cbE98E574D842e42c724335E742Fd1
+- round1Oracle: 0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d
+- round1VaultFactory: 0xCD43CDEc6d587110510c9946BF0791a8eA07D58E
+- vaultDisplayLibrary: 0x92918A39161BCB6793871a25eC4635DbC1A946b3
+- vaultFactory: 0xAbb9811f529B793c86848211522B789071671ebC
 
 Launched covenants are discovered from launcherFactory.allLaunchers() and demoLauncherFactory.allLaunchers() (then launcher.vault()); list_covenants returns them live. The first testnet covenant, CVT (demo factory, taken through every stage and now wound down): token 0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777, launcher 0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E, vault 0x524059B1424101D4CAFD33B9a1A8D332dD71193D.

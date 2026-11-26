@@ -881,6 +881,61 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         assertEq(oracle.nextRatePokeAt(address(v)), block.timestamp + 1 hours);
     }
 
+    /// @dev F4/F5 where there is no Atlas push feed (BNB Chain mainnet; every poke without a pull report carries no
+    ///      rate): a griefer pokes without a report first, every hour. It never resets a counter while the price holds
+    ///      the multiple, the keeper's report still lands each hour, and the 2x tranche unlocks on schedule. A genuine
+    ///      dip seen by a reportless poke still resets the counter (F4), and the count starts again after it.
+    function test_fork_F5_noPushFeed_griefingCannotFreezeUnlocks_aRealDipStillResets() public {
+        _open();
+        Terms memory t = _terms("fork-f5-freeze", 0);
+        t.cliff = 0;
+        t.unlockWindow = 7 days; // the production minimum, so the run stays short
+        CovenantLauncher l = _create(t);
+        vm.prank(alice);
+        l.contribute{value: 300 ether}();
+        vm.warp(l.saleDeadline());
+        l.finalize{gas: l.FINALIZE_GAS_LIMIT() - 21_064}();
+        CovenantVault v = CovenantVault(payable(l.vault()));
+        address token = l.token();
+        assertEq(oracle.PUSH_FEED(), address(0), "pull reports only, as on BNB Chain mainnet");
+        _poke(v, BNB_USD);
+        _pumpTo(v, token, 250);
+
+        // Three days: the griefer is first every hour, the keeper's report lands right after it.
+        vm.warp(block.timestamp + 1 hours);
+        _poke(v, BNB_USD);
+        for (uint256 i; i < 3 * 24; ++i) {
+            vm.warp(block.timestamp + 1 hours);
+            _barePoke(v);
+            _poke(v, BNB_USD);
+        }
+        assertGe(_progressOf(v), 3 days, "griefing changed nothing: three days counted");
+
+        // A genuine dip under 2x, seen by a reportless poke only (no keeper): the counter resets.
+        vm.warp(block.timestamp + 60);
+        uint256 bal = IERC20(token).balanceOf(trader);
+        for (uint256 i; i < 40 && _spotOf(v) >= v.salePriceBnb() * 2; ++i) {
+            _sell(trader, token, bal / 20);
+        }
+        vm.warp(block.timestamp + 1 hours);
+        _barePoke(v);
+        assertEq(_progressOf(v), 0, "a real dip resets");
+
+        // The price recovers; with the griefer still first every hour the tranche unlocks after 7 days of strict time.
+        _pumpTo(v, token, 250);
+        vm.warp(block.timestamp + 1 hours);
+        _poke(v, BNB_USD);
+        bool unlocked;
+        for (uint256 i; i < 7 * 24 + 3 && !unlocked; ++i) {
+            vm.warp(block.timestamp + 1 hours);
+            _barePoke(v);
+            _poke(v, BNB_USD);
+            (,,, unlocked,) = v.trancheProgress(0);
+        }
+        assertTrue(unlocked, "unlocked on schedule despite the griefer");
+        assertEq(v.unlockedUnreleased(), 50_000_000 ether);
+    }
+
     /// @dev F6 on the live chain: the factories refuse any Portal, Guardian, Token Dock router or name screen that is
     ///      not Flap's own on this chain.
     function test_fork_F6_factoriesRefuseNonFlapAddresses() public {

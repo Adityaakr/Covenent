@@ -3,36 +3,67 @@
 This is the runbook for `contracts/script/Deploy.s.sol`. Covenant is deployed on BNB testnet (below); nothing is on BNB
 Chain mainnet. Run the steps below with the owner, testnet first.
 
-## Redeploy with the audit fixes (26 Nov 2026)
+## Redeploy with Flap's re-review fixes F1 to F8 (27 Nov 2026)
 
-The factories, launcher, vault, oracle and Lite template changed after Flap's audit review and the independent
-pre-audit (name screen and Flap's live liquidity floor at creation, tax rules, the BNB-terms unlock guard, H-1/M-1/M-2,
-write-once reports, wind-down attribution and L-4, the launch retry window, both dust sweeps, an explicit finalize gas
-limit), so the stack was redeployed with `script/Deploy.s.sol` after a clean dry run. Deployer
-`0x6A23244b34bFAFB9594d34c723b886bE89E0cC02`, blocks 144991479 to 144991551, 8 transactions (the updated
-`CovenantVaultDisplay` library first, at `0xD75b45c051dbC92fcE605Aab541Bc8bF07E26597`), 39,716,528 gas at 0.1 gwei
-(0.0033 tBNB). All 16 contracts (the library, the seven below, the four implementations and the four beacons) are
-source-verified on Sourcify. Everything is compiled with the `size` profile (optimizer runs 1), which `foundry.toml`
-requires for `CovenantVault` to stay under the EIP-170 limit (24,207 of 24,576 bytes).
+The factories, launcher, vault, oracle and Lite template changed for Flap's pre-audit re-review (F1 to F8: the
+graduation floor with a 1.5x margin, the name screen failing closed, Flap's tax rules, the unlock counter and the poke
+gap, the dollar tap at the last rate, Flap's addresses checked per chain, the 15M finalize gas limit, the post-tax
+disclosure) and the independent re-review (NEW-1: depth at the TWAP on the pool's invariant), so the stack was
+redeployed once with `script/Deploy.s.sol` after a clean dry run. Deployer `0x6A23244b34bFAFB9594d34c723b886bE89E0cC02`,
+blocks 145030019 to 145030078, 8 transactions (the `CovenantVaultDisplay` library first, at
+`0x92918A39161BCB6793871a25eC4635DbC1A946b3`), 41,001,857 gas (0.0049 tBNB at about 0.12 gwei). All 16 contracts (the library, the seven
+below, the four implementations and the four beacons) are source-verified on Sourcify. `CovenantVault` is 24,403 of
+24,576 bytes (the `size` profile).
 
 `contracts/deployments/97.json` holds the record; it also lists the first covenant (`legacyCovenantLauncher`,
-`legacyCovenantVault`) and the first deployment's factories and oracle (`previous*`), so the app and the server keep
-reading that covenant's history. Re-add those keys after a redeploy: `Deploy.s.sol` rewrites the file.
+`legacyCovenantVault`) and the first deployment's factories and oracle (`previous*`), and the first audit-fix deployment
+of 26 Nov 2026 (`round1*`, with `round1CovenantLauncher`, the BNBH2026 raise that never launched), so the app and the
+server keep reading them. Re-add those keys after a redeploy: `Deploy.s.sol` rewrites the file.
 
 | Contract | Address |
 |---|---|
-| CovenantOracle | [`0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d`](https://testnet.bscscan.com/address/0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d) |
-| CovenantLauncherFactory (production, graduation floor; ask Flap to enable) | [`0x270dE514C8cbE98E574D842e42c724335E742Fd1`](https://testnet.bscscan.com/address/0x270dE514C8cbE98E574D842e42c724335E742Fd1) |
-| CovenantVaultFactory (production) | [`0xCD43CDEc6d587110510c9946BF0791a8eA07D58E`](https://testnet.bscscan.com/address/0xCD43CDEc6d587110510c9946BF0791a8eA07D58E) |
-| CovenantLauncherFactory (demo, launch floor; ask Flap to enable) | [`0x502d78a835e68DeB940191Da83AF0Cb838ef8693`](https://testnet.bscscan.com/address/0x502d78a835e68DeB940191Da83AF0Cb838ef8693) |
-| CovenantVaultFactory (demo) | [`0xA981585c8D26C1169Fb73F25764A5b18c006D075`](https://testnet.bscscan.com/address/0xA981585c8D26C1169Fb73F25764A5b18c006D075) |
-| CovenantLens | [`0x61a33a14752C7Abbe6A71A211096f19F6E917309`](https://testnet.bscscan.com/address/0x61a33a14752C7Abbe6A71A211096f19F6E917309) |
-| CovenantLiteVault template | [`0x8C86A73a40Bf25Ae445F1B142d3db219e80a31D1`](https://testnet.bscscan.com/address/0x8C86A73a40Bf25Ae445F1B142d3db219e80a31D1) |
+| CovenantOracle | [`0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775`](https://testnet.bscscan.com/address/0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775) |
+| CovenantLauncherFactory (production: 1.5x the graduation floor; ask Flap to enable) | [`0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF`](https://testnet.bscscan.com/address/0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF) |
+| CovenantVaultFactory (production) | [`0xAbb9811f529B793c86848211522B789071671ebC`](https://testnet.bscscan.com/address/0xAbb9811f529B793c86848211522B789071671ebC) |
+| CovenantLauncherFactory (demo: 1.5x the creation floor; ask Flap to enable) | [`0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE`](https://testnet.bscscan.com/address/0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE) |
+| CovenantVaultFactory (demo) | [`0x6d3a421708F8b45FbD92342d33a841de40E6cC8F`](https://testnet.bscscan.com/address/0x6d3a421708F8b45FbD92342d33a841de40E6cC8F) |
+| CovenantLens | [`0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4`](https://testnet.bscscan.com/address/0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4) |
+| CovenantLiteVault template | [`0x411c4560f9D8F9b06a730D9652FCb9D71290D285`](https://testnet.bscscan.com/address/0x411c4560f9D8F9b06a730D9652FCb9D71290D285) |
 
-Read back on chain 97 after the deploy: both factories hold Flap's testnet name screen
-(`0x5CfbE713d070e87F67D1bc84312B7eB8Fe4F2B5E`); `minRaiseFor(1e27, 6000, 1500)` answers 57.14 BNB (graduation floor,
-$10,000 at the Portal's $700) on the production factory and 28.57 BNB (launch floor, $5,000) on the demo factory; the
-oracle's `pushBnbUsd()` returns the live Atlas push rate, which new vaults read in their launch transaction.
+Read back on chain 97 after the deploy: both factories hold Flap's Portal, the testnet Guardian and Flap's testnet name
+screen (`0x5CfbE713d070e87F67D1bc84312B7eB8Fe4F2B5E`), and `FLOOR_MARGIN_BPS` = 15000. `minRaiseFor(1e27, 6000, 1500)`
+answers 85.71 BNB on the production factory (1.5 x the $10,000 graduation floor at the Portal's $700) and 42.86 BNB on
+the demo factory (1.5 x the $5,000 creation floor); at a 50 / 45 / 5 split, 7.94 and 3.97 BNB. The oracle's
+`pushBnbUsd()` returns the live Atlas push rate, which new vaults read in their launch transaction.
+
+## Flap's test launch on BNB testnet (27 Nov 2026)
+
+A real tax-token launch through the redeployed demo pair, from the deployer as team and sole contributor
+(`script/TestnetCovenant.s.sol` with `TN_NAME="Covenant Demo" TN_SYMBOL=CVD TN_SALE_SECONDS=120 TN_HEARTBEAT=2592000`).
+The production factory needs 7.94 tBNB at this split (1.5x the graduation floor), more than the 4.6 tBNB available,
+so the demo factory (1.5x the creation floor) carried it; the token launched without graduating, as disclosed.
+
+| Step | Transaction | Result |
+|---|---|---|
+| Create (`Portal.newLauncher`, demo factory) | [`0x849e3d5c…`](https://testnet.bscscan.com/tx/0x849e3d5cda9879d551dcecec99870c5067b617f03c1860eda7e98db151422034) | launcher [`0xFb40790832BBAF5ABe61Db0beEc575468c973045`](https://testnet.bscscan.com/address/0xFb40790832BBAF5ABe61Db0beEc575468c973045); minimum = cap = 3.968253968253968256 tBNB (the factory's `minRaiseFor`), 50 / 45 / 5, 1% / 1% tax for 100 years |
+| Commit 3.968 tBNB | [`0xcb3c5f11…`](https://testnet.bscscan.com/tx/0xcb3c5f1178ec149f6f849e61f24c4bf7f01cb2b6e1b1cfbc3ebafc026c69be29) | committed = the minimum |
+| Finalize, gas limit 15,000,000 | [`0x38170242…`](https://testnet.bscscan.com/tx/0x38170242eb34ebf1b449a16403fc270bd32892e3cd3ff3f8a2b9b6c589a09d2d) | ACTIVE, 5,562,477 gas used. Token [`0xCD4CB77A6D970FDfddE04Ab9D9a89349995e7777`](https://testnet.bscscan.com/address/0xCD4CB77A6D970FDfddE04Ab9D9a89349995e7777) (= `expectedToken()`), vault [`0xFdC8dA0C251ED1f24cef6d9220aDa60E311638bE`](https://testnet.bscscan.com/address/0xFdC8dA0C251ED1f24cef6d9220aDa60E311638bE) (the Portal's `getLaunchVault`, via our demo vault factory), pool [`0x464AF9543120B9a83Da2196BC6C3d1FC67E7860b`](https://testnet.bscscan.com/address/0x464AF9543120B9a83Da2196BC6C3d1FC67E7860b) seeded with 3.5714 WBNB and 450M CVD, 100% of the LP at the dead and zero addresses, treasury 0.3968 tBNB, 550M reserved tokens in Flap's Token Dock, dollar sale price fixed at launch from the push feed |
+| Claim sale tokens | [`0x6c5cf40b…`](https://testnet.bscscan.com/tx/0x6c5cf40bb1d4bcaedc855fe9239590200a89039d8fcf34b124822dec25079747) | 500M CVD from the Token Dock |
+| Buy 0.05 tBNB of CVD on PancakeSwap | [`0x00cdbd9c…`](https://testnet.bscscan.com/tx/0x00cdbd9c1ea77af6c4835389d42b5fac70c291d71cd7a17a1d6031e5f443e729) | 6.13M CVD; 61,946 CVD of buy tax held by the token |
+| Approve and sell the 6.13M CVD back | [`0xfec60d06…`](https://testnet.bscscan.com/tx/0xfec60d0669a0dff47c0d9ec586f19d5eccf5dae9557c6bf55219987f27c6a123), [`0x7cacfefa…`](https://testnet.bscscan.com/tx/0x7cacfefad0d3c6bdc5ffe8d1f739724c92d55de52e3a78ef0aad378b229d2c3e) | 123,273 CVD of tax collected in the token. Flap's tax processor converts and forwards tax in chunks of about $500 on sells, so this much (about 0.001 tBNB) waits in the token before it reaches the vault |
+| Poke (push feed, no pull report) | [`0x114078bc…`](https://testnet.bscscan.com/tx/0x114078bc4d2abdfeec5c08206d348574b1859b7db76ea1790c9a7e1544c77b9e) | strict: BNB/USD $553.15 from the Atlas push feed, deep pool; the tap started accruing |
+
+The deployer went from 4.6291 to 0.6488 tBNB over the redeploy (0.0049) and this run (3.968 in the raise, 0.005 salt
+lock fee, the trade round trip and gas): the 3.968 tBNB now sits in the pool seed (3.571) and the treasury (0.397).
+
+## Audit-fix deployment (26 Nov 2026, superseded)
+
+`round1*` in `97.json`: production launcher factory `0x270dE514C8cbE98E574D842e42c724335E742Fd1`, vault factory
+`0xCD43CDEc6d587110510c9946BF0791a8eA07D58E`, demo `0x502d78a835e68DeB940191Da83AF0Cb838ef8693` and
+`0xA981585c8D26C1169Fb73F25764A5b18c006D075`, oracle `0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d`, lens
+`0x61a33a14752C7Abbe6A71A211096f19F6E917309`, Lite template `0x8C86A73a40Bf25Ae445F1B142d3db219e80a31D1`. One raise
+was opened on its demo factory (BNBH2026, launcher `0x9C8c01A54DE25Ac95A425535F650644055678c73`, 2.9 to 3 tBNB at a 45%
+pool); nothing was committed and it never launched.
 
 Two earlier attempts the same day are superseded and hold no covenant: a deploy with only Flap's review fixes
 (production launcher factory `0xA3884139b002AaCEd9Dd77d8fd89e4E65c1D10Da`, demo `0xFC0a5dc742D21C4e36947762dbb4e36296BD1138`,
@@ -149,11 +180,13 @@ selector `db9c8c66`, delegatecalled inside `launchTaxTokenV2`) reverts with cust
 `(1537.8, 1562.5)` for 2.197 BNB at 48%. Token supply does not change it. Pool share cannot exceed the sale share, so
 the absolute minimum is a 2.14 BNB seed. Measured on forks of chain 97 against our demo factory, 26 Nov 2026: the
 launch fails, the covenant ends FAILED and every commitment refunds. Since the audit fixes the factories read this
-floor themselves before a raise opens (`graduationFloorV2` on the Portal, through `minRaiseFor`): the demo factory
-needs the launch floor and the production factory twice that (the graduation floor), so terms under it are refused
-at creation and never collect money. `script/TestnetCovenant.s.sol` creates the cheapest covenant that keeps
-a team share and a treasury: a 2.65 tBNB raise split 50 / 45 / 5, seed 2.385, treasury 0.265. Gas for the whole
-journey (create, commit, finalize, claim, pokes, tap, wind-down, redeem) is under 8M, a fraction of a cent.
+floor themselves before a raise opens (`graduationFloorV2` on the Portal, through `minRaiseFor`), with a 1.5x safety
+margin since Flap's re-review: the demo factory needs 1.5x the launch (creation) floor and the production factory 1.5x
+the graduation floor (twice the launch floor), so terms under it are refused at creation and never collect money.
+`script/TestnetCovenant.s.sol` creates the cheapest demo covenant that keeps a team share and a treasury, at exactly
+the demo factory's `minRaiseFor`: a 3.97 tBNB raise split 50 / 45 / 5 (seed 3.57, treasury 0.40) at the Portal's $700.
+The same split on the production factory needs 7.94 tBNB. Gas for the whole journey (create, commit, finalize, claim,
+pokes, tap, wind-down, redeem) is under 8M, a fraction of a cent.
 
 ## What gets deployed
 
@@ -198,11 +231,12 @@ chain.
      feed id and the API key.
 2. **Flap's floors and name screen.** Nothing to configure: the launcher factory reads Flap's liquidity floor live
    from the Portal (`launchQuoteConfig` and `graduationFloorV2` with our vault factory, so Flap's BNB price and
-   multiplier apply) and refuses a minimum raise whose pool seed misses it: the graduation floor for the production
-   profile, the launch floor for the demo profile. It also asks Flap's name and symbol blocklist (`isScamWord`, the
+   multiplier apply) and refuses a minimum raise whose pool seed, less a third (`FLOOR_MARGIN_BPS`, 1.5x), misses it:
+   the graduation floor for the production profile, the launch floor for the demo profile. It also asks Flap's name and symbol blocklist (`isScamWord`, the
    contract the launch facet calls; its address is not exposed by the Portal, so `Deploy.s.sol` names it per chain:
    BNB Chain `0xfFb69d59f62454f3B8322Bc1a9FCE6E171a5264f`, testnet `0x5CfbE713d070e87F67D1bc84312B7eB8Fe4F2B5E`).
-   If Flap moves either, the Portal still checks both at launch and a refused launch refunds every commitment.
+   The factories refuse any other name screen, Portal, Guardian or Token Dock router on chains 56 and 97. If Flap
+   moves the floor, the Portal still checks it at launch and a refused launch refunds every commitment.
 3. **A deployer key with a little BNB.** The production stack costs about 27.6M gas (about 0.0014 BNB at
    0.05 gwei, measured in a dry run on a BNB Chain fork). Add the demo pair for about 12M more.
 4. **An RPC that serves older state** for the dry run on a fork (see `contracts/.env.example`).
@@ -272,15 +306,19 @@ set -a && . ./.env && set +a
 ## Operating notes
 
 - **Keeper.** Calls `CovenantOracle.poke(vault)` about hourly with a signed Atlas report appended (the Atlas pull
-  SDK builds the calldata); with no API key on testnet it pokes plainly and the oracle reads the push feed. A poke without a report still counts for the exit streak; only strict pokes (fresh
-  Atlas rate and a pool at least half its seed) price the dollar tap and move unlock counters. One poke adds at
-  most 6 hours to any counter. `finalize()` needs a gas limit of at least 15M (the launch guard) and at most 16,777,216: BNB testnet refuses any
-  transaction above 2^24 gas (`-32003: gas limit too high`). Every client sends the launcher's `FINALIZE_GAS_LIMIT`
-  (16,700,000): the app, the server's unsigned `finalize` (API and MCP, with `gas` set), the investor agent and the
-  keeper, which finalizes raises past their deadline on its own (`KEEPER_FINALIZE=false` turns that off). From the
-  command line pass `--gas-limit 16700000`. Only the gas used is paid: 5.32M on chain 97
+  SDK builds the calldata); with no API key on testnet it pokes plainly and the oracle reads the push feed. A poke
+  without a report still counts for the exit streak and can only reset unlock counters (when the price misses a
+  multiple at the last rate); only strict pokes (fresh Atlas rate and a deep pool) add unlock time, which must be
+  continuous: one poke adds at most 6 hours, and a longer gap restarts the count. A report-carrying poke waits only for
+  the previous one (`nextRatePokeAt`), so the keeper decides it is due from that point. On the demo profile that
+  limit is 60 s, so a demo covenant unlocks only with pokes at most a minute apart (`scripts/testnet-up.sh` pokes
+  every 600 s). `finalize()` needs 12M gas left at its launch guard; every client sends the launcher's
+  `FINALIZE_GAS_LIMIT` (15,000,000, the most Flap's vault SDK and flap.sh send): the app, the server's unsigned
+  `finalize` (API and MCP, with `gas` set), the investor agent and the keeper, which finalizes raises past their
+  deadline on its own (`KEEPER_FINALIZE=false` turns that off). From the command line pass `--gas-limit 15000000`.
+  Only the gas used is paid: 5.32M on chain 97
   ([`0xa41449d9…`](https://testnet.bscscan.com/tx/0xa41449d924c01b477e16562c3e0eb9212dda1e42b1a4d9b27b47c5f43c0399be)),
-  5.52M on a chain 97 fork and 6.94M on a BNB Chain fork (26 Nov 2026).
+  5.53M on a chain 97 fork and 6.95M on a BNB Chain fork.
 - **Claims.** Refunds and sale tokens are pull payments. The keeper raises a `claims-open` alert while refunds or
   tokens wait, the MCP `get_position(covenant, wallet)` shows a wallet's refund and claimable allocation (then `claim_refund` / `claim_tokens`), and the covenant page shows a Claim
   button to the wallet that is owed. Once every refund is claimed, anyone can call `sweepDust()` on the launcher to

@@ -412,17 +412,26 @@ CoinMarketCap endpoints used by the server: `/v4/dex/pairs/quotes/latest`, `/v1/
 
 Covenant is deployed on **BNB testnet** (chain 97). Nothing is on BNB Chain mainnet. The record is
 [`contracts/deployments/97.json`](contracts/deployments/97.json). Every contract is source-verified on Sourcify. These are
-the 26 Nov 2026 redeploy with the fixes from Flap's audit review and the pre-audit ([docs/DEPLOY.md](docs/DEPLOY.md#redeploy-with-the-audit-fixes-26-nov-2026)).
+the 27 Nov 2026 redeploy with the fixes for Flap's pre-audit re-review, F1 to F8 ([docs/DEPLOY.md](docs/DEPLOY.md#redeploy-with-flaps-re-review-fixes-f1-to-f8-27-nov-2026)).
 
 | Contract | Address |
 |---|---|
-| CovenantOracle | [`0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d`](https://testnet.bscscan.com/address/0x4bFcdBe83Cdc6C3b914049d753283883cDcae49d) |
-| CovenantLauncherFactory | [`0x270dE514C8cbE98E574D842e42c724335E742Fd1`](https://testnet.bscscan.com/address/0x270dE514C8cbE98E574D842e42c724335E742Fd1) |
-| CovenantVaultFactory | [`0xCD43CDEc6d587110510c9946BF0791a8eA07D58E`](https://testnet.bscscan.com/address/0xCD43CDEc6d587110510c9946BF0791a8eA07D58E) |
-| CovenantLauncherFactory (demo timers) | [`0x502d78a835e68DeB940191Da83AF0Cb838ef8693`](https://testnet.bscscan.com/address/0x502d78a835e68DeB940191Da83AF0Cb838ef8693) |
-| CovenantVaultFactory (demo timers) | [`0xA981585c8D26C1169Fb73F25764A5b18c006D075`](https://testnet.bscscan.com/address/0xA981585c8D26C1169Fb73F25764A5b18c006D075) |
-| CovenantLens | [`0x61a33a14752C7Abbe6A71A211096f19F6E917309`](https://testnet.bscscan.com/address/0x61a33a14752C7Abbe6A71A211096f19F6E917309) |
-| CovenantLiteVault template | [`0x8C86A73a40Bf25Ae445F1B142d3db219e80a31D1`](https://testnet.bscscan.com/address/0x8C86A73a40Bf25Ae445F1B142d3db219e80a31D1) |
+| CovenantOracle | [`0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775`](https://testnet.bscscan.com/address/0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775) |
+| CovenantLauncherFactory | [`0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF`](https://testnet.bscscan.com/address/0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF) |
+| CovenantVaultFactory | [`0xAbb9811f529B793c86848211522B789071671ebC`](https://testnet.bscscan.com/address/0xAbb9811f529B793c86848211522B789071671ebC) |
+| CovenantLauncherFactory (demo timers) | [`0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE`](https://testnet.bscscan.com/address/0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE) |
+| CovenantVaultFactory (demo timers) | [`0x6d3a421708F8b45FbD92342d33a841de40E6cC8F`](https://testnet.bscscan.com/address/0x6d3a421708F8b45FbD92342d33a841de40E6cC8F) |
+| CovenantLens | [`0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4`](https://testnet.bscscan.com/address/0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4) |
+| CovenantLiteVault template | [`0x411c4560f9D8F9b06a730D9652FCb9D71290D285`](https://testnet.bscscan.com/address/0x411c4560f9D8F9b06a730D9652FCb9D71290D285) |
+
+**Flap's test launch (27 Nov 2026).** `$CVD` (Covenant Demo) through the demo launcher factory above: a 3.968 tBNB
+raise at exactly the factory's minimum (1.5x Flap's creation floor at a 50 / 45 / 5 split), finalized with a 15,000,000
+gas limit (5.56M used). Flap launched the tax token (1% buy, 1% sell, to the vault), seeded the pool with 3.571 BNB and
+450M CVD and burned 100% of the LP; the vault holds the 0.397 tBNB treasury and the Token Dock the 550M reserved
+tokens. Launcher [`0xFb40790832BBAF5ABe61Db0beEc575468c973045`](https://testnet.bscscan.com/address/0xFb40790832BBAF5ABe61Db0beEc575468c973045), token [`0xCD4CB77A6D970FDfddE04Ab9D9a89349995e7777`](https://testnet.bscscan.com/address/0xCD4CB77A6D970FDfddE04Ab9D9a89349995e7777)
+(equal to the launcher's `expectedToken()` before the launch), vault [`0xFdC8dA0C251ED1f24cef6d9220aDa60E311638bE`](https://testnet.bscscan.com/address/0xFdC8dA0C251ED1f24cef6d9220aDa60E311638bE),
+pool [`0x464AF9543120B9a83Da2196BC6C3d1FC67E7860b`](https://testnet.bscscan.com/address/0x464AF9543120B9a83Da2196BC6C3d1FC67E7860b); finalize [`0x38170242…`](https://testnet.bscscan.com/tx/0x38170242eb34ebf1b449a16403fc270bd32892e3cd3ff3f8a2b9b6c589a09d2d).
+Every transaction is in [docs/DEPLOY.md](docs/DEPLOY.md#flaps-test-launch-on-bnb-testnet-27-nov-2026).
 
 **The first testnet covenant.** `$CVT` was created through the previous demo launcher factory
 (`0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48`, before the audit fixes) and taken through every stage on chain 97: create, commit, Flap launch, claim, keeper pokes and tax dispatch, issuer heartbeat and tap, abandonment,
