@@ -1207,3 +1207,49 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
   .intent-grid { grid-template-columns: minmax(0, 1fr); }
   .modal-wrap { padding: 8vh 12px 12px; }
 }
+
+/* ---------- Sidebar promo (v2): mark + agents, the covenant's life in one line, a real button ---------- */
+.promo.promo-v2 { position: relative; isolation: isolate; overflow: hidden; border-radius: 16px; padding: 14px 14px 12px; display: grid; gap: 6px; background: var(--card); border: 1px solid transparent; background-clip: padding-box; }
+/* gradient hairline: accent at the top left fading to the usual line */
+.promo.promo-v2::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; background: linear-gradient(140deg, var(--accent-line), var(--line) 42%, var(--line) 70%, color-mix(in srgb, var(--agent) 30%, transparent)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+/* a slow mesh glow, like the covenant banner */
+.promo-glow { position: absolute; inset: -40%; z-index: -2; pointer-events: none; background: radial-gradient(34% 30% at 22% 18%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%), radial-gradient(30% 28% at 82% 30%, color-mix(in srgb, var(--agent) 20%, transparent), transparent 70%), radial-gradient(36% 30% at 60% 96%, color-mix(in srgb, var(--good) 12%, transparent), transparent 70%); animation: promo-drift 14s ease-in-out infinite alternate; }
+@keyframes promo-drift { from { transform: translate3d(-4%, -3%, 0) rotate(0deg); } to { transform: translate3d(5%, 4%, 0) rotate(8deg); } }
+.promo-v2 .promo-x { top: 10px; right: 10px; width: 22px; height: 22px; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--muted); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.promo-v2 .promo-x:hover { background: color-mix(in srgb, var(--ink) 14%, transparent); color: var(--ink); }
+.promo-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.promo-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--raised); box-shadow: inset 0 0 0 1px var(--line); }
+.promo-bots { display: flex; }
+.promo-bots > * { margin-left: -6px; box-shadow: 0 0 0 2px var(--card); border-radius: 50%; }
+.promo-bots > *:first-child { margin-left: 0; }
+.promo-v2 .promo-eb { font-size: 11.5px; font-weight: 500; color: var(--accent); }
+.promo-v2 .promo-t { font-family: var(--font-display-stack); font-size: 16px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.2; color: var(--ink); }
+/* raise -> treasury -> exit, a pulse running along the line */
+.promo-flow { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 8px 0 4px; padding-top: 12px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.promo-flow::before { content: ""; position: absolute; left: 4px; right: 4px; top: 4px; height: 1px; background: linear-gradient(90deg, var(--accent-line), var(--line-strong) 55%, color-mix(in srgb, var(--good) 45%, transparent)); }
+.promo-flow::after { content: ""; position: absolute; top: 2px; left: 0; width: 18px; height: 5px; border-radius: 5px; background: linear-gradient(90deg, transparent, var(--accent), transparent); animation: promo-run 3.6s var(--ease) infinite; }
+@keyframes promo-run { 0% { left: 0; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { left: calc(100% - 18px); opacity: 0; } }
+.promo-flow li { position: relative; white-space: nowrap; }
+.promo-flow li:nth-child(2) { text-align: center; }
+.promo-flow li:nth-child(3) { text-align: right; }
+.promo-flow i { position: absolute; top: -11px; width: 7px; height: 7px; border-radius: 7px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.promo-flow li:nth-child(1) i { left: 1px; }
+.promo-flow li:nth-child(2) i { left: calc(50% - 3.5px); box-shadow: inset 0 0 0 1.5px var(--ink-2); }
+.promo-flow li:nth-child(3) i { right: 1px; box-shadow: inset 0 0 0 1.5px var(--good); }
+.promo-go { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; margin-top: 6px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--accent-ink); background: var(--accent-strong); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset, 0 6px 16px -8px var(--accent); transition: transform var(--t-fast) var(--ease), box-shadow var(--t) var(--ease), background var(--t) var(--ease); }
+.promo-go:hover { background: var(--accent); transform: translateY(-1px); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 10px 22px -10px var(--accent); }
+.promo-go:active { transform: translateY(0) scale(0.98); }
+.promo-go svg { transition: transform var(--t) var(--ease); }
+.promo-go:hover svg { transform: translateX(3px); }
+.promo-go:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-bg); }
+/* collapsed sidebar: the card folds into one glowing launch tile */
+.promo-mini { display: none; position: relative; isolation: isolate; overflow: hidden; width: 44px; height: 44px; margin: 12px auto 0; border-radius: 13px; place-items: center; color: var(--accent); background: var(--card); box-shadow: inset 0 0 0 1px var(--accent-line); transition: transform var(--t-fast) var(--ease); }
+.promo-mini:hover { transform: translateY(-1px); color: var(--ink); }
+.promo-mini .promo-glow { inset: -60%; }
+.cv[data-collapsed="true"] .promo-mini { display: grid; }
+@media (max-width: 809.98px) { .cv[data-collapsed="true"] .promo-mini { display: none; } .cv[data-collapsed="true"] .promo.promo-v2 { display: grid; } }
+@media (prefers-reduced-motion: reduce) {
+  .promo-glow, .promo-flow::after { animation: none !important; }
+  .promo-flow::after { display: none; }
+  .promo-go, .promo-go svg, .promo-mini { transition: none; }
+}

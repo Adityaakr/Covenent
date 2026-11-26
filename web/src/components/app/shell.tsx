@@ -11,7 +11,7 @@ import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
 import { Icon, Mark, type IconName } from "./icons";
 import { hidePromo, reopenOnboarding, setCollapsed, useCollapsed, usePromoHidden } from "./prefs";
-import { CoverCut, Portal, Skeleton, TokenAvatar, coverVars, cx, seedOf } from "./ui";
+import { Portal, Skeleton, TokenAvatar, cx, seedOf } from "./ui";
 import { withBnb } from "@/components/app/bnb";
 import { ThinkingMark } from "./mark";
 import { GetStarted } from "./funds";
@@ -126,18 +126,25 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
       </div>
       <div className="sb-spacer" />
       {!promoHidden ? (
-        <div className="promo">
-          <div className="promo-art cover" style={coverVars("operating stack")} aria-hidden>
-            <CoverCut className="cover-cut" />
-          </div>
-          <button className="promo-x" aria-label="Hide this card" onClick={hidePromo}><Icon name="x" size={12} /></button>
-          <div className="promo-body">
+        <>
+          <section className="promo promo-v2" aria-label="Start a covenant">
+            <span className="promo-glow" aria-hidden />
+            <button className="promo-x" aria-label="Hide this card" onClick={hidePromo}><Icon name="x" size={12} /></button>
+            <div className="promo-top" aria-hidden>
+              <span className="promo-mark"><Mark size={20} /></span>
+              <span className="promo-bots">{["issuer-a", "keeper-b", "investor-c"].map((s) => <TokenAvatar key={s} seed={s} size={20} />)}</span>
+            </div>
             <p className="promo-eb">For founders and agents</p>
             <p className="promo-t">Launch your autonomous venture</p>
-            <p className="promo-s">A raise with refunds, a treasury on a budget, and an exit at book. Enforced by code.</p>
-            <Link href="/app/create" className="promo-cta">Start a covenant<Icon name="arrow" size={14} /></Link>
-          </div>
-        </div>
+            <ol className="promo-flow" aria-label="Raise with refunds, a treasury on a budget, an exit at book">
+              <li><i />Raise</li>
+              <li><i />Treasury</li>
+              <li><i />Exit at book</li>
+            </ol>
+            <Link href="/app/create" className="promo-go">Start a covenant<Icon name="arrow" size={14} /></Link>
+          </section>
+          <Link href="/app/create" className="promo-mini" title="Start a covenant" aria-label="Start a covenant"><span className="promo-glow" aria-hidden /><Icon name="rocket" size={17} /></Link>
+        </>
       ) : null}
       <Link href="/app/settings" className="sb-item sb-settings" aria-current={path.startsWith("/app/settings") ? "page" : undefined} title="Settings">
         <Icon name="sliders" size={18} /><span className="lab">Settings</span>
