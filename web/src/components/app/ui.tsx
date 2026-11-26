@@ -204,8 +204,9 @@ export function Countdown({ seconds, format }: { seconds: number; format: (s: nu
  * the page's enter animation transforms that wrapper, and a transformed ancestor turns position: fixed into position
  * relative to it, which dropped the modals down the page.
  */
+const noSubscribe = () => () => {};
 export function Portal({ children }: { children: ReactNode }) {
-  const [host, setHost] = useState<HTMLElement | null>(null);
-  useEffect(() => { setHost(document.body); }, []);
-  return host ? createPortal(children, host) : null;
+  // false on the server and in the first hydration pass, true in the browser: no setState in an effect
+  const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
+  return inBrowser ? createPortal(children, document.body) : null;
 }
