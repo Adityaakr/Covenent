@@ -170,7 +170,7 @@ function Overview({ list }: { list: CovenantView[] }) {
         <span className="ovw-k">Raising now<Icon name="arrowUpRight" size={14} /></span>
         <span className="ovw-v"><Ticker value={raising.length} format={(n) => n.toFixed(0)} /></span>
         <span className="ovw-bar" aria-label="Committed against the cap">{first ? <i style={{ width: `${Math.min(100, (first.raise.committed / Math.max(first.terms.cap, 1e-9)) * 100)}%`, background: "var(--accent)" }} /> : null}</span>
-        <span className="ovw-s trunc">{first ? <><span className="ink">{first.terms.symbol}</span> {bnb(first.raise.committed, 0)} of {bnb(first.terms.cap, 0)} BNB · closes in {duration(Math.max(0, first.raise.deadline - first.now), 1)}</> : "No raise open right now"}</span>
+        <span className="ovw-s trunc">{first ? <><span className="ink">{first.terms.symbol}</span> {bnb(first.raise.committed, 0)} of {bnb(first.terms.cap, 0)} BNB · {first.raise.deadline > first.now ? `closes in ${duration(first.raise.deadline - first.now, 1)}` : "sale closed, awaiting finalize"}</> : "No raise open right now"}</span>
       </Link>
       <Link href="/app/covenants?issuer=agent" className="ovw-tile rise" style={{ ["--i" as string]: 4 } as CSSProperties}>
         <span className="ovw-k">Agent issuers<Icon name="arrowUpRight" size={14} /></span>

@@ -568,7 +568,7 @@ function bestRunLine(v: CovenantView) {
 
 /** One line for lists: what happens next on this covenant. */
 export function nextEvent(v: CovenantView, d: Derived): { text: string; tone: "accent" | "warn" | "bad" | "good" | "" } {
-  if (v.state === "RAISING") return { text: `Closes in ${duration(v.raise.deadline - v.now)} · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`, tone: "accent" };
+  if (v.state === "RAISING") return v.raise.deadline <= v.now ? { text: `Sale closed · anyone can finalize · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`, tone: "accent" } : { text: `Closes in ${duration(v.raise.deadline - v.now)} · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`, tone: "accent" };
   if (v.state === "FAILED") return { text: "Refunds open", tone: "" };
   if (v.state === "EXIT_ROUND") return { text: `Exit round ends in ${duration(v.exit.roundEndsAt! - v.now)}`, tone: "warn" };
   if (v.state === "WIND_DOWN") return { text: "Redemption open, no fee", tone: "bad" };
