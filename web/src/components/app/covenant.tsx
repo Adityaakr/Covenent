@@ -578,6 +578,7 @@ function bestRunLine(v: CovenantView) {
 
 /** One line for lists: what happens next on this covenant. */
 export function nextEvent(v: CovenantView, d: Derived): { text: string; tone: "accent" | "warn" | "bad" | "good" | "" } {
+  if (v.state === "RAISING" && v.raise.deadline <= v.now && v.events.some((e) => e.name === "LaunchRefused")) return { text: "Flap refused the launch · anyone can retry finalize; after the retry window it refunds", tone: "warn" };
   if (v.state === "RAISING") return v.raise.deadline <= v.now ? { text: `Sale closed · anyone can finalize · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`, tone: "accent" } : { text: `Closes in ${duration(v.raise.deadline - v.now)} · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`, tone: "accent" };
   if (v.state === "FAILED") return { text: "Refunds open", tone: "" };
   if (v.state === "EXIT_ROUND") return { text: `Exit round ends in ${duration(v.exit.roundEndsAt! - v.now)}`, tone: "warn" };
@@ -678,11 +679,11 @@ export function TrustPanel({ v }: { v: CovenantView }) {
         <dl className="kv">
           <dt>Atlas BNB/USD</dt><dd className="num">{g.bnbUsd ? usd(g.bnbUsd, 2) : "–"}</dd>
           <dt>Atlas report age at last poke</dt><dd className="num">{g.atlasReportAge === null ? "–" : g.atlasReportAge <= 180 ? `${g.atlasReportAge} s` : duration(g.atlasReportAge)}</dd>
-          <dt>Pool-only fallback</dt><dd>{g.poolOnlyMode ? "On" : "Off"}</dd>
+          <dt>Without a fresh rate</dt><dd>The tap pauses; unlock counters reset</dd>
         </dl>
         <GuardianTrust v={v} />
-        <Note icon="shield"><b>Atlas.</b> One Atlas signer sets the BNB/USD rate. A wrong rate can misprice the tap, but never past its cap of {bps(v.terms.tapCapBps)} of the treasury per 30 days, and it cannot unlock team tokens on its own: a tranche also needs the pool&apos;s own price (TWAP) at the multiple in BNB, with no oracle. It cannot open or block an exit either: book value and pool price are both read on-chain. The PancakeSwap pair is the price, with liquidity locked at launch. No Covenant admin keys: no owner, no pause, no fee switch.</Note>
-        <Note icon="info"><b>The raise.</b> No per-wallet cap, by design: above the cap everyone is scaled back pro rata and the excess refunds. Refunds and sale tokens are pulled, never pushed: each contributor claims them (Claim on the settle page). The launcher keeps at most one wei per contributor of rounding buffer; once every refund is claimed anyone can sweep it into the treasury.</Note>
+        <Note icon="shield"><b>Atlas.</b> One Atlas signer sets the BNB/USD rate. A wrong rate can misprice the tap, but never past its cap of {bps(v.terms.tapCapBps)} of the treasury per 30 days, and it cannot unlock team tokens on its own: a tranche also needs the pool&apos;s own price (TWAP) at the multiple in BNB, with no oracle. It cannot open or block an exit either: book value and pool price are both read on-chain. Anyone can poke, and a poke without a verified rate counts against unlocking (it resets the counters), so withholding reports never helps the {who(v)}; with no rate fresher than the vault&apos;s limit the tap pauses rather than falling back to its cap. The dollar sale price is fixed at launch from Atlas&apos;s push feed where there is one, otherwise by the first verified rate, raised (never lowered) by higher ones for a short window. The PancakeSwap pair is the price, with liquidity locked at launch. No Covenant admin keys: no owner, no pause, no fee switch.</Note>
+        <Note icon="info"><b>The raise.</b> No per-wallet cap, by design: above the cap everyone is scaled back pro rata and the excess refunds. Refunds and sale tokens are pulled, never pushed: each contributor claims them (Claim on the settle page). Rounding leaves at most one wei per contributor in the launcher and a few wei of sale tokens in the dock: anyone can sweep the BNB into the treasury once every refund is claimed, and burn sale-token dust that no claim can reach. If Flap refuses the launch, anyone can retry finalize for a short window before the raise refunds.</Note>
         <Note tone="warn"><b>What it does not cover.</b> The floor starts below the sale price and falls as the {who(v)} spends. The treasury is BNB, so its dollar value moves. Nothing off-chain (company, IP, revenue not sent to the vault) is protected.</Note>
       </div>
     </div>
@@ -700,7 +701,7 @@ function GuardianTrust({ v }: { v: CovenantView }) {
           <ul className="t-xs muted w5" style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
             <li>Upgrade the vault and launcher logic (the only upgrade path, per Flap&apos;s spec). The treasury and the refund BNB are only as safe as the Guardian.</li>
             <li>Wind down any covenant: the tap ends early and redemption opens with no fee. No funds move; this page says when the Guardian did it.</li>
-            <li>Call the {who(v)}&apos;s other functions: claim the tap (paid only to the fixed team wallet), lower the tap, post a report.</li>
+            <li>Call the {who(v)}&apos;s other functions: claim the tap (paid only to the fixed team wallet), lower the tap (even to zero, and it can never go back up), post a period&apos;s report (reports are write-once; the vault records who posted each).</li>
           </ul>
         </div>
         <div className="stack-sm" style={{ display: "grid" }}>

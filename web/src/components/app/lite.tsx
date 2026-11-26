@@ -234,11 +234,11 @@ export function FourmemeCreate() {
           </div>
           <div className="card-body ruled form-step">
             <LField label="Budget per period" hint="share of the treasury the founder can draw" value={pct(f.tapBps)}>
-              <input className="range" type="range" min={50} max={2000} step={50} value={Math.min(2000, f.tapBps)} onChange={(e) => setF2("tapBps", Number(e.target.value))} aria-label="Budget per period, basis points" style={{ ["--fill" as string]: `${((Math.min(2000, f.tapBps) - 50) / 1950) * 100}%` } as CSSProperties} />
-              <span className="help">Up to 50% is allowed. Template field <span className="mono">tapBps</span> = {f.tapBps}.</span>
+              <input className="range" type="range" min={50} max={1000} step={50} value={Math.min(1000, f.tapBps)} onChange={(e) => setF2("tapBps", Number(e.target.value))} aria-label="Budget per period, basis points" style={{ ["--fill" as string]: `${((Math.min(1000, f.tapBps) - 50) / 950) * 100}%` } as CSSProperties} />
+              <span className="help">Up to 10% per period, Covenant&apos;s own bound. Template field <span className="mono">tapBps</span> = {f.tapBps}.</span>
             </LField>
             <div className="grid2">
-              <LField label="Period length" hint="1 to 90 days" value={span(f.tapPeriod)}><LNum value={f.tapPeriod / DAY} unit="days" onChange={(n) => setF2("tapPeriod", Math.round(n * DAY))} /></LField>
+              <LField label="Period length" hint="30 to 90 days" value={span(f.tapPeriod)}><LNum value={f.tapPeriod / DAY} unit="days" onChange={(n) => setF2("tapPeriod", Math.round(n * DAY))} /></LField>
               <LField label="Heartbeat window" hint="7 to 180 days" value={span(f.heartbeat)}><LNum value={f.heartbeat / DAY} unit="days" onChange={(n) => setF2("heartbeat", Math.round(n * DAY))} /></LField>
             </div>
             <LField label="Redeem fee" hint="kept for holders who stay, at most 3%" value={pct(f.redeemFeeBps)}><LNum value={f.redeemFeeBps / 100} unit="%" onChange={(n) => setF2("redeemFeeBps", Math.round(n * 100))} /></LField>

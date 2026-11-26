@@ -133,7 +133,7 @@ fourmeme() {
     [ "$st" = "0x1" ] || { echo "transaction failed ($*)" >&2; exit 1; }
   }
   # tap 4% per day-long period, 7-day heartbeat, 1% redeem fee: the template's own bounds allow nothing shorter
-  vd="$(cast call --rpc-url "$RPC" "$L" 'encodeVaultData(address,uint16,uint32,uint32,uint16)(bytes)' "$TEMPLATE" 400 86400 604800 100)"
+  vd="$(cast call --rpc-url "$RPC" "$L" 'encodeVaultData(address,uint16,uint32,uint32,uint16)(bytes)' "$TEMPLATE" 400 2592000 604800 100)"
   say "Four.meme path: $name launches (tax 5%, founder tax to the Lite vault through ForwardVault)"
   snd "$team" "$L" 'launch(string,string,uint256,uint16,bytes,uint256)' "$name" "$sym" 1000000000ether 500 "$vd" 300000000ether --value 20ether
   n="$(cast call --rpc-url "$RPC" "$L" 'launchCount()(uint256)')"

@@ -18,8 +18,8 @@ export interface LiteFields {
 
 /** CovenantLiteVault's own bounds (its _customInit reverts outside them). */
 export const LITE_BOUNDS = {
-  tapBps: { min: 1, max: 5000 },
-  tapPeriod: { min: 86_400, max: 7_776_000 },
+  tapBps: { min: 1, max: 1000 }, // at most 10% of the treasury per period (pre-audit L-12)
+  tapPeriod: { min: 2_592_000, max: 7_776_000 }, // periods of 30 to 90 days
   heartbeat: { min: 604_800, max: 15_552_000 },
   redeemFeeBps: { min: 0, max: 300 },
 } as const;
