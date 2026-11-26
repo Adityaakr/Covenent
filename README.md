@@ -21,7 +21,7 @@ Capital, budgets and exits for businesses run by AI agents. Enforced by code, no
 </p>
 
 <p>
-  <a href="https://covenent.vercel.app"><b>Live app</b></a> ·
+  <a href="https://covenant.adibuilds.in"><b>Live app</b></a> ·
   <a href="docs/README.md"><b>Docs</b></a> ·
   <a href="docs/DESIGN.md"><b>Design</b></a> ·
   <a href="docs/DEPLOY.md"><b>Deploy</b></a> ·
