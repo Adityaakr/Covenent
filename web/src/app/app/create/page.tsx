@@ -42,12 +42,15 @@ function CovenantCreate() {
   const wallet = useWallet();
   const config = useConfig();
   const qc = useQueryClient();
-  const [t, setT] = useState<Terms>({ ...DEFAULT_TERMS, name: "", symbol: "", meta: "", teamWallet: (wallet.address as Address) ?? (LOCAL_MODE ? DEFAULT_TERMS.teamWallet : ("" as Address)) });
-  const [issuerKind, setIssuerKind] = useState<"agent" | "human">("agent");
+  // An Ask AI draft (the create card's "Edit in Create") opens with its terms filled in.
+  const draftParam = useSearchParams().get("draft");
+  const [draft] = useState(() => readDraft(draftParam));
+  const [t, setT] = useState<Terms>(draft?.terms ?? { ...DEFAULT_TERMS, name: "", symbol: "", meta: "", teamWallet: (wallet.address as Address) ?? (LOCAL_MODE ? DEFAULT_TERMS.teamWallet : ("" as Address)) });
+  const [issuerKind, setIssuerKind] = useState<"agent" | "human">(draft ? (draft.terms.agentId > 0 ? "agent" : "human") : "agent");
   // A local chain keeps the dev stack's worked example; a hosted build starts empty (the team wallet fills from the wallet).
-  const [agentId, setAgentId] = useState(LOCAL_MODE ? "4127" : "");
+  const [agentId, setAgentId] = useState(draft ? (draft.terms.agentId > 0 ? String(draft.terms.agentId) : "") : LOCAL_MODE ? "4127" : "");
   // Live only: the short-timer demo factory (time in minutes) or the production factory (time in days)
-  const [factory, setFactory] = useState<FactoryKind>("demo");
+  const [factory, setFactory] = useState<FactoryKind>(draft?.factory ?? "demo");
   const demo = src.mode === "live" && factory === "demo";
   const UNIT = demo ? 60 : DAY;
   const unit = demo ? "minutes" : "days";
@@ -64,7 +67,7 @@ function CovenantCreate() {
   const [seenMode, setSeenMode] = useState(src.mode);
   if (seenMode !== src.mode) {
     setSeenMode(src.mode);
-    if (src.mode === "live") setT((x) => ({ ...x, ...timers(factory) }));
+    if (src.mode === "live" && !draft) setT((x) => ({ ...x, ...timers(factory) }));
   }
   const [seenWallet, setSeenWallet] = useState<string | undefined>(undefined);
   if (wallet.address && seenWallet !== wallet.address) {
@@ -398,4 +401,21 @@ function Slider({ label, value, min, max, step, onChange }: { label: string; val
       <input className="range" type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-label={label} style={{ ["--fill" as string]: fill }} />
     </div>
   );
+}
+
+/** The ?draft= parameter Ask AI's create card links with: base64 of {factory, terms}. Anything malformed is ignored. */
+function readDraft(raw: string | null): { factory: FactoryKind; terms: Terms } | null {
+  if (!raw) return null;
+  try {
+    const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+    const o = JSON.parse(new TextDecoder().decode(bytes)) as { factory?: string; terms?: Partial<Terms> };
+    if (!o.terms || typeof o.terms.name !== "string") return null;
+    const terms = { ...DEFAULT_TERMS, ...o.terms } as Terms;
+    const nums: (keyof Terms)[] = ["totalSupply", "saleBps", "poolBps", "minRaise", "cap", "saleDuration", "buyTaxBps", "sellTaxBps", "tapUsdPer30d", "tapCapBps", "cliff", "unlockWindow", "exitStreak", "roundLength", "cooldown", "exitFeeBps", "heartbeat", "agentId"];
+    if (nums.some((k) => typeof terms[k] !== "number" || !Number.isFinite(terms[k] as number))) return null;
+    if (!Array.isArray(terms.trancheBps) || !Array.isArray(terms.trancheMultiple)) return null;
+    return { factory: o.factory === "production" ? "production" : "demo", terms };
+  } catch {
+    return null;
+  }
 }

@@ -9,7 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import { createPublicClient, fallback, http, type PublicClient } from "viem";
 import { anvil, bscTestnet, chainName, LOCAL_RPC, makeLocalChain } from "@/lib/chain/chains";
 import { LOCAL_MODE, TESTNET_PAYLOAD, TESTNET_RPCS } from "@/lib/chain/target";
-import { abiFor, addressOf, hasFn, launchersOf, type DeploymentPayload } from "@/lib/chain/deployment";
+import { addressOf, launchersOf, type DeploymentPayload } from "@/lib/chain/deployment";
+import { discoverLaunchers } from "@/lib/chain/discover";
 import { readCovenant } from "@/lib/chain/reader";
 import type { Address, CovenantView } from "@/lib/covenant/types";
 import { useWallet } from "@/components/providers";
@@ -21,19 +22,6 @@ export interface SourceStatus {
   client?: PublicClient;
   chainId?: number;
   launchers?: Address[];
-}
-
-/** Launchers the deployment names, plus every launcher the launcher factory has created (allLaunchers()). */
-async function discover(client: PublicClient, payload: DeploymentPayload): Promise<Address[]> {
-  const d = payload.deployment!;
-  const found = new Set(launchersOf(d).map((a) => a.toLowerCase()));
-  const out: Address[] = [...launchersOf(d)];
-  const F = abiFor(payload.abis, "CovenantLauncherFactory", "LauncherFactory");
-  // every factory at once (the transport batches them), not one round trip after another
-  const factories = ["launcherFactory", "covenantLauncherFactory", "demoLauncherFactory"].map((k) => addressOf(d, k)).filter((f): f is Address => Boolean(f) && hasFn(F, "allLaunchers"));
-  const lists = await Promise.all(factories.map((f) => client.readContract({ address: f, abi: F!, functionName: "allLaunchers" }).then((x) => x as Address[], () => [] as Address[])));
-  for (const all of lists) for (const a of all) if (!found.has(a.toLowerCase())) { found.add(a.toLowerCase()); out.push(a); }
-  return out;
 }
 
 async function probe(): Promise<SourceStatus> {
@@ -57,7 +45,7 @@ async function probe(): Promise<SourceStatus> {
     : http(d.rpcUrl || LOCAL_RPC, { timeout: 4000, retryCount: 0 });
   const client = createPublicClient({ chain, transport }) as PublicClient;
   try {
-    const [id, launchers] = await Promise.all([client.getChainId(), discover(client, payload)]);
+    const [id, launchers] = await Promise.all([client.getChainId(), discoverLaunchers(client, payload)]);
     if (id !== d.chainId) return { mode: "offline", reason: `RPC answers chain ${id}, deployment is for ${d.chainId}`, payload };
     if (launchers.length === 0) {
       // A real deployment with no covenant yet (BNB testnet before the first create) is live and empty.
