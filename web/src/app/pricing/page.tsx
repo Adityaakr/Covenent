@@ -1,1 +1,1 @@
-export { default } from "@/landing/pages/pricing";
+export { default, metadata } from "@/landing/pages/pricing";

@@ -1,1 +1,1 @@
-export { default, generateStaticParams } from "@/landing/pages/changelog-entry";
+export { default, generateStaticParams, generateMetadata } from "@/landing/pages/changelog-entry";

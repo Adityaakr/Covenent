@@ -1,1 +1,1 @@
-export { default, generateStaticParams } from "@/landing/pages/use-case";
+export { default, generateStaticParams, generateMetadata } from "@/landing/pages/use-case";

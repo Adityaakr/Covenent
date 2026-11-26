@@ -1,1 +1,1 @@
-export { default } from "@/landing/pages/use-cases";
+export { default, metadata } from "@/landing/pages/use-cases";

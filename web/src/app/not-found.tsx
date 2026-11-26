@@ -1,1 +1,1 @@
-export { default } from "@/landing/pages/not-found";
+export { default, metadata } from "@/landing/pages/not-found";
