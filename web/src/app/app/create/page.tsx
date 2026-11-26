@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FourmemeCreate } from "@/components/app/lite";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "wagmi";
@@ -19,7 +20,13 @@ import { bnb, bps, pct, price, tokens, usd } from "@/lib/format";
 
 type Mine = { state: "idle" | "mining" | "found"; tries: number; rate: number; salt?: `0x${string}`; address?: Address; ms?: number };
 
+/** /app/create?venue=fourmeme opens the Four.meme path (Covenant Lite); anything else the Flap launcher. */
 export default function CreatePage() {
+  const venue = useSearchParams().get("venue");
+  return venue === "fourmeme" ? <FourmemeCreate /> : <CovenantCreate />;
+}
+
+function CovenantCreate() {
   const router = useRouter();
   const src = useSource();
   const wallet = useWallet();

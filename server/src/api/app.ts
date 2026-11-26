@@ -12,6 +12,7 @@ import { readAlerts } from '../keeper/alerts.js';
 import type { CovenantSheet, Health, PokeReport, SimulatorResult } from '../schema.js';
 import { CMC_ROUTES, CmcClient } from './cmc.js';
 import { Faucet, FaucetError } from './faucet.js';
+import { FourMeme } from './fourmeme.js';
 
 export interface AppDeps {
   cfg: ServerConfig;
@@ -60,6 +61,7 @@ export function createApp(deps: AppDeps) {
   };
 
   const faucet = new Faucet(cfg, svc.client);
+  const fourmeme = new FourMeme(cfg, svc.client);
   const app = new Hono();
   app.use('*', cors({ origin: (o) => (cfg.corsOrigins.includes('*') || cfg.corsOrigins.includes(o) ? o : null) }));
   app.onError((err, c) => {
@@ -182,6 +184,14 @@ export function createApp(deps: AppDeps) {
     const body = (await c.req.json().catch(() => ({}))) as { address?: string };
     return c.json(await faucet.send(body.address ?? c.req.query('address') ?? ''));
   });
+
+  // The Four.meme path (Covenant Lite): ForwardVault params encoded exactly as the live ForwardVault decodes them,
+  // and the Lite covenants the local launcher created.
+  app.get('/api/fourmeme/encode', (c) => {
+    const r = fourmeme.encode(c.req.query());
+    return c.json(r, r.ok ? 200 : 400);
+  });
+  app.get('/api/fourmeme/launches', async (c) => c.json(await fourmeme.launches()));
 
   // The simulator's real launches with their daily candles, for the web app's "try other terms" replay.
   app.get('/api/simulator/sample', (c) => {

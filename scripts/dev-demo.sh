@@ -74,7 +74,18 @@ heartbeat_all() {
 }
 
 advance() {
-  local left="$1" step
+  local left="$1" step f live=0
+  # nothing to keep present (no seed list, no running issuer agent): one jump
+  [ "${KEEP_ALIVE:-0}" = "1" ] && [ -s "$KEEPALIVE" ] && live=1
+  for f in "$ROOT"/.dev/*.vault; do
+    [ -f "$f" ] && [ -f "${f%.vault}.pid" ] && kill -0 "$(cat "${f%.vault}.pid")" 2>/dev/null && live=1
+  done
+  if [ "$live" = "0" ]; then
+    cast rpc --rpc-url "$RPC" evm_increaseTime "$left" >/dev/null
+    cast rpc --rpc-url "$RPC" evm_mine >/dev/null
+    say "clock +$1 s"
+    return
+  fi
   while [ "$left" -gt 0 ]; do
     step=$(( left > 280 ? 280 : left ))
     heartbeat_all
@@ -98,10 +109,50 @@ record() {
 # Flap's anti-sniper window on the fork: trading opens about 10 minutes after launch.
 trading_window() { if [ "$MODE" = "fork" ]; then advance 601; else advance 30; fi; }
 
+# The Four.meme path (Covenant Lite): a tax token whose founder tax goes through the live ForwardVault into a Lite
+# vault. Needs the fork and the FourLiteLauncher scripts/dev-funds.sh deploys. `fourmeme full` runs the whole
+# journey (taxed trades, dispatch with the 6% royalty, a tap, 7 days of founder silence, abandonment, a redemption);
+# `fourmeme active` stops after the tap. Lite's minimum heartbeat is 7 days, so the full journey jumps the clock.
+fourmeme() {
+  local L name="$2" sym="$3" mode="$1" n key team buyer1 buyer2 vd l token lite deadline
+  L="$(jq -r '.addresses.fourLiteLauncher // empty' "$C/deployments/local.json")"
+  [ -n "$L" ] || { say "Four.meme path: no FourLiteLauncher (needs the BNB Chain fork)"; return 0; }
+  local M="test test test test test test test test test test test junk"
+  team="$(cast wallet private-key "$M" 1)"; buyer1="$(cast wallet private-key "$M" 2)"; buyer2="$(cast wallet private-key "$M" 4)"
+  local B2; B2="$(cast wallet address --private-key "$buyer2")"
+  local ROUTER WBNB TEMPLATE; ROUTER="$(jq -r .addresses.router "$C/deployments/local.json")"
+  WBNB="$(jq -r .addresses.wbnb "$C/deployments/local.json")"; TEMPLATE="$(jq -r .addresses.liteVaultTemplate "$C/deployments/local.json")"
+  snd() { local k="$1"; shift; cast send --rpc-url "$RPC" --private-key "$k" "$@" >/dev/null; }
+  # tap 4% per day-long period, 7-day heartbeat, 1% redeem fee: the template's own bounds allow nothing shorter
+  vd="$(cast call --rpc-url "$RPC" "$L" 'encodeVaultData(address,uint16,uint32,uint32,uint16)(bytes)' "$TEMPLATE" 400 86400 604800 100)"
+  say "Four.meme path: $name launches (tax 5%, founder tax to the Lite vault through ForwardVault)"
+  snd "$team" "$L" 'launch(string,string,uint256,uint16,bytes,uint256)' "$name" "$sym" 1000000000ether 500 "$vd" 300000000ether --value 20ether
+  n="$(cast call --rpc-url "$RPC" "$L" 'launchCount()(uint256)')"
+  l="$(cast call --rpc-url "$RPC" "$L" 'launches()((address,address,address,address,address,uint64)[])' | tr -d '[]()' | tr ',' '\n' | sed 's/ //g' | sed -n "$(( (n - 1) * 6 + 1 )),$(( n * 6 ))p")"
+  token="$(echo "$l" | sed -n 1p)"; lite="$(echo "$l" | sed -n 3p)"
+  deadline=$(( $(cast block latest --rpc-url "$RPC" -f timestamp) + 3600 ))
+  snd "$buyer1" "$ROUTER" 'swapExactETHForTokensSupportingFeeOnTransferTokens(uint256,address[],address,uint256)' 0 "[$WBNB,$token]" "$(cast wallet address --private-key "$buyer1")" "$deadline" --value 6ether
+  snd "$buyer2" "$ROUTER" 'swapExactETHForTokensSupportingFeeOnTransferTokens(uint256,address[],address,uint256)' 0 "[$WBNB,$token]" "$B2" "$deadline" --value 4ether
+  snd "$team" "$token" 'dispatch()'
+  snd "$team" "$lite" 'withdrawTap()'
+  say "  token $token  lite vault $lite: tax dispatched, tap withdrawn"
+  if [ "$mode" = "full" ]; then
+    advance 604860
+    snd "$(cast wallet private-key "$M" 7)" "$lite" 'declareAbandoned()'
+    local bal; bal="$(cast call --rpc-url "$RPC" "$token" 'balanceOf(address)(uint256)' "$B2" | awk '{print $1}')"
+    snd "$buyer2" "$token" 'approve(address,uint256)' "$lite" "$bal"
+    snd "$buyer2" "$lite" 'redeem(uint256,uint256,uint256)' "$bal" 0 0
+    say "  founder silent 7 days: a stranger opened the treasury, a holder redeemed"
+  fi
+}
+
 # The story plus one covenant at every other stage, all by real transactions on the dev chain.
 seed() {
   rm -f "$KEEPALIVE"
   export KEEP_ALIVE=1
+  # Four.meme path first: its 7-day clock jump would lapse every 10-minute demo heartbeat seeded after it
+  fourmeme full "Forge Agent" "FORGE"
+  fourmeme active "Anvil Agent" "ANVL"
   story
   record abandoned
   # wound down by its own human team (no ERC-8004 id)
@@ -193,6 +244,7 @@ live() {
 case "${1:-story}" in
   story) story ;;
   seed) seed ;;
+  fourmeme) fourmeme "${2:-active}" "${3:-Four Agent}" "${4:-FOUR}" ;;
   live) live ;;
   use) use "${2:?launcher address}" ;;
   advance) advance "${2:?seconds}" ;;

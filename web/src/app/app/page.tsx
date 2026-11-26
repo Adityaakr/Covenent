@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkline } from "@/components/app/chart";
 import { IssuerChip, TokenMark } from "@/components/app/covenant";
+import { LiteList } from "@/components/app/lite";
 import { Icon } from "@/components/app/icons";
 import { Skeleton, StateBadge } from "@/components/app/ui";
 import { derive } from "@/lib/covenant/derive";
@@ -113,6 +114,7 @@ export default function CovenantsPage() {
         </div>
         </>
       )}
+      <LiteList />
     </main>
   );
 }

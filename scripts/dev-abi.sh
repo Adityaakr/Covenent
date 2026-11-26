@@ -30,6 +30,8 @@ ARTIFACTS=(
   MockERC8004.sol:MockIdentityRegistry
   MockERC8004.sol:MockReputationRegistry
   DemoUSDC.sol:DemoUSDC
+  FourLiteLauncher.sol:FourLiteLauncher
+  FourLiteLauncher.sol:FourStyleTaxToken
 )
 for a in "${ARTIFACTS[@]}"; do
   file="${a%%:*}"

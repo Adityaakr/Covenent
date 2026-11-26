@@ -93,6 +93,8 @@ Every tick, for each covenant: resolve any pending tx by receipt, decide whether
 | `GET /api/poke-report?vault=` (alias `/poke-report`) | `PokeReport`: signed report + ready `poke(vault)` tx for the web's poke button |
 | `GET /api/simulator` | `SimulatorResult` |
 | `GET /api/simulator/sample` | the simulator's launches with their daily candles (BNB per token), for the web's "try other terms" replay |
+| `GET /api/fourmeme/encode?tapBps=&tapPeriod=&heartbeat=&redeemFeeBps=[&template=]` | the Four.meme path: ForwardVault's vault data for a Covenant Lite vault, `abi.encode(InitParams(template, initData))` (one tuple, as the live ForwardVault decodes it; the flat encoding in Four.meme's docs reverts), with the template's bounds checked |
+| `GET /api/fourmeme/launches` | Lite covenants the dev chain's FourLiteLauncher created, with treasury, tax forwarded, tap and heartbeat |
 | `GET /api/faucet` / `POST /api/faucet {address}` | local test funds: whether the faucet is on, then 10 test BNB from anvil #0 plus 10,000 Demo USDC (dUSDC) minted to the address. Refused (403) on any RPC that is not a loopback node, whatever the chain id; needs `FAUCET_PRIVATE_KEY` (dev-all sets anvil #0); 30 s per address |
 | `GET /api/cmc` and `/api/cmc/{pair-quote,token-liquidity,liquidity-change,candles,transactions}`, `POST /api/cmc/new-list` | CoinMarketCap DEX proxies from the doc; key stays server-side; `x-covenant-cmc-mode: pro \| keyless-public-api` |
 | `GET /reports/:vault/:period` | issuer period report (markdown) whose hash is on-chain |

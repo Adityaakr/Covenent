@@ -39,13 +39,28 @@ snd "$WBNB" 'transfer(address,uint256)' "$PAIR" "$(cast to-wei 1000)"
 snd "$PAIR" 'mint(address)' "$FAUCET"
 say "dUSDC $USDC, pool $PAIR (600,000 dUSDC / 1,000 BNB)"
 
+# The Four.meme path, local stand-in for Four.meme's token creation (src/mocks/FourLiteLauncher.sol). OpenFour's
+# ForwardVault resolves WBNB by chain id and refuses anything but BNB Chain and its testnet, so this needs the fork;
+# it clones the live ForwardVault implementation there.
+FOUR=""
+FVIMPL="$(jq -r '.addresses.forwardVaultImpl // empty' "$J")"
+if [ "$CHAIN_ID" = "56" ] && [ -n "$FVIMPL" ] && [ "$(cast code --rpc-url "$RPC" "$FVIMPL")" != "0x" ]; then
+  FOUR="$(cd "$C" && forge create --rpc-url "$RPC" --private-key "$KEY" --broadcast \
+    src/mocks/FourLiteLauncher.sol:FourLiteLauncher --constructor-args "$FVIMPL" "$ROUTER" "$WBNB" 2>/dev/null \
+    | awk '/Deployed to:/ {print $3}')"
+  say "Four.meme path (local stand-in launcher on the live ForwardVault $FVIMPL): $FOUR"
+else
+  say "Four.meme path skipped: OpenFour's ForwardVault runs only on BNB Chain (fork) or its testnet"
+fi
+
 # Demo.s.sol rewrites local.json from its own struct, so these live in extra.local.json and are merged in (here and
 # after every demo scene, by scripts/dev-demo.sh).
 X="$C/deployments/extra.local.json"
 [ -f "$X" ] || echo '{}' >"$X"
 tmp="$(mktemp)"
-jq --arg u "$USDC" --arg p "$PAIR" --arg f "$FAUCET" \
-  '.addresses.demoUsdc=$u | .addresses.demoUsdcPair=$p | .addresses.faucet=$f | .accounts.faucet={address:$f, anvilIndex:0}' \
+jq --arg u "$USDC" --arg p "$PAIR" --arg f "$FAUCET" --arg four "$FOUR" \
+  '.addresses.demoUsdc=$u | .addresses.demoUsdcPair=$p | .addresses.faucet=$f | .accounts.faucet={address:$f, anvilIndex:0}
+   | (if $four != "" then .addresses.fourLiteLauncher=$four else . end)' \
   "$X" >"$tmp" && mv "$tmp" "$X"
 tmp="$(mktemp)"
 jq -s '.[0] * .[1]' "$J" "$X" >"$tmp" && mv "$tmp" "$J"

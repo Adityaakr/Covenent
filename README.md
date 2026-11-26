@@ -26,6 +26,15 @@ BNB and Demo USDC (dev chain only) and swaps dUSDC to BNB on the local pool.
   record. If the keeper is offline, the sheet's "Declare abandoned" button (anyone can press it) is the fallback.
 - `scripts/dev-demo.sh use <launcher>` points the scripted scenes (`trade`, `slide`, `poke`, `advance <s>`, ...) at a
   covenant you created in the web app; `scripts/dev-demo.sh live` seeds another running covenant.
+- The Four.meme path (Covenant Lite, rules 1 and 4 as an OpenFour tax vault template): on the fork, `dev-up.sh`
+  deploys `FourLiteLauncher`, a local stand-in for Four.meme's token creation (a real Four.meme token needs Four.meme's
+  backend signature). One transaction deploys a tax token, clones the live ForwardVault implementation onto the Lite
+  template and seeds a PancakeSwap pool; founder tax then flows token -> ForwardVault (6% royalty to the template
+  author) -> Lite vault. The seed adds Forge Agent (taxed, tapped, abandoned after 7 silent days, redeemed) and Anvil
+  Agent (active). `/app/create?venue=fourmeme` shows the four fields and the exact ForwardVault bytes (also
+  `GET /api/fourmeme/encode`) and launches locally; Lite covenants appear on `/app` and at `/app/lite/<vault>`.
+  `scripts/dev-demo.sh fourmeme full|active <name> <symbol>` runs the journey by script. Mock mode skips it: OpenFour's
+  ForwardVault refuses any chain but BNB Chain and its testnet.
 - MCP investor agent: `INVESTOR_PRIVATE_KEY=<anvil #4 key> pnpm --dir server investor` lists covenants under book over
   MCP and redeems where a round is open and redemption beats the pool.
 - Wallets: Privy on the Privy-allowed origins, or "Use a browser wallet instead" -> "Account #n", anvil's public
