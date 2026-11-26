@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "computedFromRealData": true,
-  "generatedAt": "2026-11-26T02:08:26.126Z",
+  "generatedAt": "2026-11-26T02:15:31.515Z",
   "source": {
-    "sample": "GeckoTerminal /networks/bsc/dexes/pancakeswap_v2/pools (sort h24_tx_count_desc and h24_volume_usd_desc, pages 1-10), WBNB-quoted pools created inside the age window",
+    "sample": "GeckoTerminal pool listings for BNB Chain: /dexes/pancakeswap_v2/pools (sort h24_tx_count_desc, h24_volume_usd_desc), /pools (sort h24_tx_count_desc) and /trending_pools, pages 1-10 each; WBNB-quoted pools created inside the age window",
     "candles": "GeckoTerminal /networks/bsc/pools/{pool}/ohlcv/day?currency=token&token=base (price in WBNB per token)",
     "notes": [
       "No CoinMarketCap API key was available, so this run uses GeckoTerminal as the stated fallback (the keyless CMC /public-api route answered with an anonymous-access limit).",
@@ -18,51 +18,51 @@
     "priceProxy": "daily (open + high + low + close) / 4 in BNB, as a stand-in for the time-weighted pool price"
   },
   "sample": {
-    "requested": 80,
-    "withCandles": 22,
+    "requested": 150,
+    "withCandles": 29,
     "minDays": 14,
     "windowStart": "2026-06-08T08:01:45.000Z",
     "windowEnd": "2026-11-08T08:36:23.000Z"
   },
   "headline": {
-    "text": "4 of 22 recent BNB Chain launches (18.2%) would have opened a Covenant exit round, a median 19 days after launch, with 73% of the raise still in the treasury for holders.",
+    "text": "5 of 29 actively traded BNB Chain launches (17.2%) would have opened a Covenant exit round, a median 15 days after launch, with 73% of the raise still in the treasury for holders.",
     "rule": "decay",
-    "value": 18.2,
+    "value": 17.2,
     "reason": null
   },
   "variants": [
     {
       "rule": "reset",
       "description": "Original rule: 3 consecutive days below the floor; one day at or above resets the streak to zero.",
-      "triggered": 4,
-      "triggeredShare": 0.18181818181818182,
-      "medianDaysToTrigger": 18.5,
-      "p25DaysToTrigger": 12.75,
-      "p75DaysToTrigger": 23.25,
-      "medianRedeemableShareOfRaise": 0.7313637808733984,
-      "medianRedeemVsMarket": 1.059508652636481
+      "triggered": 5,
+      "triggeredShare": 0.1724137931034483,
+      "medianDaysToTrigger": 15,
+      "p25DaysToTrigger": 11,
+      "p75DaysToTrigger": 22,
+      "medianRedeemableShareOfRaise": 0.7348469228349535,
+      "medianRedeemVsMarket": 1.025736635393311
     },
     {
       "rule": "decay",
       "description": "Fixed rule (decay): a day below adds one, a day at or above subtracts one instead of resetting; opens at 3.",
-      "triggered": 4,
-      "triggeredShare": 0.18181818181818182,
-      "medianDaysToTrigger": 18.5,
-      "p25DaysToTrigger": 12.75,
-      "p75DaysToTrigger": 23.25,
-      "medianRedeemableShareOfRaise": 0.7313637808733984,
-      "medianRedeemVsMarket": 1.059508652636481
+      "triggered": 5,
+      "triggeredShare": 0.1724137931034483,
+      "medianDaysToTrigger": 15,
+      "p25DaysToTrigger": 11,
+      "p75DaysToTrigger": 22,
+      "medianRedeemableShareOfRaise": 0.7348469228349535,
+      "medianRedeemVsMarket": 1.025736635393311
     },
     {
       "rule": "twap72",
       "description": "Fixed rule (72h average): the 3-day average price is below the floor.",
-      "triggered": 4,
-      "triggeredShare": 0.18181818181818182,
-      "medianDaysToTrigger": 17.5,
-      "p25DaysToTrigger": 11.75,
-      "p75DaysToTrigger": 22.25,
-      "medianRedeemableShareOfRaise": 0.7323596492171083,
-      "medianRedeemVsMarket": 1.019034903984612
+      "triggered": 5,
+      "triggeredShare": 0.1724137931034483,
+      "medianDaysToTrigger": 14,
+      "p25DaysToTrigger": 10,
+      "p75DaysToTrigger": 21,
+      "medianRedeemableShareOfRaise": 0.7358475340315458,
+      "medianRedeemVsMarket": 1.0150910962146042
     }
   ],
   "tokens": [
@@ -74,7 +74,7 @@
       "days": 114,
       "openPrice": 3.2519090133129e-7,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 17.805370706536184,
+      "lastPriceShareOfOpen": 17.850442616586548,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -89,7 +89,7 @@
       "days": 25,
       "openPrice": 8.22409013312901e-8,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 265.4061813222737,
+      "lastPriceShareOfOpen": 265.420170766911,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -104,7 +104,7 @@
       "days": 75,
       "openPrice": 3.7019090133129e-7,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 51.224961653460205,
+      "lastPriceShareOfOpen": 51.50687712143547,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -119,7 +119,7 @@
       "days": 139,
       "openPrice": 0.0000350154162829032,
       "minPriceShareOfOpen": 0.9082589970486663,
-      "lastPriceShareOfOpen": 1.2192613708937445,
+      "lastPriceShareOfOpen": 1.218333077945873,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -134,7 +134,7 @@
       "days": 21,
       "openPrice": 7.0269090133129e-7,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 11.601211158941538,
+      "lastPriceShareOfOpen": 11.611537587259626,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -149,7 +149,7 @@
       "days": 142,
       "openPrice": 2.0058125313283198e-10,
       "minPriceShareOfOpen": 0.9977056201496847,
-      "lastPriceShareOfOpen": 17978.912231144728,
+      "lastPriceShareOfOpen": 17980.066081040644,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -164,7 +164,7 @@
       "days": 91,
       "openPrice": 0.0000108441149138788,
       "minPriceShareOfOpen": 0.9955362037975318,
-      "lastPriceShareOfOpen": 4.5905451585944315,
+      "lastPriceShareOfOpen": 4.553882013822067,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -179,7 +179,7 @@
       "days": 19,
       "openPrice": 0.000004619902005012529,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 716.7696778766195,
+      "lastPriceShareOfOpen": 718.0599226080171,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -194,7 +194,7 @@
       "days": 86,
       "openPrice": 0.07716806186339009,
       "minPriceShareOfOpen": 0.0911966409359558,
-      "lastPriceShareOfOpen": 1.420076163863082,
+      "lastPriceShareOfOpen": 1.401210700082312,
       "triggers": {
         "reset": {
           "day": 22,
@@ -221,7 +221,7 @@
       "days": 74,
       "openPrice": 0.00734539001399337,
       "minPriceShareOfOpen": 1.7152245901666932e-10,
-      "lastPriceShareOfOpen": 0.7471978535950172,
+      "lastPriceShareOfOpen": 0.7509229607701915,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -236,7 +236,7 @@
       "days": 25,
       "openPrice": 6.783566177348129e-10,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 4.558422153661224,
+      "lastPriceShareOfOpen": 4.537156879004555,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -251,7 +251,7 @@
       "days": 104,
       "openPrice": 0.059018285753446,
       "minPriceShareOfOpen": 0.00003586897171429714,
-      "lastPriceShareOfOpen": 0.9647888220673885,
+      "lastPriceShareOfOpen": 0.9632233896828023,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -266,7 +266,7 @@
       "days": 36,
       "openPrice": 1.25000626566416e-7,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 21.65742783599481,
+      "lastPriceShareOfOpen": 22.006148692743544,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -281,7 +281,7 @@
       "days": 30,
       "openPrice": 6.03691498282946e-8,
       "minPriceShareOfOpen": 0.1889838015399892,
-      "lastPriceShareOfOpen": 3.0847780295575813,
+      "lastPriceShareOfOpen": 3.062651346331906,
       "triggers": {
         "reset": {
           "day": 15,
@@ -308,7 +308,7 @@
       "days": 171,
       "openPrice": 0.000422116290290363,
       "minPriceShareOfOpen": 0.30154734483968343,
-      "lastPriceShareOfOpen": 0.9669440840938909,
+      "lastPriceShareOfOpen": 0.959534962264175,
       "triggers": {
         "reset": {
           "day": 6,
@@ -335,22 +335,7 @@
       "days": 57,
       "openPrice": 8.35409013312901e-8,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 162.72393732527578,
-      "triggers": {
-        "reset": null,
-        "decay": null,
-        "twap72": null
-      }
-    },
-    {
-      "token": "0x2b1d6b8475d542d3e1c826d0ff22ea5c2cb57777",
-      "pair": "0x61d049cad25d09b92194a2e8278aa2388a625f91",
-      "symbol": "WHALE",
-      "createdAt": 1794058041,
-      "days": 20,
-      "openPrice": 1.3104042727029e-7,
-      "minPriceShareOfOpen": 0.9263964804688732,
-      "lastPriceShareOfOpen": 1.0556437867962996,
+      "lastPriceShareOfOpen": 162.72659200939898,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -392,7 +377,22 @@
       "days": 81,
       "openPrice": 1.64751879699248e-7,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 73.44783353821627,
+      "lastPriceShareOfOpen": 73.47554424787515,
+      "triggers": {
+        "reset": null,
+        "decay": null,
+        "twap72": null
+      }
+    },
+    {
+      "token": "0x2b1d6b8475d542d3e1c826d0ff22ea5c2cb57777",
+      "pair": "0x61d049cad25d09b92194a2e8278aa2388a625f91",
+      "symbol": "WHALE",
+      "createdAt": 1794058041,
+      "days": 20,
+      "openPrice": 1.3104042727029e-7,
+      "minPriceShareOfOpen": 0.9263964804688732,
+      "lastPriceShareOfOpen": 1.0559385667040855,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -407,7 +407,7 @@
       "days": 74,
       "openPrice": 0.000414670506564023,
       "minPriceShareOfOpen": 0.9315830006334035,
-      "lastPriceShareOfOpen": 3.967631595147243,
+      "lastPriceShareOfOpen": 3.967643586320889,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -422,7 +422,7 @@
       "days": 88,
       "openPrice": 6.708300721772679e-8,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 20.08975668124182,
+      "lastPriceShareOfOpen": 20.05077892773796,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -437,7 +437,124 @@
       "days": 158,
       "openPrice": 7.960416925323059e-8,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 474.85656095661125,
+      "lastPriceShareOfOpen": 471.8935360505681,
+      "triggers": {
+        "reset": null,
+        "decay": null,
+        "twap72": null
+      }
+    },
+    {
+      "token": "0x9b8e987e6fec8cf1380c4dca7071e2c7853aeea1",
+      "pair": "0x02eda8dbc97a0c9adfbbfab589430d76a7c7f5b6",
+      "symbol": "FXIon",
+      "createdAt": 1789186777,
+      "days": 67,
+      "openPrice": 0.0475714899509748,
+      "minPriceShareOfOpen": 0.0000036962674404787245,
+      "lastPriceShareOfOpen": 1.1939668801486238,
+      "triggers": {
+        "reset": null,
+        "decay": null,
+        "twap72": null
+      }
+    },
+    {
+      "token": "0x4902c5ebc598265ed2212b559b042de8a5eeec3f",
+      "pair": "0xfc58462502b7c47f166292df6e6b11e1ae41f314",
+      "symbol": "B13B",
+      "createdAt": 1789538288,
+      "days": 72,
+      "openPrice": 0.006755487514488659,
+      "minPriceShareOfOpen": 0.7624221713252959,
+      "lastPriceShareOfOpen": 0.8128920240637726,
+      "triggers": {
+        "reset": null,
+        "decay": null,
+        "twap72": null
+      }
+    },
+    {
+      "token": "0x205812cdbed920aff76c6580abd681a46d11efc7",
+      "pair": "0x47bc06722295ac316a569eef87ac32faa455f441",
+      "symbol": "QQQB",
+      "createdAt": 1784039861,
+      "days": 136,
+      "openPrice": 1.23793432580251,
+      "minPriceShareOfOpen": 0.7370184588706353,
+      "lastPriceShareOfOpen": 0.9252671178370336,
+      "triggers": {
+        "reset": null,
+        "decay": null,
+        "twap72": null
+      }
+    },
+    {
+      "token": "0xbe9d156892e55e7154bcd3cb0fea677f9d3103e1",
+      "pair": "0x66faad27cf481f82d0089ec8156b3aa3636010c7",
+      "symbol": "SPCXB",
+      "createdAt": 1785595204,
+      "days": 118,
+      "openPrice": 0.18798208209795597,
+      "minPriceShareOfOpen": 0.7626247919759891,
+      "lastPriceShareOfOpen": 1.2297932719738809,
+      "triggers": {
+        "reset": null,
+        "decay": null,
+        "twap72": null
+      }
+    },
+    {
+      "token": "0x4f0ed1f48beaa4797a62202a21804cadc2170d6b",
+      "pair": "0x3079ae2e87dc2e0c75c9b98d65bc622ad10f326c",
+      "symbol": "SHOPINX",
+      "createdAt": 1792678085,
+      "days": 36,
+      "openPrice": 0.0000599192423081167,
+      "minPriceShareOfOpen": 0.05918560979390152,
+      "lastPriceShareOfOpen": 0.7899499815525624,
+      "triggers": {
+        "reset": {
+          "day": 11,
+          "price": 0.000034528773208788824,
+          "floor": 0.00003541742765544175
+        },
+        "decay": {
+          "day": 11,
+          "price": 0.000034528773208788824,
+          "floor": 0.00003541742765544175
+        },
+        "twap72": {
+          "day": 10,
+          "price": 0.00003501067695346213,
+          "floor": 0.00003546565412760253
+        }
+      }
+    },
+    {
+      "token": "0x4902c5ebc598265ed2212b559b042de8a5eeec3f",
+      "pair": "0x320e8096e5e7a46e43446141a5b15d801fc596f5",
+      "symbol": "B13B",
+      "createdAt": 1789388212,
+      "days": 74,
+      "openPrice": 0.007667148300578569,
+      "minPriceShareOfOpen": 0.6709198866203391,
+      "lastPriceShareOfOpen": 0.7191390092251597,
+      "triggers": {
+        "reset": null,
+        "decay": null,
+        "twap72": null
+      }
+    },
+    {
+      "token": "0x02fca66c1d1afb4e2a7884261eb00f63598a7436",
+      "pair": "0xdebed59510885e29ce1d3da0e5412d49d21f0354",
+      "symbol": "NVDAB",
+      "createdAt": 1785667742,
+      "days": 117,
+      "openPrice": 0.344961975974897,
+      "minPriceShareOfOpen": 0.6643973898232928,
+      "lastPriceShareOfOpen": 0.792620324120758,
       "triggers": {
         "reset": null,
         "decay": null,
