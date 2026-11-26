@@ -5,7 +5,6 @@ import {Initializable} from "@openzeppelin-contracts-upgradeable/proxy/utils/Ini
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
-import {LibString} from "solady/utils/LibString.sol";
 
 import {DirectLaunchVaultBase} from "src/flap/DirectLaunchVaultBase.sol";
 import {IStrategy} from "src/flap/IStrategy.sol";
@@ -18,12 +17,12 @@ import {
     Profile,
     Observation,
     VaultEnv,
+    Tranche,
     ICovenantLauncher,
     ICovenantRateSource,
     CovenantMath
 } from "src/vault/CovenantTypes.sol";
 import {CovenantVaultDisplay} from "src/vault/CovenantVaultDisplay.sol";
-import {IERC8004Reputation} from "src/agent/IERC8004.sol";
 
 /// @title CovenantVault
 /// @notice Holds a covenant's treasury and reserved tokens and runs its five rules.
@@ -68,13 +67,6 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     uint8 internal constant WIND_DOWN_TEAM = 1;
     uint8 internal constant WIND_DOWN_GUARDIAN = 2;
     uint8 internal constant WIND_DOWN_ABANDONED = 3;
-
-    struct Tranche {
-        uint128 amount;
-        uint16 multiple; // 200 = 2x the dollar sale price
-        bool unlocked;
-        uint64 progress; // strict seconds at or above the multiple
-    }
 
     struct Report {
         bytes32 hash;
@@ -423,10 +415,6 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         return freeTreasury() * WAD / r;
     }
 
-    function tapAccrued() external view returns (uint256) {
-        return owedTeam;
-    }
-
     /// @notice Most tap the cap allows per 30 days at today's treasury.
     function tapCapPer30d() public view returns (uint256) {
         return freeTreasury() * tapCapBps / BPS;
@@ -608,30 +596,23 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         if (s != State.ACTIVE && s != State.COOLDOWN) return;
         if (disclosurePaused || to <= from) return;
 
-        uint256 span = to - from;
-        uint256 rs = roundStart;
-        uint256 re = roundEnd;
-        if (re > from && rs < to) {
-            uint256 lo = rs > from ? rs : from;
-            uint256 hi = re < to ? re : to;
-            span -= hi - lo;
-        }
-        if (span > maxStep) span = maxStep;
-        if (span == 0) return;
-
-        uint256 bal = address(this).balance;
-        uint256 owed = owedTeam;
-        if (bal <= owed) return;
-        uint256 capAmt = (bal - owed) * tapCapBps * span / (BPS * PERIOD);
-
         uint256 ref = o.strict ? o.bnbUsd : freshBnbUsd();
         if (ref == 0) return;
-        uint256 usdAmt = tapUsdPer30d * WAD * span / (ref * PERIOD);
-        uint256 amt = usdAmt < capAmt ? usdAmt : capAmt;
-
-        // A stolen key reaches at most one period's cap: unclaimed tap stops growing there.
-        uint256 maxOwed = bal * tapCapBps / BPS;
-        if (owed + amt > maxOwed) amt = maxOwed > owed ? maxOwed - owed : 0;
+        uint256 owed = owedTeam;
+        uint256 amt = CovenantVaultDisplay.tapAmount(
+            CovenantVaultDisplay.TapInput({
+                from: from,
+                to: to,
+                roundStart: roundStart,
+                roundEnd: roundEnd,
+                maxStep: maxStep,
+                balance: address(this).balance,
+                owed: owed,
+                capBps: tapCapBps,
+                usdPer30d: tapUsdPer30d,
+                bnbUsd: ref
+            })
+        );
         if (amt == 0) return;
         owedTeam = owed + amt;
         emit TapAccrued(amt, owed + amt);
@@ -646,35 +627,32 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     function _stepTranches(uint256 dt, uint256 twapBnb, uint256 usdPrice) internal {
         uint256 usdSale = usdSalePrice;
         if (usdSale == 0) return;
-        uint256 bnbSale = salePriceBnb;
-        bool cliffPassed = block.timestamp >= uint256(launchedAt) + cliff;
+        uint256 mask = CovenantVaultDisplay.stepTranches(
+            _tranches,
+            dt,
+            twapBnb,
+            usdPrice,
+            usdSale,
+            salePriceBnb,
+            block.timestamp >= uint256(launchedAt) + cliff,
+            unlockWindow
+        );
+        if (mask == 0) return;
         uint256 n = _tranches.length;
         for (uint256 k; k < n; ++k) {
+            if (mask & (1 << k) == 0) continue;
             Tranche storage t = _tranches[k];
-            if (t.unlocked) continue;
-            if (usdPrice >= usdSale * t.multiple / 100 && twapBnb >= bnbSale * t.multiple / 100) {
-                t.progress += uint64(dt);
-            } else {
-                t.progress = 0;
-            }
-            if (cliffPassed && t.progress >= unlockWindow) {
-                t.unlocked = true;
-                uint256 amt = t.amount;
-                lockedTeam -= amt;
-                unlockedUnreleased += amt;
-                emit TrancheUnlocked(k, amt, t.multiple);
-                _recordOutcome(int128(uint128(t.multiple)), "unlock");
-            }
+            uint256 amt = t.amount;
+            lockedTeam -= amt;
+            unlockedUnreleased += amt;
+            emit TrancheUnlocked(k, amt, t.multiple);
+            _recordOutcome(int128(uint128(t.multiple)), "unlock");
         }
     }
 
     /// @dev H-1: a trusted observation with no verified rate (or a shallow pool) resets every locked tranche.
     function _resetTranches() internal {
-        uint256 n = _tranches.length;
-        for (uint256 k; k < n; ++k) {
-            Tranche storage t = _tranches[k];
-            if (!t.unlocked && t.progress != 0) t.progress = 0;
-        }
+        CovenantVaultDisplay.resetTranches(_tranches);
     }
 
     /// @dev Records a verified BNB/USD rate (1e18 USD per BNB) and, M-2, the dollar sale price: set by the first
@@ -768,10 +746,9 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     /// @return amount tokens (18 decimals) sent to the dead address by this call
     function burnSaleDust() external nonReentrant returns (uint256 amount) {
         if (!distributionInitialized) revert NotLive();
-        uint256 c = ICovenantLauncher(launcher).committed();
-        uint256 owed = c == 0 ? 0 : _divUp(saleAmount * (c - claimedCommitments), c);
-        uint256 left = saleAmount - saleClaimed - saleDustBurned;
-        uint256 dust = left > owed ? left - owed : 0;
+        uint256 dust = CovenantVaultDisplay.saleDust(
+            saleAmount, saleClaimed + saleDustBurned, ICovenantLauncher(launcher).committed(), claimedCommitments
+        );
         uint256 stray = IERC20(taxToken).balanceOf(address(this));
         amount = dust + stray;
         if (amount == 0) revert NothingToClaim();
@@ -800,9 +777,38 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     // Team (or Flap's Guardian, per Flap's spec; Guardian calls never count as a heartbeat)
     // ═════════════════════════════════════════════════════════════════════════
 
-    modifier onlyTeam() {
-        if (msg.sender != teamWallet && msg.sender != _getGuardian()) revert NotTeam();
+    /// @dev Solady's guard, same slot and semantics, called as functions so each guarded function does not carry its
+    ///      own inlined copy (the vault sits close to the EIP-170 size limit).
+    modifier nonReentrant() override {
+        _guardEnter();
         _;
+        _guardExit();
+    }
+
+    function _guardEnter() internal {
+        assembly {
+            if eq(sload(0x929eee149b4bd21268), address()) {
+                mstore(0x00, 0xab143c06) // `Reentrancy()`
+                revert(0x1c, 0x04)
+            }
+            sstore(0x929eee149b4bd21268, address())
+        }
+    }
+
+    function _guardExit() internal {
+        assembly {
+            sstore(0x929eee149b4bd21268, codesize())
+        }
+    }
+
+    modifier onlyTeam() {
+        _onlyTeam();
+        _;
+    }
+
+    /// @dev One copy of the check instead of one per function (the vault sits close to the EIP-170 size limit).
+    function _onlyTeam() internal view {
+        if (msg.sender != teamWallet && msg.sender != _getGuardian()) revert NotTeam();
     }
 
     /// @notice Pay the accrued tap to the team wallet fixed at creation. A heartbeat.
@@ -927,25 +933,16 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         address rep = _env.reputation;
         if (id == 0 || rep == address(0) || rep.code.length == 0) return;
         if (gasleft() < FEEDBACK_GAS + FEEDBACK_GAS / 63 + 30_000) revert InsufficientGas();
-        string memory uri =
-            string.concat("covenant:", LibString.toString(block.chainid), ":", LibString.toHexString(address(this)));
         bytes32 h =
             keccak256(abi.encode(address(this), outcome, address(this).balance, redeemableSupply(), block.timestamp));
-        try IERC8004Reputation(rep).giveFeedback{gas: FEEDBACK_GAS}(id, value, 0, "covenant", outcome, "", uri, h) {
-            ++outcomesRecorded;
-            emit OutcomeRecorded(id, value, outcome, true);
-        } catch {
-            emit OutcomeRecorded(id, value, outcome, false);
-        }
+        bool ok = CovenantVaultDisplay.giveFeedback(rep, id, value, outcome, h, FEEDBACK_GAS);
+        if (ok) ++outcomesRecorded;
+        emit OutcomeRecorded(id, value, outcome, ok);
     }
 
     // ═════════════════════════════════════════════════════════════════════════
     // Flap disclosure surface
     // ═════════════════════════════════════════════════════════════════════════
-
-    function _divUp(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a == 0 ? 0 : (a - 1) / b + 1;
-    }
 
     /// @inheritdoc DirectLaunchVaultBase
     function description() public view override returns (string memory) {

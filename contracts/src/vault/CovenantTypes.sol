@@ -79,6 +79,14 @@ struct Profile {
     uint32 launchRetryWindow;
 }
 
+/// @notice One team tranche in the vault (storage).
+struct Tranche {
+    uint128 amount;
+    uint16 multiple; // 200 = 2x the sale price
+    bool unlocked;
+    uint64 progress; // strict seconds at or above the multiple
+}
+
 /// @notice One observation the oracle sends to a vault.
 /// @dev Exit-rule fixes: `trusted` only says the pool TWAP is valid (on-chain numbers only). The exit streak runs on
 ///      every trusted observation, with or without Atlas and whatever the pool depth. `strict` additionally needs a

@@ -3,7 +3,8 @@ pragma solidity 0.8.26;
 
 import {LibString} from "solady/utils/LibString.sol";
 import {VaultUISchema, VaultMethodSchema, FieldDescriptor, ApproveAction} from "src/flap/IVaultSchemas.sol";
-import {State} from "src/vault/CovenantTypes.sol";
+import {State, Tranche} from "src/vault/CovenantTypes.sol";
+import {IERC8004Reputation} from "src/agent/IERC8004.sol";
 
 /// @notice Flap's two mandatory vault surfaces, kept out of the vault's own code: the disclosure string
 ///         `description()` and the `vaultUISchema()` Flap.sh renders its interaction panel from.
@@ -121,6 +122,118 @@ library CovenantVaultDisplay {
     // ─────────────────────────────────────────────────────────────────────────
     // vaultUISchema
     // ─────────────────────────────────────────────────────────────────────────
+
+    struct TapInput {
+        uint256 from; // the vault's last accrual time, s
+        uint256 to; // now, s
+        uint256 roundStart; // the latest exit round, s
+        uint256 roundEnd;
+        uint256 maxStep; // the most time one observation may add, s
+        uint256 balance; // the vault's BNB, wei
+        uint256 owed; // tap accrued and unclaimed, wei
+        uint256 capBps; // tap cap, bps of the free treasury per 30 days
+        uint256 usdPer30d; // dollar budget, USD 1e18 per 30 days
+        uint256 bnbUsd; // a fresh verified BNB/USD, USD 1e18 per BNB (nonzero)
+    }
+
+    /// @notice Rule 1: the tap one observation accrues, in wei. Time since the last accrual, less the overlap with
+    ///         the latest exit round, capped at `maxStep`; rate min(dollar budget at BNB/USD, capBps of the free
+    ///         treasury) per 30 days; the unclaimed balance never exceeds one period's cap.
+    function tapAmount(TapInput memory i) public pure returns (uint256 amt) {
+        if (i.to <= i.from) return 0;
+        uint256 span = i.to - i.from;
+        if (i.roundEnd > i.from && i.roundStart < i.to) {
+            uint256 lo = i.roundStart > i.from ? i.roundStart : i.from;
+            uint256 hi = i.roundEnd < i.to ? i.roundEnd : i.to;
+            span -= hi - lo;
+        }
+        if (span > i.maxStep) span = i.maxStep;
+        if (span == 0 || i.balance <= i.owed) return 0;
+        uint256 capAmt = (i.balance - i.owed) * i.capBps * span / (10_000 * 30 days);
+        uint256 usdAmt = i.usdPer30d * 1e18 * span / (i.bnbUsd * 30 days);
+        amt = usdAmt < capAmt ? usdAmt : capAmt;
+        // A stolen key reaches at most one period's cap: unclaimed tap stops growing there.
+        uint256 maxOwed = i.balance * i.capBps / 10_000;
+        if (i.owed + amt > maxOwed) amt = maxOwed > i.owed ? maxOwed - i.owed : 0;
+    }
+
+    /// @notice Rule 2 on one strict observation: each locked tranche adds `dt` while the price holds its multiple
+    ///         in dollars (`usdPrice` against `usdSale`) and in BNB (`twapBnb` against `bnbSale`), else resets; a
+    ///         tranche whose counter reaches `window` after the cliff unlocks. Prices 1e18, times in seconds.
+    /// @return mask bit k set for each tranche this call unlocked (the vault does the accounting and the records)
+    function stepTranches(
+        Tranche[] storage ts,
+        uint256 dt,
+        uint256 twapBnb,
+        uint256 usdPrice,
+        uint256 usdSale,
+        uint256 bnbSale,
+        bool cliffPassed,
+        uint256 window
+    ) public returns (uint256 mask) {
+        uint256 n = ts.length;
+        for (uint256 k; k < n; ++k) {
+            Tranche storage t = ts[k];
+            if (t.unlocked) continue;
+            if (usdPrice >= usdSale * t.multiple / 100 && twapBnb >= bnbSale * t.multiple / 100) {
+                t.progress += uint64(dt);
+            } else {
+                t.progress = 0;
+            }
+            if (cliffPassed && t.progress >= window) {
+                t.unlocked = true;
+                mask |= 1 << k;
+            }
+        }
+    }
+
+    /// @notice H-1: a trusted observation without a verified rate resets every locked tranche's counter.
+    function resetTranches(Tranche[] storage ts) public {
+        uint256 n = ts.length;
+        for (uint256 k; k < n; ++k) {
+            Tranche storage t = ts[k];
+            if (!t.unlocked && t.progress != 0) t.progress = 0;
+        }
+    }
+
+    /// @notice The vault's ERC-8004 feedback call (runs in the vault's context: a linked library is delegatecalled), in
+    ///         try/catch so a broken registry never blocks a rule. Tag "covenant", URI covenant:<chainId>:<vault>.
+    /// @return ok whether the registry accepted it
+    function giveFeedback(address rep, uint256 id, int128 value, string memory outcome, bytes32 h, uint256 gas)
+        public
+        returns (bool ok)
+    {
+        string memory uri = outcomeUri(address(this));
+        try IERC8004Reputation(rep).giveFeedback{gas: gas}(id, value, 0, "covenant", outcome, "", uri, h) {
+            ok = true;
+        } catch {}
+    }
+
+    /// @notice Sale tokens no claim can reach: what is left of A beyond an upper bound on the allocations still
+    ///         unclaimed, sum(a_i) <= A * (C - claimed commitments) / C, rounded up. Tokens 18 decimals, BNB in wei.
+    /// @param saleAmount A
+    /// @param gone tokens already claimed or burned
+    /// @param committed C
+    /// @param claimedCommitments the commitments of every account that has claimed
+    function saleDust(uint256 saleAmount, uint256 gone, uint256 committed, uint256 claimedCommitments)
+        public
+        pure
+        returns (uint256)
+    {
+        uint256 owed;
+        if (committed > 0) {
+            uint256 x = saleAmount * (committed - claimedCommitments);
+            owed = x == 0 ? 0 : (x - 1) / committed + 1;
+        }
+        uint256 left = saleAmount - gone;
+        return left > owed ? left - owed : 0;
+    }
+
+    /// @notice The feedback URI a vault writes to the issuer's ERC-8004 record: covenant:<chainId>:<vault>.
+    /// @param vault the vault writing the record
+    function outcomeUri(address vault) public view returns (string memory) {
+        return string.concat("covenant:", LibString.toString(block.chainid), ":", LibString.toHexString(vault));
+    }
 
     function schema() public pure returns (VaultUISchema memory s) {
         s.vaultType = "CovenantVault";

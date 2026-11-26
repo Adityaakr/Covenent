@@ -22,8 +22,8 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
-      - name: Build
-        run: forge build
+      - name: Build, and refuse contracts over the EIP-170 size limit (tests and script simulations do not enforce it)
+        run: forge build --sizes
       - name: Test (unit, invariant, regression; fork tests when RPC secrets exist)
         run: forge test
         env:

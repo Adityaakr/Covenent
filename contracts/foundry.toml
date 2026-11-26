@@ -16,6 +16,10 @@ fs_permissions = [
     { access = "read", path = "./out" },
     { access = "read-write", path = "./cache" },
 ]
+# CovenantVault sits near the EIP-170 runtime limit (24,576 bytes): compile it optimized for size (runs = 1), the rest
+# at runs = 200. `forge build --sizes` shows the margin.
+additional_compiler_profiles = [{ name = "size", optimizer_runs = 1 }]
+compilation_restrictions = [{ paths = "src/vault/CovenantVault.sol", max_optimizer_runs = 1 }]
 gas_reports = ["CovenantLauncherFactory", "CovenantLauncher", "CovenantVaultFactory", "CovenantVault", "CovenantOracle", "CovenantLiteVault", "CovenantLens"]
 
 [fuzz]
