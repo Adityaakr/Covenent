@@ -24,6 +24,7 @@ export interface Terms {
   saleDuration: number; // seconds
   buyTaxBps: number;
   sellTaxBps: number;
+  taxDuration: number; // seconds the trading tax runs after launch; then the treasury grows only from issuer revenue
   teamWallet: Address;
   tapUsdPer30d: number;
   tapCapBps: number;
@@ -175,5 +176,9 @@ export interface CovenantView {
   bands: Band[];
   events: FeedEvent[];
   position?: Position;
+  /** when Flap's tax token stops charging tax (launch + taxDuration), unix seconds; null before launch or unknown */
+  taxEndsAt?: number | null;
+  /** who ended the covenant, from the vault's windDownCause/windDownBy (null when it has not ended or the vault predates it) */
+  windDown?: { cause: "team" | "guardian" | "abandoned"; by: Address } | null;
   now: number; // the clock the view was computed at (chain time for live, scene time for mock)
 }

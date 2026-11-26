@@ -16,6 +16,12 @@ const ERC20: Abi = [
   { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
   { type: "function", name: "name", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
 ];
+/** Flap's tax token: when its tax stops (launch time + taxDuration). */
+const TAX_TOKEN: Abi = [
+  { type: "function", name: "taxExpirationTime", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+];
+/** CovenantVault.windDownCause: 1 team, 2 Flap's Guardian, 3 declared abandoned (0 = not ended). */
+const WIND_DOWN_CAUSE: Record<number, "team" | "guardian" | "abandoned"> = { 1: "team", 2: "guardian", 3: "abandoned" };
 const PAIR: Abi = [
   { type: "function", name: "getReserves", stateMutability: "view", inputs: [], outputs: [{ type: "uint112" }, { type: "uint112" }, { type: "uint32" }] },
   { type: "function", name: "token0", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
@@ -62,6 +68,7 @@ function termsFrom(raw: unknown): Terms {
     saleDuration: num(g("saleDuration")) || DEFAULT_TERMS.saleDuration,
     buyTaxBps: num(g("buyTaxBps")),
     sellTaxBps: num(g("sellTaxBps")),
+    taxDuration: num(g("taxDuration")) || DEFAULT_TERMS.taxDuration,
     teamWallet: (g("teamWallet") as Address) ?? DEFAULT_TERMS.teamWallet,
     tapUsdPer30d: g("tapUsdPer30d") !== undefined ? eth(g("tapUsdPer30d")) : DEFAULT_TERMS.tapUsdPer30d,
     tapCapBps: num(g("tapCapBps")) || DEFAULT_TERMS.tapCapBps,
@@ -117,6 +124,12 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   const treasuryP = vault ? client.getBalance({ address: vault }) : Promise.resolve(0n);
   const tokenBalsP = Promise.all([call(ctx, token, ERC20, "balanceOf", [DEAD]), account ? call(ctx, token, ERC20, "balanceOf", [account]) : undefined]);
   const tapCapP = vault ? call<bigint>(ctx, vault, V, "tapCapPer30d") : Promise.resolve(undefined);
+  // when Flap's token stops taxing, and who ended the covenant (vaults from before the audit fixes have no windDown*)
+  const auditP = Promise.all([
+    call(ctx, token, TAX_TOKEN, "taxExpirationTime"),
+    call(ctx, vault, V, "windDownCause"),
+    call<Address>(ctx, vault, V, "windDownBy"),
+  ]);
   const trancheP = Promise.all(terms.trancheBps.map((_, k) => call(ctx, vault, V, "trancheProgress", [BigInt(k)])));
   const positionP = account ? Promise.all([
     call(ctx, launcher, L, pickFn(L, "contributions", "contributionOf", "committedOf"), [account]),
@@ -147,9 +160,10 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     const s = num(vStateRaw);
     state = (s < STATES.length && STATES[s] && s >= 2 ? STATES[s] : VAULT_ONLY[s]) ?? state;
   }
-  const [treasuryRaw, [deadRaw, balRaw], earlyReserves, tapCapRaw, trancheRaw, positionRaw, logsEarly] = await Promise.all([treasuryP, tokenBalsP, reservesP, tapCapP, trancheP, positionP, logsP]);
+  const [treasuryRaw, [deadRaw, balRaw], earlyReserves, tapCapRaw, trancheRaw, positionRaw, logsEarly, [taxEndRaw, causeRaw, byRaw]] = await Promise.all([treasuryP, tokenBalsP, reservesP, tapCapP, trancheP, positionP, logsP, auditP]);
   const treasury = vault ? eth(treasuryRaw) : 0;
   const pair = zero(pairRaw) ? launcherPool ?? addressOf(d, "pair", "pool") : pairRaw;
+  const windDown = WIND_DOWN_CAUSE[num(causeRaw)] && byRaw ? { cause: WIND_DOWN_CAUSE[num(causeRaw)]!, by: byRaw } : null;
   const deadTokens = eth(deadRaw);
   const lockedTeam = lockedRaw !== undefined ? eth(lockedRaw) : sp.E;
   const owedTeam = eth(owedRaw);
@@ -280,6 +294,8 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     bands: [],
     events,
     position,
+    taxEndsAt: taxEndRaw !== undefined && num(taxEndRaw) > 0 ? num(taxEndRaw) : null,
+    windDown,
     now,
   };
   return applyLens(ctx, view);

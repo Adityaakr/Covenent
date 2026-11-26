@@ -2,20 +2,20 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "wagmi";
 import { FourmemeCreate } from "@/components/app/lite";
 import { Icon, type IconName } from "@/components/app/icons";
 import { BnbUnit, Meter, Note, Segmented, TokenAvatar, cx } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
-import { agentOwner, checkTerms, createCovenantLive, createTargets, registerAgent, type FactoryKind } from "@/lib/chain/create";
+import { agentOwner, checkTerms, createCovenantLive, createTargets, flapFloor, registerAgent, type FactoryKind } from "@/lib/chain/create";
 import { chainName, networkKind } from "@/lib/chain/chains";
 import { withBnb } from "@/components/app/bnb";
 import { addressOf } from "@/lib/chain/deployment";
 import type { MineMessage } from "@/lib/chain/salt";
-import { BOUNDS, DEFAULT_TERMS, DEMO_TIMERS, FLAP } from "@/lib/covenant/defaults";
+import { BOUNDS, DEFAULT_TERMS, DEMO_TIMERS, FLAP, FLAP_TAX } from "@/lib/covenant/defaults";
 import { floorAfterMonths, runwayMonths, settleRaise, split, startingFloorRatio, tapPer30d } from "@/lib/covenant/math";
-import { DAY, span } from "@/lib/covenant/time";
+import { DAY, longSpan, span } from "@/lib/covenant/time";
 import type { Address, Terms } from "@/lib/covenant/types";
 import { useSource } from "@/lib/data/hooks";
 import { bnb, bps, multiple, pct, price, tokens, usd } from "@/lib/format";
@@ -92,6 +92,16 @@ function CovenantCreate() {
   const atCap = settleRaise(t.cap, t.minRaise, t.cap, sp);
   const ratio = startingFloorRatio(t.saleBps, t.poolBps);
   const budget = tapPer30d(t.tapUsdPer30d, 600, atCap.T0, t.tapCapBps);
+  // Flap's liquidity floor for this split, read live from the Portal through the factory (minRaiseFor): the pool seed
+  // of the minimum raise must clear it, or the factory refuses the terms. Production needs the graduation floor.
+  const floorQ = useQuery({
+    queryKey: ["flap-floor", src.chainId, factory, t.totalSupply, t.saleBps, t.poolBps],
+    enabled: src.mode === "live" && Boolean(src.client),
+    staleTime: 60_000,
+    queryFn: () => flapFloor(src.client!, createTargets(src.payload, factory), t.totalSupply, t.saleBps, t.poolBps),
+  });
+  const floor = floorQ.data ?? null;
+  const taxYears = t.taxDuration / (365 * DAY);
 
   /** Each problem with the step that fixes it. */
   const issues = useMemo(() => {
@@ -109,11 +119,12 @@ function CovenantCreate() {
     if (t.exitFeeBps > BOUNDS.exitFeeBpsMax) p.push([3, "Exit fee must be at most 3%"]);
     if (!demo && (t.heartbeat < BOUNDS.heartbeatMin || t.heartbeat > BOUNDS.heartbeatMax)) p.push([3, "Heartbeat must be 14 to 90 days"]);
     if (!(t.minRaise > 0) || t.cap < t.minRaise) p.push([1, "The cap must be at least the minimum"]);
-    if ((t.minRaise * t.poolBps) / t.saleBps < 1) p.push([1, "Pool seed at the minimum is under Flap's creation floor (about 1 BNB here)"]);
+    if (floor && t.minRaise < floor.minRaise) p.push([1, `At a ${bps(t.poolBps)} pool, Flap's ${floor.graduation ? "graduation" : "launch"} floor needs a minimum raise of at least ${bnb(floor.minRaise, 2)} BNB`]);
+    if (t.taxDuration < BOUNDS.taxDurationMin || t.taxDuration > BOUNDS.taxDurationMax) p.push([3, "The tax must run from 30 days to 100 years"]);
     if (!/^0x[0-9a-fA-F]{40}$/.test(t.teamWallet)) p.push([0, "Team wallet must be an address"]);
     if (issuerKind === "agent" && !(Number(agentId) > 0)) p.push([0, "Agent id must be a registered ERC-8004 id"]);
     return p;
-  }, [t, teamBps, tranchesSum, issuerKind, agentId, demo]);
+  }, [t, teamBps, tranchesSum, issuerKind, agentId, demo, floor]);
   const problems = issues.map(([, m]) => m);
   const stepIssues = (k: number) => issues.filter(([s]) => s === k).map(([, m]) => m);
 
@@ -259,7 +270,13 @@ function CovenantCreate() {
                   <div><span className="t-xs muted w5">At the minimum</span><span className="num ink">{bnb(atMin.T0)} BNB to the vault</span><span className="t-xs muted w5 num">pool seed {bnb(atMin.qPool)} BNB</span></div>
                   <div><span className="t-xs muted w5">At the cap</span><span className="num ink">{bnb(atCap.T0)} BNB to the vault</span><span className="t-xs muted w5 num">pool seed {bnb(atCap.qPool)} BNB</span></div>
                 </div>
-                <Note tone="accent">Below the minimum, everyone is refunded in full. A launch that reverts also refunds in full.</Note>
+                {floor ? (
+                  <div className="tile row between wrap-ok" style={{ gap: 12 }}>
+                    <span className="t-s muted w5" style={{ flex: "1 1 260px" }}>Flap&apos;s {floor.graduation ? "graduation" : "launch"} floor at a <span className="num">{bps(t.poolBps)}</span> pool: a pool seed of <span className="num">{bnb(floor.minSeed, 2)}</span> BNB (<span className="num">{usd(floor.floorUsd)}</span> at Flap&apos;s <span className="num">{usd(floor.priceUsd)}</span> per BNB). {floor.graduation ? "At the graduation floor Flap marks the token graduated at launch." : "The demo factory only needs the launch floor; the token may launch without graduating."}</span>
+                    <span className="t-s ink w5 num">Minimum raise ≥ {bnb(floor.minRaise, 2)} BNB</span>
+                  </div>
+                ) : src.mode === "live" && floorQ.isFetching ? <p className="t-xs muted w5">Reading Flap&apos;s floor for this split…</p> : null}
+                <Note tone="accent">Below the minimum, everyone is refunded in full. A launch that reverts also refunds in full. The factory checks Flap&apos;s floor and its name blocklist before the raise opens, so terms Flap would refuse never collect money.</Note>
               </>
             ) : step === 2 ? (
               <>
@@ -288,7 +305,9 @@ function CovenantCreate() {
                   <Field label="Exit round" hint={demo ? "minutes" : "days, at least 3"}><Num value={t.roundLength / UNIT} onChange={(n) => set("roundLength", n * UNIT)} unit={unit} /></Field>
                   <Field label="Exit fee" hint="%, max 3, zero at wind-down"><Num value={t.exitFeeBps / 100} onChange={(n) => set("exitFeeBps", Math.round(n * 100))} unit="%" /></Field>
                   <Field label="Heartbeat" hint={demo ? "minutes" : "days, 14 to 90"}><Num value={t.heartbeat / UNIT} onChange={(n) => set("heartbeat", n * UNIT)} unit={unit} /></Field>
+                  <Field label="Trading tax runs for" hint="years after launch, 30 days to 100"><Num value={+taxYears.toFixed(4)} onChange={(n) => set("taxDuration", Math.round(n * 365 * DAY))} unit="years" /></Field>
                 </div>
+                <Note icon="coins"><b>Trading tax: {bps(t.buyTaxBps)} buy, {bps(t.sellTaxBps)} sell, for {longSpan(t.taxDuration)} after launch.</b> It is the treasury&apos;s revenue stream. Flap&apos;s tax processor sells the collected tax in chunks of about {usd(FLAP_TAX.chunkUsd)}, at most once every {FLAP_TAX.minGapSeconds} seconds, on sells into the main pool, and Flap&apos;s protocol fee takes about {bps(FLAP_TAX.protocolFeeBps)} first, so the vault receives about {bps(10_000 - FLAP_TAX.protocolFeeBps)}. When the tax ends, the treasury grows only from revenue the {issuerKind === "agent" ? "agent" : "team"} sends to the vault.</Note>
                 <Note tone="good"><b>Exit rule, as fixed after review.</b> The streak decays instead of resetting (an hour above book takes an hour off), compares on-chain numbers only, and never waits on pool depth or Atlas. Depth and Atlas guard team unlocks.</Note>
               </>
             ) : (
@@ -306,6 +325,7 @@ function CovenantCreate() {
                     ["Tap", `${usd(t.tapUsdPer30d)} / 30d, cap ${bps(t.tapCapBps)}`],
                     ["Exit", `${span(t.exitStreak)} streak, ${span(t.roundLength)} round, ${bps(t.exitFeeBps)} fee`],
                     ["Heartbeat", span(t.heartbeat)],
+                    ["Trading tax", `${bps(t.buyTaxBps)} buy · ${bps(t.sellTaxBps)} sell, for ${longSpan(t.taxDuration)}`],
                     ["Factory", src.mode === "live" ? (demo ? "Demo timers (minutes)" : "Production (days)") : "–"],
                     ["Team wallet", t.teamWallet ? `${t.teamWallet.slice(0, 8)}…${t.teamWallet.slice(-6)}` : "Connect a wallet"],
                   ] as [string, string][]).map(([k, val]) => <div key={k}><span className="t-xs muted w5">{k}</span><span className="t-s ink w5 num">{val}</span></div>)}

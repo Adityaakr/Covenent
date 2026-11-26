@@ -5,7 +5,7 @@
  * contract field by field. checkTerms is also run first as a view: a term outside the factory's profile reverts there
  * with the factory's own error instead of costing a failed transaction.
  */
-import { decodeEventLog, encodeAbiParameters, parseEther, zeroAddress, type Abi, type AbiFunction, type AbiParameter, type Hex, type PublicClient } from "viem";
+import { ContractFunctionRevertedError, decodeEventLog, encodeAbiParameters, formatEther, parseEther, zeroAddress, type Abi, type AbiFunction, type AbiParameter, type Hex, type PublicClient } from "viem";
 import type { Config } from "wagmi";
 import { simulateContract, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import type { Address, Terms } from "@/lib/covenant/types";
@@ -53,7 +53,7 @@ function termsValue(p: AbiParameter, t: Terms, salt: Hex, relayer: Address): unk
     name: t.name, symbol: t.symbol, meta: t.meta, salt,
     totalSupply: wei(t.totalSupply), saleBps: t.saleBps, poolBps: t.poolBps, trancheBps: t.trancheBps, trancheMultiple: t.trancheMultiple,
     minRaise: wei(t.minRaise), cap: wei(t.cap), saleDuration: t.saleDuration, buyTaxBps: t.buyTaxBps, sellTaxBps: t.sellTaxBps,
-    taxDuration: 30 * 86_400, teamWallet: t.teamWallet, tapUsdPer30d: wei(t.tapUsdPer30d), tapCapBps: t.tapCapBps, cliff: t.cliff,
+    taxDuration: t.taxDuration, teamWallet: t.teamWallet, tapUsdPer30d: wei(t.tapUsdPer30d), tapCapBps: t.tapCapBps, cliff: t.cliff,
     unlockWindow: t.unlockWindow, exitStreak: t.exitStreak, roundLength: t.roundLength, cooldown: t.cooldown, exitFeeBps: t.exitFeeBps,
     heartbeat: t.heartbeat, agentId: BigInt(t.agentId), reportRelayer: relayer,
   };
@@ -76,8 +76,48 @@ export async function checkTerms(client: PublicClient, tg: CreateTargets, t: Ter
     await client.readContract({ address: tg.factory, abi: tg.factoryAbi, functionName: "checkTerms", args: [termsTuple(tg.termsParam, t, salt, relayer)] });
     return null;
   } catch (e) {
+    const named = factoryReason(e);
+    if (named) return named;
     const m = (e as { shortMessage?: string; message?: string }).shortMessage ?? (e as Error).message;
     return m.split("\n").find((l) => /reverted|error/i.test(l))?.trim() ?? m.split("\n")[0]!;
+  }
+}
+
+/** The factory's refusals that come from Flap, in words: the name screen, the liquidity floor, the tax window. */
+export function factoryReason(e: unknown): string | null {
+  const err = e as { walk?: (f: (x: unknown) => boolean) => unknown };
+  const found = (typeof err.walk === "function" ? err.walk((x) => x instanceof ContractFunctionRevertedError) : null) as ContractFunctionRevertedError | null;
+  const name = found?.data?.errorName;
+  const args = (found?.data?.args ?? []) as readonly unknown[];
+  const b = (x: unknown) => Number(formatEther(BigInt(x as bigint))).toLocaleString("en-US", { maximumFractionDigits: 4 });
+  if (name === "NameOrSymbolBlocked") return `"${String(args[0])}" is on Flap's list of blocked names and symbols; Flap would refuse the launch. Pick another name or symbol.`;
+  if (name === "PoolSeedBelowFlapFloor") return `At this pool share Flap's ${args[3] ? "graduation" : "launch"} floor needs a pool seed of ${b(args[1])} BNB, so the minimum raise must be at least ${b(args[2])} BNB (it seeds ${b(args[0])} BNB now).`;
+  if (name === "BadTaxDuration") return "The tax must run from 30 days to 100 years.";
+  if (name === "QuoteNotEnabled") return "Flap has not enabled BNB launches on this Portal.";
+  return null;
+}
+
+export interface FlapFloor {
+  /** the smallest minimum raise the factory accepts for this split, BNB */
+  minRaise: number;
+  /** the pool seed that takes, BNB */
+  minSeed: number;
+  /** Flap's floor in USD and the BNB price the Portal uses for it */
+  floorUsd: number;
+  priceUsd: number;
+  /** true: the graduation floor (production); false: the launch floor (demo factory) */
+  graduation: boolean;
+}
+
+/** The factory's minRaiseFor view: Flap's live floor for a split, read from the Portal through the factory. */
+export async function flapFloor(client: PublicClient, tg: CreateTargets, totalSupply: number, saleBps: number, poolBps: number): Promise<FlapFloor | null> {
+  if (!tg.factory || !tg.factoryAbi || !fn(tg.factoryAbi, "minRaiseFor") || saleBps <= 0 || poolBps <= 0) return null;
+  try {
+    const r = (await client.readContract({ address: tg.factory, abi: tg.factoryAbi, functionName: "minRaiseFor", args: [parseEther(String(totalSupply)), saleBps, poolBps] })) as readonly [bigint, bigint, bigint, bigint, boolean];
+    const n = (x: bigint) => Number(formatEther(x));
+    return { minRaise: n(r[0]), minSeed: n(r[1]), floorUsd: n(r[2]), priceUsd: n(r[3]), graduation: r[4] };
+  } catch {
+    return null;
   }
 }
 

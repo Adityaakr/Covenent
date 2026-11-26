@@ -56,3 +56,11 @@ export function dateTime(t: number): string {
 export function date(t: number): string {
   return new Date(t * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 }
+
+/** Like span, but a year or more reads in years ("100 years", "1.5 years"): for the trading tax window. */
+export function longSpan(seconds: number): string {
+  const y = seconds / (365 * DAY);
+  if (y < 1) return span(seconds);
+  const v = Math.round(y * 10) / 10;
+  return `${v} year${v === 1 ? "" : "s"}`;
+}

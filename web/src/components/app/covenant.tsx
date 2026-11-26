@@ -6,7 +6,8 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { explorerAddress } from "@/lib/chain/chains";
 import { derive, type Derived } from "@/lib/covenant/derive";
 import { settleRaise } from "@/lib/covenant/math";
-import { DAY, date, dateTime, duration, relative, span } from "@/lib/covenant/time";
+import { DAY, date, dateTime, duration, longSpan, relative, span } from "@/lib/covenant/time";
+import { FLAP_TAX } from "@/lib/covenant/defaults";
 import type { CovenantView, FeedEvent, LedgerKind } from "@/lib/covenant/types";
 import { useActions } from "@/lib/data/actions";
 import { bnb, bps, multiple, pct, price, short, signedPct, tokens, usd } from "@/lib/format";
@@ -42,8 +43,13 @@ function PrimaryActions({ v, d, size = "lg" }: { v: CovenantView; d: Derived; si
   if (v.state === "RAISING") return <><Link className={`${b} btn-primary`} href={`${base}/raise`}><Icon name="plus" size={15} />Commit BNB</Link><Link className={`${b} btn-secondary hide-xs`} href="/app/settings/simulator">Run the simulator</Link></>;
   if (v.state === "FAILED") return <Link className={`${b} btn-primary`} href={`${base}/settle`}>Claim refund<Icon name="arrow" size={15} /></Link>;
   const open = v.state === "EXIT_ROUND" || v.state === "WIND_DOWN";
+  // Refunds and sale tokens are pull payments: nothing arrives unless the contributor claims, so say so up front.
+  const p = v.position;
+  const refundDue = p && !p.refundClaimed && p.refund > 1e-12 ? p.refund : 0;
+  const tokensDue = p && !p.tokensClaimed && p.allocation > 0 ? p.allocation : 0;
   return (
     <>
+      {refundDue || tokensDue ? <Link className={`${b} btn-primary`} href={`${base}/settle`} title="Refunds and tokens are never sent automatically: claim them here"><Icon name="coins" size={15} />{tokensDue && refundDue ? `Claim ${tokens(tokensDue)} ${v.terms.symbol} + ${bnb(refundDue, 4)} BNB` : tokensDue ? `Claim ${tokens(tokensDue)} ${v.terms.symbol}` : `Claim ${bnb(refundDue, 4)} BNB refund`}</Link> : null}
       {open ? <Link className={`${b} btn-accent`} href={`${base}/redeem`}><Icon name="redeem" size={15} />Redeem at book</Link> : null}
       {pair && v.source === "live"
         ? <a className={`${b} ${open ? "btn-secondary" : "btn-primary"}`} href={pair} target="_blank" rel="noreferrer">Buy ${v.terms.symbol}<Icon name="arrowUpRight" size={14} /></a>
@@ -149,9 +155,13 @@ export function StatusStrip({ v, d }: { v: CovenantView; d: Derived }) {
   } else if (v.state === "WIND_DOWN") {
     const abandoned = v.issuer.outcomes.some((o) => o.outcome === "abandoned" && (o.vault ? o.vault.toLowerCase() === v.vault?.toLowerCase() : o.covenant === t.symbol));
     const ev = v.events.find((e) => /abandon|wound|winddown/i.test(e.name));
-    tone = "bad"; icon = abandoned ? "heart" : "vault";
-    title = abandoned ? "Abandoned: treasury open to holders, no fee" : "Wound down: treasury open to holders, no fee";
-    sub = <>Redeem at <span className="mono">{price(d.book)}</span> BNB per token, no deadline. {v.deadTokens > 0 ? <><span className="num">{tokens(v.deadTokens)}</span> {t.symbol} burned{v.lockedTeam === 0 ? ", locked team tokens included" : ""}. </> : null}{ev ? <>{relative(ev.at, v.now)[0]!.toUpperCase() + relative(ev.at, v.now).slice(1)}{ev.tx ? <> · <Addr a={ev.tx} chainId={liveChain(v)} kind="tx" copy={false} /></> : null}</> : null}</>;
+    const cause = v.windDown?.cause ?? (abandoned ? "abandoned" : null);
+    tone = "bad"; icon = cause === "abandoned" ? "heart" : "vault";
+    title = cause === "abandoned" ? "Abandoned: treasury open to holders, no fee"
+      : cause === "guardian" ? "Wound down by Flap's Guardian: treasury open to holders, no fee"
+      : cause === "team" ? `Wound down by the ${who(v)}: treasury open to holders, no fee`
+      : "Wound down: treasury open to holders, no fee";
+    sub = <>{cause === "guardian" ? <>Flap&apos;s Guardian ended this covenant (Flap&apos;s spec lets it call every team function). It moved no funds: the tap stopped and redemption opened. </> : null}Redeem at <span className="mono">{price(d.book)}</span> BNB per token, no deadline. {v.deadTokens > 0 ? <><span className="num">{tokens(v.deadTokens)}</span> {t.symbol} burned{v.lockedTeam === 0 ? ", locked team tokens included" : ""}. </> : null}{ev ? <>{relative(ev.at, v.now)[0]!.toUpperCase() + relative(ev.at, v.now).slice(1)}{ev.tx ? <> · <Addr a={ev.tx} chainId={liveChain(v)} kind="tx" copy={false} /></> : null}</> : null}</>;
     action = <Link className="btn btn-accent btn-sm" href={`${base}/redeem`}><Icon name="redeem" size={14} />Redeem at book</Link>;
   } else if (v.state === "EXIT_ROUND") {
     tone = "warn"; icon = "exit";
@@ -420,7 +430,7 @@ function useRuleRows(v: CovenantView, d: Derived): RuleRow[] {
   if (!launched) {
     return [
       { key: "tap", icon: "coins", name: "Tap", terms: `${usd(t.tapUsdPer30d)} per 30 days, capped at ${bps(t.tapCapBps)} of the treasury`, state: "", tone: "", figure: <span className="num">{usd(t.tapUsdPer30d)}</span>, figSub: "per 30 days", next: "Only ever lowered", detail: `The ${w} draws a dollar budget at the Atlas rate, never more than ${bps(t.tapCapBps)} of the treasury in any 30 days. It can lower the tap, never raise it.`, attention: 0 },
-      { key: "unlock", icon: "unlock", name: "Performance unlock", terms: `${t.trancheMultiple.map(multiple).join(", ")} held for ${span(t.unlockWindow)}`, state: "", tone: "", figure: <span className="num">{bps(d.teamBps)}</span>, figSub: "team tokens", next: t.cliff > 0 ? `${span(t.cliff)} cliff first` : "No cliff", detail: `Team tokens unlock in tranches only after the dollar price holds each multiple of the sale price for ${span(t.unlockWindow)} of trusted observations.`, attention: 0 },
+      { key: "unlock", icon: "unlock", name: "Performance unlock", terms: `${t.trancheMultiple.map(multiple).join(", ")} held for ${span(t.unlockWindow)}`, state: "", tone: "", figure: <span className="num">{bps(d.teamBps)}</span>, figSub: "team tokens", next: t.cliff > 0 ? `${span(t.cliff)} cliff first` : "No cliff", detail: `Team tokens unlock in tranches only after the price holds each multiple of the sale price, in dollars and in BNB (the pool's own price, no oracle), for ${span(t.unlockWindow)} of trusted observations.`, attention: 0 },
       { key: "exit", icon: "exit", name: "Book-value exit", terms: `${span(t.exitStreak)} under book opens a ${span(t.roundLength)} round`, state: "", tone: "", figure: <span className="num">{span(t.exitStreak)}</span>, figSub: "under book", next: `${bps(t.exitFeeBps)} fee, none at wind-down`, detail: "The streak decays instead of resetting and compares on-chain numbers only: the pool's time-weighted price against book value. No vote, no oracle, no depth gate.", attention: 0 },
       { key: "heartbeat", icon: "heart", name: "Abandonment switch", terms: `Silence for ${span(t.heartbeat)} opens the treasury`, state: "", tone: "", figure: <span className="num">{span(t.heartbeat)}</span>, figSub: "window", next: "Anyone can flip it", detail: `If the ${w} stops for ${span(t.heartbeat)}, anyone can switch the vault to wind-down: the tap stops, locked team tokens burn and holders redeem at book with no fee.`, attention: 0 },
       { key: "report", icon: "doc", name: "Disclosure", terms: "A report every 30 days", state: "", tone: "", figure: <span className="num">30 days</span>, figSub: "cadence", next: "A miss pauses the tap", detail: "The report URI and its hash go on-chain each period. A missed or failed report pauses the tap until a passing one lands.", attention: 0 },
@@ -452,7 +462,7 @@ function useRuleRows(v: CovenantView, d: Derived): RuleRow[] {
       next: ended ? "Locked tranches were burned" : v.now < cliffEnd ? <>Cliff ends {date(cliffEnd)}</> : bestRunLine(v) || "Counting on the strict gate",
       detail: (
         <div className="stack-sm" style={{ display: "grid" }}>
-          <span>Team tokens unlock only after the dollar price holds each multiple for {span(t.unlockWindow)} of trusted observations{t.cliff > 0 ? `, after a ${span(t.cliff)} cliff` : ""}. The strict gate counts: fresh Atlas report, pool at least half its seed.</span>
+          <span>Team tokens unlock only after the price holds each multiple, in dollars and in BNB, for {span(t.unlockWindow)} of trusted observations{t.cliff > 0 ? `, after a ${span(t.cliff)} cliff` : ""}. The strict gate counts: fresh Atlas report, pool at least half its seed. The BNB leg reads only the pool, so a wrong Atlas rate alone never moves a counter.</span>
           {v.tranches.map((tr) => (
             <span key={tr.multiple} style={{ display: "grid", gap: 4 }}>
               <span className="row between t-xs w5"><span className="ink">{multiple(tr.multiple)} <span className="muted">· {bps(tr.bps)} of supply</span></span><span className="num muted">{tr.unlocked ? "unlocked" : `${duration(tr.progress)} of ${duration(t.unlockWindow)}`}</span></span>
@@ -670,9 +680,39 @@ export function TrustPanel({ v }: { v: CovenantView }) {
           <dt>Atlas report age at last poke</dt><dd className="num">{g.atlasReportAge === null ? "–" : g.atlasReportAge <= 180 ? `${g.atlasReportAge} s` : duration(g.atlasReportAge)}</dd>
           <dt>Pool-only fallback</dt><dd>{g.poolOnlyMode ? "On" : "Off"}</dd>
         </dl>
-        <Note icon="shield"><b>What you are trusting.</b> Flap&apos;s Guardian can upgrade the vault (the only upgrade path). Atlas is trusted for BNB/USD: a wrong rate misprices the tap and unlocks, but it cannot open or block an exit, because book value and pool price are both read on-chain. The PancakeSwap pair is the price, with liquidity locked at launch. No Covenant admin keys: no owner, no pause, no fee switch.</Note>
+        <GuardianTrust v={v} />
+        <Note icon="shield"><b>Atlas.</b> One Atlas signer sets the BNB/USD rate. A wrong rate can misprice the tap, but never past its cap of {bps(v.terms.tapCapBps)} of the treasury per 30 days, and it cannot unlock team tokens on its own: a tranche also needs the pool&apos;s own price (TWAP) at the multiple in BNB, with no oracle. It cannot open or block an exit either: book value and pool price are both read on-chain. The PancakeSwap pair is the price, with liquidity locked at launch. No Covenant admin keys: no owner, no pause, no fee switch.</Note>
+        <Note icon="info"><b>The raise.</b> No per-wallet cap, by design: above the cap everyone is scaled back pro rata and the excess refunds. Refunds and sale tokens are pulled, never pushed: each contributor claims them (Claim on the settle page). The launcher keeps at most one wei per contributor of rounding buffer; once every refund is claimed anyone can sweep it into the treasury.</Note>
         <Note tone="warn"><b>What it does not cover.</b> The floor starts below the sale price and falls as the {who(v)} spends. The treasury is BNB, so its dollar value moves. Nothing off-chain (company, IP, revenue not sent to the vault) is protected.</Note>
       </div>
+    </div>
+  );
+}
+
+/** What Flap's Guardian can and cannot do to this covenant (Flap's Pool Launch spec; see CovenantVault NatSpec). */
+function GuardianTrust({ v }: { v: CovenantView }) {
+  return (
+    <div className="tile stack-sm" style={{ display: "grid" }}>
+      <span className="lbl">Flap&apos;s Guardian</span>
+      <div className="grid2" style={{ gap: 12 }}>
+        <div className="stack-sm" style={{ display: "grid" }}>
+          <b className="t-s ink">Can</b>
+          <ul className="t-xs muted w5" style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
+            <li>Upgrade the vault and launcher logic (the only upgrade path, per Flap&apos;s spec). The treasury and the refund BNB are only as safe as the Guardian.</li>
+            <li>Wind down any covenant: the tap ends early and redemption opens with no fee. No funds move; this page says when the Guardian did it.</li>
+            <li>Call the {who(v)}&apos;s other functions: claim the tap (paid only to the fixed team wallet), lower the tap, post a report.</li>
+          </ul>
+        </div>
+        <div className="stack-sm" style={{ display: "grid" }}>
+          <b className="t-s ink">Cannot</b>
+          <ul className="t-xs muted w5" style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
+            <li>Keep a silent {who(v)} alive: its calls never count as a heartbeat.</li>
+            <li>Raise the tap, change the team wallet or any term, or unlock team tokens.</li>
+            <li>Send treasury BNB or tokens anywhere but the team wallet&apos;s accrued tap and redeeming holders, short of an upgrade.</li>
+          </ul>
+        </div>
+      </div>
+      {v.windDown ? <p className="t-xs w5 ink">This covenant was {v.windDown.cause === "abandoned" ? "declared abandoned" : `wound down by ${v.windDown.cause === "guardian" ? "Flap's Guardian" : `the ${who(v)}`}`} (<Addr a={v.windDown.by} chainId={liveChain(v)} copy={false} />).</p> : null}
     </div>
   );
 }
@@ -795,12 +835,15 @@ export function TermsCard({ v, d }: { v: CovenantView; d: Derived }) {
           <dt>Minimum and cap</dt><dd className="num">{bnb(t.minRaise, 0)} / {bnb(t.cap, 0)} BNB</dd>
           <dt>Sale price</dt><dd className="mono">{price(d.salePrice)}</dd>
           <dt>Starting floor</dt><dd className="num">{pct(d.startRatio, 0)} of sale price</dd>
-          <dt>Trading tax</dt><dd className="num">{bps(t.buyTaxBps)} buy, {bps(t.sellTaxBps)} sell</dd>
+          <dt>Trading tax</dt><dd className="num">{bps(t.buyTaxBps)} buy, {bps(t.sellTaxBps)} sell, for {longSpan(t.taxDuration)}</dd>
+          <dt>Tax ends</dt><dd>{v.taxEndsAt ? <>{date(v.taxEndsAt)}; after that the treasury grows only from revenue the {who(v)} sends</> : <>{longSpan(t.taxDuration)} after launch; after that the treasury grows only from revenue the {who(v)} sends</>}</dd>
           <dt>Tap</dt><dd className="num">{usd(t.tapUsdPer30d)} / 30d, cap {bps(t.tapCapBps)}</dd>
           <dt>Unlock tranches</dt><dd className="num">{t.trancheMultiple.map((m, k) => `${bps(t.trancheBps[k] ?? 0)} at ${multiple(m)}`).join(", ")}</dd>
           <dt>Exit</dt><dd className="num">{span(t.exitStreak)} streak · {span(t.roundLength)} round · {span(t.cooldown)} cooldown · {bps(t.exitFeeBps)} fee</dd>
           <dt>Heartbeat</dt><dd className="num">{span(t.heartbeat)}</dd>
+          <dt>Per-wallet cap</dt><dd>None by design: above the cap every commitment is scaled back pro rata and the excess refunds</dd>
         </dl>
+        <p className="t-xs muted w5" style={{ marginTop: 12 }}>How the tax reaches the vault: Flap&apos;s tax processor sells collected tax in chunks of about {usd(FLAP_TAX.chunkUsd)}, at most once every {FLAP_TAX.minGapSeconds} seconds, on sells into the main pool, and Flap&apos;s protocol fee takes about {bps(FLAP_TAX.protocolFeeBps)} first. Light trading can leave tax pending in the token. Issuer revenue goes in with the vault&apos;s <span className="mono">depositRevenue</span>.</p>
       </div>
     </div>
   );

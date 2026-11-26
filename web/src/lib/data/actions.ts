@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 import { concatHex, encodeFunctionData, keccak256, parseEther, toHex, type Abi, type Hex } from "viem";
 import { hasFn } from "@/lib/chain/deployment";
+import { FINALIZE_GAS } from "@/lib/chain/gas";
 import { useConfig } from "wagmi";
 import { sendTransaction, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { pokeReport } from "@/lib/api/server";
@@ -17,11 +18,7 @@ import type { Address, CovenantView, Hash } from "@/lib/covenant/types";
 import { useWallet } from "@/components/providers";
 import { useSource } from "./hooks";
 
-/**
- * finalize() refuses less than 15M gas (CovenantLauncher.LAUNCH_GAS_FLOOR). BNB testnet refuses any transaction above
- * 16,777,216 gas (2^24, "-32003: gas limit too high", seen on chain 97 on 26 Nov 2026), so 20M never reaches a node.
- */
-const FINALIZE_GAS = 16_700_000n;
+// finalize() is sent with an explicit gas limit (lib/chain/gas.ts): an estimate can fall short of its 15M launch guard.
 
 export type ActionName =
   | "commit" | "finalize" | "claimTokens" | "claimRefund" | "poke" | "redeem"

@@ -16,6 +16,7 @@ export const DEFAULT_TERMS: Terms = {
   saleDuration: 4 * DAY,
   buyTaxBps: 100,
   sellTaxBps: 100,
+  taxDuration: 100 * 365 * DAY, // the longest the factory allows: the tax is the treasury's revenue stream
   teamWallet: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
   tapUsdPer30d: 30_000,
   tapCapBps: 400,
@@ -54,7 +55,16 @@ export const BOUNDS = {
   heartbeatMin: 14 * DAY,
   heartbeatMax: 90 * DAY,
   minPokeGap: HOUR,
+  taxDurationMin: 30 * DAY,
+  taxDurationMax: 100 * 365 * DAY,
 };
+
+/** Flap's tax processing, as Flap describes it and as read on chain 97 (26 Nov 2026), for honest tax copy. */
+export const FLAP_TAX = {
+  chunkUsd: 500, // the processor sells collected tax in chunks of about $500
+  minGapSeconds: 10, // at most once every 10 seconds, on sells into the main pool
+  protocolFeeBps: 1000, // Flap's protocol fee takes about 10% first; the vault receives about 90%
+} as const;
 
 /** Flap and ERC-8004 addresses from the doc, same on BNB Chain and testnet unless noted. */
 export const FLAP = {
