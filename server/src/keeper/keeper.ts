@@ -224,6 +224,15 @@ export class Keeper {
     const results: TickResult[] = [];
     await this.svc.discover().catch(() => undefined);
     for (const ref of this.svc.covenants()) {
+      // A wound-down or failed covenant has nothing left for an observation to move: poking it only burns gas.
+      const st = await this.client
+        .readContract({ address: ref.vault, abi: this.svc.abis.vault, functionName: 'state' })
+        .then((v) => Number(v))
+        .catch(() => null);
+      if (st === 5 || st === 1) {
+        results.push({ vault: ref.vault, action: 'skipped', reason: st === 5 ? 'wound down' : 'failed' });
+        continue;
+      }
       const res = await this.pokeOne(ref, now, opts.force);
       results.push(res);
       if (res.action === 'failed') {

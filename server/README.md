@@ -127,13 +127,33 @@ Every money decision is a fixed rule in code; **the LLM never decides a rule**. 
 
 ## The contract surface the server reads
 
-From `docs/DESIGN.md` plus extra views the sheet needs. Each read is tolerant: a view missing from the real ABI yields `null` and is listed in `sheet.reads.missing`, so integration can see what to align.
+Checked against the real contracts (`contracts/abi`, deployed by `scripts/dev-up.sh`): `pnpm test:chain` runs
+`test/chain/deployed.test.ts` against the running stack, and every sheet reports `reads.missing: []`. Each read is
+tolerant: a view missing from the ABI yields `null` and is listed in `sheet.reads.missing`. Where the design doc and
+the contracts name a view differently, the server tries both (`src/covenant/read.ts`, `VAULT_ALIASES`).
 
-- **Vault (doc):** `state()` (enum order RAISING, FAILED, ACTIVE, EXIT_ROUND, COOLDOWN, WIND_DOWN), `bookValue()`, `redeemableSupply()`, `exitStreak()`, `trancheProgress(k)`, `tapAccrued()`; writes `claimTokens, claimTap, lowerTap, heartbeat, releaseTeam, redeem(amount,minOut), declareAbandoned, windDown, postReport, sync`; events as listed in the doc.
-- **Vault (extra views):** `token, launcher, oracle, teamWallet, pair, agentId, salePriceBnb, usdSalePrice, tapUsdPer30d, tapCapBps, exitStreakTarget, roundLength, cooldown, exitFeeBps, heartbeatWindow, unlockWindow, roundEnd, cooldownEnd, lastHeartbeat, owedTeam, lockedTeam, totalRedeemed, totalTapPaid, lastObservedAt, lastTrusted, lastStrict, trancheCount, trancheMultiple(k), trancheAmount(k), trancheUnlocked(k)`. A `terms()`/`getTerms()` struct, when present, fills gaps.
-- **Oracle:** `poke(address)` with trailing report; optional `lastPokeAt(address)`, `minInterval()`; errors `TooSoon`.
-- **Launcher:** `state, committed, minRaise, cap, deadline, contributions, acceptedOf, allocationOf, contribute, finalize, claimRefund`.
-- **Event args the ledger reads:** `TreasuryFunded(amount, pool)`, `RevenueRecognized(amount)`, `TapClaimed(to, amount)`, `Redeemed(holder, tokens, out, bookValue)`, `Observed(twapBnb, bnbUsd, bookValue, trusted, state)`, `ExitRoundOpened(endsAt)`, `ExitRoundClosed(cooldownEndsAt)`.
+- **Vault:** `state()` (enum order RAISING, FAILED, ACTIVE, EXIT_ROUND, COOLDOWN, WIND_DOWN), `bookValue()`,
+  `redeemableSupply()`, `exitStreak()`, `exitStreakNeeded()` (doc: `exitStreakTarget`), `tapAccrued()`, `owedTeam()`,
+  `tapPaid()` (doc: `totalTapPaid`), `taxToken()` (doc: `token`), `trancheCount()`, and `trancheProgress(k)`, which returns
+  `(amount, multiple x100, progress seconds, unlocked, targetUsd)` in one call. Also `launcher, teamWallet, pair, agentId,
+  salePriceBnb, usdSalePrice, tapUsdPer30d, tapCapBps, roundLength, cooldown, exitFeeBps, heartbeatWindow, unlockWindow,
+  roundEnd, cooldownEnd, lastHeartbeat, lockedTeam, totalRedeemed, lastObservedAt, lastTrusted, lastStrict`.
+  Writes: `claimTokens, claimTap, lowerTap, heartbeat, releaseTeam, redeem(amount, minOut), declareAbandoned, windDown,
+  postReport, depositRevenue(tag), sync`.
+- **Oracle:** `poke(address)` with the Atlas report appended to the calldata; the last poke time comes from
+  `points(vault).pokedAt`; a second poke inside the vault's `minPokeGap` reverts `TooSoon`.
+- **Launcher:** `state, committed, terms()` (holds `minRaise` and `cap`), `saleDeadline, contributions, acceptedOf,
+  allocationOf, refundOf, contribute, finalize, claimRefund, vault, token, pool`.
+- **Discovery:** every launched covenant from `launcherFactory.allLaunchers()` and `demoLauncherFactory.allLaunchers()`
+  (then `launcher.vault()`), on each list and keeper tick, so covenants created in the web app appear without a restart.
+- **Event args the ledger reads:** `TreasuryFunded(amount, pair)`, `RevenueRecognized(amount, totalRevenue)`,
+  `RevenueDeposited(from, amount, tag)`, `TapClaimed(to, amount)`, `Redeemed(account, tokens, bnbOut, bookValue)`,
+  `Observed(twapBnb, bnbUsd, bookValue, trusted, strict, state, exitStreak)`, `ExitRoundOpened(roundEnd, bookValue,
+  twapBnb)`, `ExitRoundClosed(roundEnd, cooldownEnd)`, `OutcomeRecorded(agentId, value, outcome, ok)`.
+- **Logs start** at `deployments/local.json` `deployedAtBlock` (plus one on a fork, whose deploy block is the fork
+  block; reading at or below it would hit the upstream public RPC).
+- **Signing** is allowed on chain 56 or 97 only when the RPC is a loopback address (the local fork); anything else
+  still needs `COVENANT_ALLOW_PUBLIC_NETWORK=1`.
 
 ## The three exit-rule fixes, where this package touches them
 

@@ -3,6 +3,32 @@
 Investor protections that enforce themselves: a Flap Pool Launch launcher and vault on BNB Chain.
 See docs/DESIGN.md for the product and engineering design.
 
+## Run everything on this machine
+
+```bash
+git submodule update --init      # contracts/lib
+scripts/dev-all.sh               # chain + deploy + demo story + a live covenant + API, keeper, issuer agent + web app
+```
+
+One command starts anvil (a BNB Chain fork with chain id 56 when a BNB RPC that serves older state answers, else the
+offline mock stack on 31337; `--fork` / `--mock` force one), deploys every contract, seeds the demo story (a covenant
+that ends abandoned and wound down) and a second covenant left ACTIVE, then starts the server API on `:8787`, the keeper
+(pokes every 20 s with the local Atlas test signer), the issuer agent on the live covenant and the web app on
+http://localhost:8080 (`WEB_PORT` moves it; 8081-8083 and 8085 are also Privy origins; `--prod` serves a build).
+
+- `scripts/dev-all.sh status` shows what runs and where the logs are (`.dev/`); `stop` stops everything.
+- `scripts/dev-all.sh stop-issuer` kills the issuer agent, the stage moment: after the heartbeat window anyone can
+  press "Declare abandoned" on the sheet.
+- `scripts/dev-demo.sh use <launcher>` points the scripted scenes (`trade`, `slide`, `poke`, `advance <s>`, ...) at a
+  covenant you created in the web app; `scripts/dev-demo.sh live` seeds another running covenant.
+- MCP investor agent: `INVESTOR_PRIVATE_KEY=<anvil #4 key> pnpm --dir server investor` lists covenants under book over
+  MCP and redeems where a round is open and redemption beats the pool.
+- Wallets: Privy on the Privy-allowed origins, or "Use a browser wallet instead" -> "Account #n", anvil's public
+  accounts by role (#0 deployer, #1 team / issuer agent, #2-#4 buyers, #5 whale, #6 keeper, #7 trader).
+- `server/.env` (git-ignored) takes `CMC_API_KEY` and `ANTHROPIC_API_KEY`; without them the simulator uses
+  GeckoTerminal and issuer reports use a labelled template. Atlas reports are signed by the local test signer (anvil
+  #9) until an Atlas API key exists.
+
 ## Contracts (`contracts/`, `scripts/dev-*`)
 
 Foundry project: the launcher and vault pair on Flap's Pool Launch bases, the oracle on Atlas's pull consumer, a
