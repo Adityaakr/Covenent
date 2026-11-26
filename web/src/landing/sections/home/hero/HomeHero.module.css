@@ -88,7 +88,23 @@
 
 .sub { width: 100%; max-width: 560px; text-align: center; text-wrap: balance; }
 .actions { display: flex; align-items: center; gap: 10px; }
-.note { width: 100%; text-align: center; color: var(--c-text-2); }
+/* Built with: every integration as a monochrome mark that takes its own colour on hover, one line on desktop. */
+.builtWith { width: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 14px; }
+.builtWithLabel { color: var(--c-text-2); }
+.builtWithList { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; list-style: none; margin: 0; padding: 0; }
+.builtWithItem { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--c-text-2); text-decoration: none; border-radius: 6px; transition: color 0.2s var(--ease-framer); }
+.builtWithLogo { width: 14px; height: 14px; object-fit: contain; filter: grayscale(1); opacity: 0.6; transition: filter 0.2s var(--ease-framer), opacity 0.2s var(--ease-framer), transform 0.2s var(--ease-framer); }
+.builtWithItem:hover, .builtWithItem:focus-visible { color: var(--c-text); }
+.builtWithItem:hover .builtWithLogo, .builtWithItem:focus-visible .builtWithLogo { filter: none; opacity: 1; transform: scale(1.08); }
+.builtWithItem:focus-visible { outline: 2px solid var(--c-accent, currentColor); outline-offset: 3px; }
+@media (max-width: 809.98px) {
+  .builtWith { gap: 8px 12px; }
+  .builtWithList { gap: 6px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .builtWithItem, .builtWithLogo { transition: none; }
+  .builtWithItem:hover .builtWithLogo { transform: none; }
+}
 
 /* Hero Showcase: image plate with the App Window and the floating Update Card */
 .showcase {

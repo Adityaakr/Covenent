@@ -5,7 +5,7 @@ import { AppWindow } from "./hero/AppWindow";
 import { HeroHeading } from "./hero/HeroHeading";
 import { LogoTicker, type TickerItem } from "./hero/LogoTicker";
 import { Icon } from "./hero/icons";
-import { Marked, bnb } from "../../components/Bnb";
+import { bnb } from "../../components/Bnb";
 import s from "./hero/HomeHero.module.css";
 
 /* Framer Home (augiA20Il) section "Hero" (NPB4fqmao). Spec: docs/landing/spec/home-a.md.
@@ -21,8 +21,19 @@ const builtOn: TickerItem[] = [
   { name: "PancakeSwap", logo: "/landing/logos/pancakeswap.svg" },
   { name: "Four.meme", logo: "/landing/logos/four-meme.svg" },
   { name: "ERC-8004", logo: "/landing/logos/erc-8004.svg", scale: 1.1 },
-  { name: "Cournot", logo: "/landing/logos/cournot.svg", scale: 1.05 },
   { name: "BNB Chain", logo: "/landing/logos/bnb-chain.svg" },
+];
+
+/* What Covenant is built with, credited in the hero: only what the code integrates today (Cournot's verdict hook is
+   designed but no relayer is wired, so it is not listed). Each mark opens its card in "How it's built" (#built-on). */
+const builtWith = [
+  { id: "bnb", name: "BNB Chain", logo: "/landing/logos/bnb-chain.svg" },
+  { id: "flap", name: "Flap Pool Launch", logo: "/landing/logos/flap.svg" },
+  { id: "pancakeswap", name: "PancakeSwap", logo: "/landing/logos/pancakeswap.svg" },
+  { id: "atlas", name: "Atlas", logo: "/landing/logos/atlas.svg" },
+  { id: "cmc", name: "CoinMarketCap", logo: "/landing/logos/coinmarketcap.svg" },
+  { id: "four", name: "Four.meme", logo: "/landing/logos/four-meme.svg" },
+  { id: "erc8004", name: "ERC-8004", logo: "/landing/logos/erc-8004.svg" },
 ];
 
 export function HomeHero() {
@@ -59,16 +70,20 @@ export function HomeHero() {
             Launch app
           </Button>
         </div>
-        <p className={["t-small", "c-text-2", s.note].join(" ")}>
-          Built on{" "}
-          <Marked name="flap" tone="mono">
-            Flap Pool Launch
-          </Marked>
-          {" · "}Data by{" "}
-          <Marked name="cmc" tone="mono">
-            CoinMarketCap
-          </Marked>
-        </p>
+        <nav className={s.builtWith} aria-label="Built with">
+          <span className={["t-small", "c-text-2", s.builtWithLabel].join(" ")}>Built with</span>
+          <ul className={s.builtWithList}>
+            {builtWith.map((x) => (
+              <li key={x.id}>
+                <a href={`/#built-on-${x.id}`} className={["t-small", s.builtWithItem].join(" ")} title={`${x.name}: how Covenant uses it`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={x.logo} alt="" width={14} height={14} className={s.builtWithLogo} draggable={false} />
+                  <span>{x.name}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
 
       <div className={s.showcase}>
@@ -105,7 +120,7 @@ export function HomeHero() {
 
       <div className={s.logoRow}>
         <p className={["t-label", "c-text-2", s.caption].join(" ")}>
-          Built on Flap Pool Launch, priced by Atlas, explained with CoinMarketCap data
+          Built with BNB Chain, Flap Pool Launch, PancakeSwap, Atlas, CoinMarketCap, Four.meme and ERC-8004
         </p>
         <LogoTicker items={builtOn} />
       </div>

@@ -36,6 +36,21 @@ export function HomeBuiltOn() {
     setAuto(false);
     setActive(i);
   };
+
+  // The hero's "Built with" marks link to #built-on-<id>: open that card and bring the section into view.
+  useEffect(() => {
+    const open = () => {
+      const m = /^#built-on-(.+)$/.exec(window.location.hash);
+      const i = m ? parts.findIndex((x) => x.id === m[1]) : -1;
+      if (i < 0) return;
+      setAuto(false);
+      setActive(i);
+      document.getElementById("built-on")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    };
+    open();
+    window.addEventListener("hashchange", open);
+    return () => window.removeEventListener("hashchange", open);
+  }, [reduce]);
   const p = parts[active];
 
   return (
