@@ -5,8 +5,8 @@
  * (src/landing) keeps its own Framer tokens in landing.css; the values here are drawn from them so the two read as
  * one brand: Inter Display headings, Inter text, the Framer palette (Text Primary 21 23 28, Text Secondary
  * 107 115 130, Border 227 230 235, Surface 244 245 247, Accent 43 89 255), radius 10 controls and 18 cards, and the
- * template's motion curves. The app is dark by default; light is a change of values on <html data-theme="light">,
- * set before first paint from the visitor's saved choice.
+ * template's motion curves. Both themes are a change of values on <html data-theme>, set before first paint from
+ * the visitor's choice (Light, Dark or System; light when none is saved).
  */
 :root {
   --font-sans-stack: var(--font-inter), "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;

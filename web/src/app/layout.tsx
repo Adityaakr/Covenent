@@ -19,11 +19,12 @@ export const viewport: Viewport = {
 };
 
 /**
- * Runs before first paint: the visitor's saved theme on <html data-theme>, else dark (the app's default; the landing
- * page keeps its own light palette whatever this says), so a page never flashes the wrong theme. Storage can throw
- * in private windows.
+ * Runs before first paint: the visitor's choice (light, dark or system; components/app/theme.ts) resolved onto
+ * <html data-theme>, and the choice itself onto data-theme-pref. With no saved choice the app is light, whatever the
+ * OS prefers; the landing page keeps its own light palette either way. So a page never flashes the wrong theme.
+ * Storage can throw in private windows.
  */
-const THEME_SCRIPT = `(function(){var t=null;try{t=localStorage.getItem("theme")}catch(e){}document.documentElement.dataset.theme=t==="light"?"light":"dark"})();`;
+const THEME_SCRIPT = `(function(){var h=document.documentElement,t=null;try{t=localStorage.getItem("theme")}catch(e){}var p=t==="dark"||t==="system"?t:"light";var d=p;if(p==="system"){try{d=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}catch(e){d="light"}}h.dataset.theme=d;h.dataset.themePref=p})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

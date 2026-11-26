@@ -6,8 +6,8 @@ import { useWallet } from "@/components/providers";
 import { reopenGetStarted } from "@/components/app/funds";
 import { Icon } from "@/components/app/icons";
 import { reopenOnboarding, showPromo, usePromoHidden } from "@/components/app/prefs";
-import { setTheme, useTheme } from "@/components/app/shell";
-import { Addr, Segmented, TokenAvatar } from "@/components/app/ui";
+import { ThemeChoice } from "@/components/app/shell";
+import { Addr, TokenAvatar } from "@/components/app/ui";
 import { chainName, explorerAddress } from "@/lib/chain/chains";
 import { useSource } from "@/lib/data/hooks";
 import { useNativeBalance } from "@/lib/data/faucet";
@@ -29,7 +29,6 @@ export default function AccountSettings() {
   const w = useWallet();
   const src = useSource();
   const bal = useNativeBalance();
-  const theme = useTheme();
   const promoHidden = usePromoHidden();
   const chainId = src.chainId ?? w.chainId ?? undefined;
   const scan = w.address && chainId ? explorerAddress(chainId, w.address) : null;
@@ -79,8 +78,8 @@ export default function AccountSettings() {
           <p className="t-s muted w5">Kept in this browser only.</p>
         </div>
         <div className="set-card set-rows">
-          <Row title="Theme" sub="The app follows your choice on every page.">
-            <Segmented size="sm" label="Theme" value={theme} onChange={(v) => setTheme(v)} options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }]} />
+          <Row title="Theme" sub="Light, dark, or follow your system. The app follows your choice on every page.">
+            <ThemeChoice size="sm" />
           </Row>
           <Row title="Discover" sub="Pick what you came to do and Discover is ordered around it.">
             <Link className="btn btn-secondary btn-sm" href="/app" onClick={reopenOnboarding}>Personalise</Link>

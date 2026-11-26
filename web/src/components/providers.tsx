@@ -141,6 +141,11 @@ function localConnectors() {
 }
 
 const subscribeNoop = () => () => {};
+function subscribeTheme(cb: () => void) {
+  const o = new MutationObserver(cb);
+  o.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => o.disconnect();
+}
 
 /** The configured chain first (its own RPC); BNB testnet too on a local stack, so a wallet can still switch to it. */
 function chainsFor() {
@@ -152,7 +157,8 @@ export function Providers({ children, localChain }: { children: ReactNode; local
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } }));
   // The server renders the Privy stack's shape; the client reads the remembered mode before the first effect.
   const mode = useSyncExternalStore(subscribeNoop, readMode, () => (APP_ID && FORCED !== "injected" ? "privy" : "browser") as WalletMode);
-  const theme = useSyncExternalStore(subscribeNoop, () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light"), () => "light" as const);
+  // Privy's modal follows the app's theme, also when it changes while the page is open
+  const theme = useSyncExternalStore(subscribeTheme, () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light"), () => "light" as const);
 
   const chainKey = `${anvil.id}:${anvil.rpcUrls.default.http[0]}`;
   const transports = useMemo(() => Object.fromEntries(chainsFor().map((c) => [c.id, c.id === 97 && !LOCAL_MODE ? fallback(TESTNET_RPCS.map((u) => http(u))) : http(c.rpcUrls.default.http[0])])), [chainKey]); // eslint-disable-line react-hooks/exhaustive-deps

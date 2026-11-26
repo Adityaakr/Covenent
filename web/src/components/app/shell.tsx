@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSwitchChain } from "wagmi";
 import { useWallet } from "@/components/providers";
 import { anvil, chainName, explorerAddress, explorerTx, faucetFor } from "@/lib/chain/chains";
@@ -11,7 +11,8 @@ import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
 import { Icon, Mark, type IconName } from "./icons";
 import { hidePromo, reopenOnboarding, setCollapsed, useCollapsed, usePromoHidden } from "./prefs";
-import { Portal, Skeleton, TokenAvatar, cx, seedOf } from "./ui";
+import { Portal, Segmented, Skeleton, TokenAvatar, cx, seedOf } from "./ui";
+import { THEME_OPTIONS, setThemePref, useSystemThemeSync, useTheme, useThemePref, type Theme } from "./theme";
 import { BnbCoin, withBnb } from "@/components/app/bnb";
 import { STABLE, TestnetTag, UsdtCoin } from "./usdt";
 import { fmtBnbBalance, fmtUsdBalance, useWalletBalances } from "@/lib/data/wallet-balances";
@@ -39,6 +40,7 @@ function routeKey(path: string): string {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  useSystemThemeSync();
   const [open, setOpen] = useState(false);
   const [cmdk, setCmdk] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -215,17 +217,14 @@ function NetworkChip() {
   );
 }
 
-function subscribeTheme(cb: () => void) {
-  const o = new MutationObserver(cb);
-  o.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  return () => o.disconnect();
-}
-export function setTheme(next: "light" | "dark") {
-  document.documentElement.dataset.theme = next;
-  try { localStorage.setItem("theme", next); } catch { /* this page only */ }
-}
-export function useTheme(): "light" | "dark" {
-  return useSyncExternalStore(subscribeTheme, () => (document.documentElement.dataset.theme === "light" ? "light" : "dark"), () => "dark");
+/** Pick a theme outright (the quick toggles); Settings and the wallet menu also offer System. */
+export const setTheme = (next: Theme) => setThemePref(next);
+export { useTheme };
+
+/** Light, Dark or System, as one compact control (Settings, the wallet menu). */
+export function ThemeChoice({ size }: { size?: "sm" }) {
+  const pref = useThemePref();
+  return <Segmented size={size} label="Theme" value={pref} onChange={setThemePref} options={THEME_OPTIONS} />;
 }
 
 export function ThemeSwitch() {
@@ -296,6 +295,7 @@ function WalletMenu() {
   const w = useWallet();
   const src = useSource();
   const bal = useWalletBalances();
+  const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
@@ -337,6 +337,7 @@ function WalletMenu() {
                   : <Link className="pop-item" role="menuitem" href={fc.href} onClick={() => setOpen(false)}><Icon name="drop" size={16} />Get test funds</Link>;
               })()}
               <Link className="pop-item" role="menuitem" href="/app/settings" onClick={() => setOpen(false)}><Icon name="sliders" size={16} />Settings</Link>
+              <div className="pop-theme"><span><Icon name={theme === "dark" ? "moon" : "sun"} size={16} />Theme</span><ThemeChoice size="sm" /></div>
               {w.switchAccount ? <button className="pop-item" role="menuitem" onClick={() => { w.switchAccount!(); setOpen(false); }}><Icon name="users" size={16} />Switch account</button> : null}
               <button className="pop-item" role="menuitem" onClick={() => { w.disconnect(); setOpen(false); }}><Icon name="exit" size={16} />{w.mode === "privy" ? "Log out" : "Disconnect"}</button>
             </>

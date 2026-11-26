@@ -74,6 +74,9 @@
 .sb-label { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 500; color: var(--faint); padding: 18px 10px 6px; white-space: nowrap; }
 .sb-cov { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px 0 8px; border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--ink-2); transition: background var(--t) var(--ease-framer), color var(--t) var(--ease-framer); }
 .sb-cov:hover, .sb-cov[aria-current="page"] { background: var(--surface); color: var(--ink); }
+/* In light the sidebar sits on the surface grey, so the current page is a white chip with a hairline ring. */
+:root[data-theme="light"] .sb-item[aria-current="page"], :root[data-theme="light"] .sb-cov[aria-current="page"] { background: var(--bg); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), inset 0 0 0 1px var(--line); }
+:root[data-theme="light"] .sb-item:hover:not([aria-current="page"]), :root[data-theme="light"] .sb-cov:hover:not([aria-current="page"]) { background: var(--hover); }
 .sb-cov .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-cov .tick { font-family: var(--font-mono-stack); font-size: 11.5px; color: var(--muted); letter-spacing: 0.02em; }
 .sb-empty { font-size: 12.5px; color: var(--faint); padding: 6px 10px; }
@@ -652,6 +655,9 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 .pop-item small { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-top: 1px; }
 .pop-label { font-size: 12px; color: var(--faint); font-weight: 500; padding: 10px 10px 4px; }
 .pop-sep { height: 1px; background: var(--line); margin: 6px 4px; }
+.pop-theme { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 6px 6px 10px; }
+.pop-theme > span { display: inline-flex; align-items: center; gap: 11px; font-size: 13.5px; font-weight: 500; color: var(--ink); }
+.pop-theme > span svg { color: var(--muted); }
 .wallet-head { display: flex; align-items: center; gap: 12px; padding: 10px 10px 12px; }
 .netpill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; transition: background var(--t) var(--ease-framer); }
 .netpill:hover { background: var(--surface); }
