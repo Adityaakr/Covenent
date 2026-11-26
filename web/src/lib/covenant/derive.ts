@@ -37,3 +37,9 @@ export function derive(v: CovenantView) {
 }
 
 export type Derived = ReturnType<typeof derive>;
+
+/** A raise whose sale window has ended but which nobody has finalized yet. */
+export const raiseClosed = (v: CovenantView) => v.state === "RAISING" && v.raise.deadline <= v.now;
+
+/** A raise that closed with nothing committed: nothing will ever launch from it, so lists do not show it as raising. */
+export const expiredUnfunded = (v: CovenantView) => raiseClosed(v) && v.raise.committed <= 0;

@@ -75,7 +75,7 @@ function Covenants() {
           <div className="card table-wrap only-wide">
             <table className="table">
               <thead>
-                <tr><th>Covenant</th><th>State</th><th className="r">Treasury</th><th className="r">Book / token</th><th className="r">Pool price</th><th className="r">vs book</th><th>Next</th><th className="r">30 days</th></tr>
+                <tr><th>Covenant</th><th>State</th><th className="r">Treasury</th><th className="r" title="Book value of one million tokens, in BNB">Book, BNB / 1M tokens</th><th className="r" title="Pool price of one million tokens, in BNB">Pool, BNB / 1M tokens</th><th className="r">vs book</th><th>Next</th><th className="r">30 days</th></tr>
               </thead>
               <tbody>
                 {shown.map((v, i) => {
@@ -95,10 +95,10 @@ function Covenants() {
                       </td>
                       <td><StateBadge state={v.state} /></td>
                       <td className="r ink">{live ? bnb(v.treasury) : bnb(v.raise.committed)} <BnbCoin size="0.95em" title={live ? "BNB in the vault" : "BNB committed"} /></td>
-                      <td className="r mono">{live ? price(d.book) : "–"}</td>
-                      <td className="r mono">{live ? price(v.poolPrice) : "–"}</td>
+                      <td className="r mono" title={live ? `${price(d.book)} BNB per token` : undefined}>{live ? price(d.book * 1e6) : "–"}</td>
+                      <td className="r mono" title={live ? `${price(v.poolPrice)} BNB per token` : undefined}>{live ? price(v.poolPrice * 1e6) : "–"}</td>
                       <td className={cx("r", live && (d.prem < 0 ? "down" : "up"))}>{live ? signedPct(d.prem) : "–"}</td>
-                      <td className={cx("t-s", nx.tone === "warn" ? "warn-t" : nx.tone === "bad" ? "down" : nx.tone === "accent" ? "accent" : "muted")} style={{ whiteSpace: "nowrap" }}>{nx.text}</td>
+                      <td className={cx("t-s", nx.tone === "warn" ? "warn-t" : nx.tone === "bad" ? "down" : nx.tone === "accent" ? "accent" : "muted")} style={{ minWidth: 160 }}>{nx.text}</td>
                       <td className="r"><span style={{ display: "inline-block" }}><Sparkline points={v.history.filter((p) => p.t > v.now - 30 * DAY)} width={96} height={26} /></span></td>
                     </tr>
                   );

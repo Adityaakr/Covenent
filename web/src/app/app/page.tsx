@@ -13,7 +13,7 @@ import { ThinkingMark } from "@/components/app/mark";
 import { duration } from "@/lib/covenant/time";
 import { reopenOnboarding, useIntents, useOnboarded, type Intent } from "@/components/app/prefs";
 import { Empty, Portal, SecHead, Skeleton, StateBadge, Ticker, TokenAvatar, cx, seedOf } from "@/components/app/ui";
-import { derive } from "@/lib/covenant/derive";
+import { derive, expiredUnfunded } from "@/lib/covenant/derive";
 import { DAY } from "@/lib/covenant/time";
 import type { CovenantView } from "@/lib/covenant/types";
 import { useCovenants } from "@/lib/data/hooks";
@@ -38,7 +38,7 @@ export default function DiscoverPage() {
   const launched = list.filter((v) => v.state !== "RAISING" && v.state !== "FAILED");
   const under = launched.filter((v) => v.state === "ACTIVE" && derive(v).prem < 0);
   const rounds = list.filter((v) => v.state === "EXIT_ROUND" || v.state === "WIND_DOWN");
-  const raising = list.filter((v) => v.state === "RAISING");
+  const raising = list.filter((v) => v.state === "RAISING" && !expiredUnfunded(v));
   const agents = list.filter((v) => v.issuer.kind === "agent");
   const order: Intent[] = intents.length ? intents : ["invest", "watch", "agent", "raise"];
 
@@ -107,7 +107,7 @@ function WatchList({ list }: { list: CovenantView[] }) {
               <span style={{ display: "grid", minWidth: 0 }}><span className="ink trunc">{v.terms.name} <span className="mono t-xs muted">${v.terms.symbol}</span></span><span className={cx("t-xs w5", nx.tone === "warn" ? "warn-t" : nx.tone === "bad" ? "down" : "muted")}>{nx.text}</span></span>
             </span>
             <span className="row hide-sm" style={{ gap: 12 }}><StateBadge state={v.state} /><Sparkline points={v.history.filter((p) => p.t > v.now - 14 * DAY)} width={96} height={26} /></span>
-            <span className="ledger-amt"><span className={cx("num", d.prem < 0 ? "down" : "up")}>{signedPct(d.prem)}</span><span className="t-xs muted mono">book {price(d.book)}</span></span>
+            <span className="ledger-amt"><span className={cx("num", d.prem < 0 ? "down" : "up")}>{signedPct(d.prem)}</span><span className="t-xs muted mono">book {price(d.book)} BNB</span></span>
           </Link>
         );
       })}
@@ -148,7 +148,7 @@ function Overview({ list }: { list: CovenantView[] }) {
   const held = launched.reduce((a, v) => a + v.treasury, 0);
   const prem = (v: CovenantView) => derive(v).prem;
   const under = launched.filter((v) => (v.state === "ACTIVE" || v.state === "COOLDOWN") && prem(v) < 0).sort((a, b) => prem(a) - prem(b));
-  const raising = list.filter((v) => v.state === "RAISING");
+  const raising = list.filter((v) => v.state === "RAISING" && !expiredUnfunded(v));
   const agents = list.filter((v) => v.issuer.kind === "agent");
   const first = raising[0];
   const worst = under[0];

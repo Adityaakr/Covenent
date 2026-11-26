@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { explorerAddress } from "@/lib/chain/chains";
-import { derive, type Derived } from "@/lib/covenant/derive";
+import { derive, expiredUnfunded, raiseClosed, type Derived } from "@/lib/covenant/derive";
 import { settleRaise } from "@/lib/covenant/math";
 import { DAY, date, duration, longSpan, relative, span } from "@/lib/covenant/time";
 import { FLAP_TAX } from "@/lib/covenant/defaults";
@@ -42,7 +42,8 @@ function PrimaryActions({ v, d, size = "lg" }: { v: CovenantView; d: Derived; si
   const base = `/app/c/${v.id}`;
   const b = size === "lg" ? "btn" : "btn btn-sm";
   const pair = v.pair ? explorerAddress(v.chainId, v.pair) : null;
-  if (v.state === "RAISING") return <><Link className={`${b} btn-primary`} href={`${base}/raise`}><Icon name="plus" size={15} />Commit BNB</Link><Link className={`${b} btn-secondary hide-xs`} href="/app/settings/simulator">Run the simulator</Link></>;
+  if (expiredUnfunded(v)) return <Link className={`${b} btn-secondary`} href="/app/covenants">All covenants</Link>;
+  if (v.state === "RAISING") return <><Link className={`${b} btn-primary`} href={`${base}/raise`}>{raiseClosed(v) ? "Finalize the raise" : <><Icon name="plus" size={15} />Commit BNB</>}</Link><Link className={`${b} btn-secondary hide-xs`} href="/app/settings/simulator">Run the simulator</Link></>;
   if (v.state === "FAILED") return <Link className={`${b} btn-primary`} href={`${base}/settle`}>Claim refund<Icon name="arrow" size={15} /></Link>;
   const open = v.state === "EXIT_ROUND" || v.state === "WIND_DOWN";
   // Refunds and sale tokens are pull payments: nothing arrives unless the contributor claims, so say so up front.
@@ -120,7 +121,7 @@ export function CovenantTabs({ v }: { v: CovenantView }) {
   const open = v.state === "EXIT_ROUND" || v.state === "WIND_DOWN";
   const tabs: { href: string; label: string; icon: IconName; dot?: boolean }[] = [
     { href: base, label: "Overview", icon: "sheet" },
-    { href: `${base}/raise`, label: "Raise", icon: "coins", dot: v.state === "RAISING" },
+    { href: `${base}/raise`, label: "Raise", icon: "coins", dot: v.state === "RAISING" && !raiseClosed(v) },
     { href: `${base}/settle`, label: "Settlement", icon: "check" },
     { href: `${base}/redeem`, label: "Redeem", icon: "redeem", dot: open },
     { href: `${base}/team`, label: v.issuer.kind === "agent" ? "Agent console" : "Team console", icon: v.issuer.kind === "agent" ? "agent" : "team" },
@@ -145,10 +146,12 @@ export function StatusStrip({ v, d }: { v: CovenantView; d: Derived }) {
 
   if (v.state === "RAISING") {
     tone = "accent"; icon = "clock";
-    title = <>Raise open · closes in <span className="num">{duration(raiseLeft, 3)}</span></>;
+    title = expiredUnfunded(v) ? "Expired, never funded" : raiseClosed(v) ? "Sale closed · anyone can finalize"
+      : <>Raise open · closes in <span className="num">{duration(raiseLeft, 3)}</span></>;
     sub = <><span className="num">{amt(v.raise.committed)}</span> of a <span className="num">{amt(t.cap)}</span> BNB cap from {v.raise.contributors || "–"} wallets. Above the cap everyone is scaled back pro rata.</>;
     meter = <Bar value={v.raise.committed} max={Math.max(t.cap, v.raise.committed)} label={`${pct(v.raise.committed / t.cap, 0)} of cap`} marks={[t.minRaise]} />;
-    action = <Link className="btn btn-primary btn-sm" href={`${base}/raise`}>Commit BNB</Link>;
+    if (expiredUnfunded(v)) { tone = "neutral"; icon = "info"; sub = "The sale window closed with nothing committed, so nothing will launch and nobody is owed a refund."; meter = null; }
+    action = expiredUnfunded(v) ? null : <Link className="btn btn-primary btn-sm" href={`${base}/raise`}>{raiseClosed(v) ? "Finalize the raise" : "Commit BNB"}</Link>;
   } else if (v.state === "FAILED") {
     tone = "neutral"; icon = "info";
     title = "The raise missed its minimum";
@@ -283,7 +286,7 @@ function TreasuryCell({ v, d }: { v: CovenantView; d: Derived }) {
       {hasLedger && Math.abs(s.raise + s.tax + s.revenue + s.tap + s.redeem - v.treasury) > 0.005 ? <p className="t-xs warn-t w5">Ledger and vault balance differ by {bnb(v.treasury - (s.raise + s.tax + s.revenue + s.tap + s.redeem), 4)} BNB; forced sends count as revenue on the next sync.</p> : null}
       <div className="nav-line">
         <span className="ink2"><span className="muted">—</span> Book value per token</span>
-        <span className="mono ink"><Fig src="vault.bookValue() = (balance − owedTeam) / redeemableSupply">{price(d.book)}</Fig></span>
+        <span className="mono ink"><Fig src="vault.bookValue() = (balance − owedTeam) / redeemableSupply">{price(d.book)}</Fig> <span className="muted">BNB</span></span>
       </div>
       <p className="t-xs muted w5" style={{ marginTop: -4 }}>Across <span className="num">{tokens(d.R)}</span> redeemable {v.terms.symbol} · <span className="num">{pct(d.floorRatioNow, 1)}</span> of the sale price</p>
       {v.history.length > 1 ? (
@@ -314,7 +317,7 @@ function PriceCell({ v, d }: { v: CovenantView; d: Derived }) {
         <span className="fig-lg"><Fig src="pair cumulative price, last poke" href={v.source === "live" ? pair : null}>{price(v.poolPrice)}</Fig><BnbUnit /></span>
         <span className={cx("chg", vsSale < 0 ? "down" : "up")}>{signedPct(vsSale)}</span>
       </div>
-      <p className="t-s muted w5">vs <span className="num">{price(d.salePrice)}</span> sale price · <span className="ink">—</span> Book <span className="num ink">{price(d.book)}</span> · <span className={cx("num", ratio < 1 ? "down" : "up")}>{ratio.toFixed(2)}×</span>{d.twap72 ? <> · 72h TWAP <span className="num">{signedPct(d.twap72.price / d.twap72.book - 1)}</span></> : null}</p>
+      <p className="t-s muted w5">vs <span className="num">{price(d.salePrice)}</span> sale price · <span className="ink">—</span> Book <span className="num ink">{price(d.book)}</span> BNB · <span className={cx("num", ratio < 1 ? "down" : "up")}>{ratio.toFixed(2)}×</span>{d.twap72 ? <> · 72h TWAP <span className="num">{signedPct(d.twap72.price / d.twap72.book - 1)}</span></> : null}</p>
       <PriceBookChart key={range} points={pts} bands={v.bands} salePrice={d.salePrice} now={v.now} height={220} />
       <div className="cell-foot">
         {pair && v.source === "live" ? <a className="tlink" href={pair} target="_blank" rel="noreferrer"><Icon name="swap" size={15} />Trade on PancakeSwap<Icon name="chevronRight" size={14} /></a> : <span className="tlink" style={{ textDecoration: "none" }}><Icon name="swap" size={15} />PancakeSwap pool, seeded at the sale price</span>}
@@ -581,6 +584,7 @@ function bestRunLine(v: CovenantView) {
 /** One line for lists: what happens next on this covenant. */
 export function nextEvent(v: CovenantView, d: Derived): { text: string; tone: "accent" | "warn" | "bad" | "good" | "" } {
   if (v.state === "RAISING" && v.raise.deadline <= v.now && v.events.some((e) => e.name === "LaunchRefused")) return { text: "Flap refused the launch · anyone can retry finalize; after the retry window it refunds", tone: "warn" };
+  if (expiredUnfunded(v)) return { text: "Expired, never funded · nothing to launch or refund", tone: "" };
   if (v.state === "RAISING") return v.raise.deadline <= v.now ? { text: `Sale closed · anyone can finalize · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`, tone: "accent" } : { text: `Closes in ${duration(v.raise.deadline - v.now)} · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`, tone: "accent" };
   if (v.state === "FAILED") return { text: "Refunds open", tone: "" };
   if (v.state === "EXIT_ROUND") return { text: `Exit round ends in ${duration(v.exit.roundEndsAt! - v.now)}`, tone: "warn" };
@@ -936,8 +940,8 @@ export function CovenantCard({ v, i = 0 }: { v: CovenantView; i?: number }) {
         </div>
         {launched ? (
           <div className="ccard-figs">
-            <div><div className="k">Treasury</div><div className="v">{bnb(v.treasury, 1)}</div></div>
-            <div><div className="k">Book</div><div className="v mono" style={{ fontSize: 12.5 }}>{price(d.book)}</div></div>
+            <div><div className="k">Treasury</div><div className="v">{bnb(v.treasury)}</div></div>
+            <div title={`${price(d.book)} BNB per token`}><div className="k">Book / 1M</div><div className="v mono" style={{ fontSize: 12.5 }}>{price(d.book * 1e6)} BNB</div></div>
             <div><div className="k">vs book</div><div className={cx("v", d.prem < 0 ? "down" : "up")}>{signedPct(d.prem)}</div></div>
           </div>
         ) : (

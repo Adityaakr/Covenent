@@ -19,6 +19,7 @@ import { floorAfterMonths, runwayMonths, settleRaise, split, startingFloorRatio,
 import { DAY, longSpan, span } from "@/lib/covenant/time";
 import type { Address, Terms } from "@/lib/covenant/types";
 import { useSource } from "@/lib/data/hooks";
+import { useBnbUsd } from "@/lib/data/bnb-usd";
 import { bnb, bps, multiple, pct, price, tokens, usd } from "@/lib/format";
 import { LOCAL_MODE } from "@/lib/chain/target";
 import { ThinkingMark } from "@/components/app/mark";
@@ -92,7 +93,10 @@ function CovenantCreate() {
   const atMin = settleRaise(t.minRaise, t.minRaise, t.cap, sp);
   const atCap = settleRaise(t.cap, t.minRaise, t.cap, sp);
   const ratio = startingFloorRatio(t.saleBps, t.poolBps);
-  const budget = tapPer30d(t.tapUsdPer30d, 600, atCap.T0, t.tapCapBps);
+  // BNB/USD from Atlas through our oracle, live; the tap at the cap is priced at it (none shown while it is unknown).
+  const rateQ = useBnbUsd();
+  const bnbUsd = rateQ.data ?? undefined;
+  const budget = bnbUsd ? tapPer30d(t.tapUsdPer30d, bnbUsd, atCap.T0, t.tapCapBps) : null;
   // Flap's liquidity floor for this split, read live from the Portal through the factory (minRaiseFor): the pool seed
   // of the minimum raise must clear it, or the factory refuses the terms. Production needs the graduation floor.
   const floorQ = useQuery({
@@ -368,7 +372,7 @@ function CovenantCreate() {
 
         <aside className="stack sticky" aria-label="Live preview">
           <div className="card preview">
-            <div className="card-head"><div><h3 className="h-card">Live preview</h3><p className="t-xs muted w5">BNB/USD assumed at $600</p></div><span className="badge accent">Live</span></div>
+            <div className="card-head"><div><h3 className="h-card">Live preview</h3><p className="t-xs muted w5">{bnbUsd ? <>BNB/USD <span className="num">{usd(bnbUsd, 2)}</span>, live from Atlas</> : rateQ.isLoading ? "Reading BNB/USD from Atlas…" : "BNB/USD from Atlas is unavailable right now"}</p></div><span className="badge accent">Live</span></div>
             <div className="card-body stack">
               <div style={{ display: "grid", gap: 2 }}><span className="lbl">Sale price at the cap</span><span className="fig-md mono" style={{ fontFamily: "var(--font-mono-stack)", fontSize: 20 }}>{price(atCap.salePrice)}<BnbUnit /></span></div>
               <dl className="kv">
@@ -376,7 +380,7 @@ function CovenantCreate() {
                 <dt>Treasury at the cap</dt><dd className="num">{bnb(atCap.T0)} BNB</dd>
                 <dt>Treasury at the minimum</dt><dd className="num">{bnb(atMin.T0)} BNB</dd>
                 <dt>Starting floor</dt><dd className="num">{pct(ratio, 1)} of sale price</dd>
-                <dt>Tap at the cap</dt><dd className="num">{bnb(budget.bnb)} BNB / 30d</dd>
+                <dt>Tap at the cap</dt><dd className="num">{budget ? <>{bnb(budget.bnb)} BNB / 30d</> : <span className="muted">Needs BNB/USD</span>}</dd>
               </dl>
               <div className="stack-sm" style={{ display: "grid" }}>
                 <span className="lbl">Floor as a share of the sale price</span>

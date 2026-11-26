@@ -91,7 +91,7 @@ export default function DemoPage() {
           <span className="eyebrow rise">{step.at} · {step.label}</span>
           {v ? <span className="row rise" style={{ gap: 10 }}><TokenAvatar seed={seedOf(v)} size={28} issuer={v.issuer.kind} /><span className="t-s ink w5">{v.terms.name}</span><StateBadge state={v.state} /></span> : null}
         </div>
-        <p className="say rise" style={{ ["--i" as string]: 1 }}>{step.say}</p>
+        <p className="say rise" style={{ ["--i" as string]: 1 }}>{sayFor(step, v)}</p>
         <div className="rise" style={{ ["--i" as string]: 2 }}>
           {source.mode !== "live" && step.scene ? <ConnectChain source={source} title="Connect to run the demo on chain" />
             : step.scene && !v ? <div className="tile t-s muted w5">No covenant on the chain is in this stage right now.{LOCAL_MODE ? <> <span className="mono">scripts/dev-all.sh</span> seeds one at every stage;</> : null} the demo factory&apos;s clocks move in minutes, so stages come and go.</div>
@@ -107,6 +107,15 @@ export default function DemoPage() {
       <p className="t-xs muted w5">Every scene reads a real covenant on the configured chain that is in that stage now: the contracts&apos; demo factory runs the same rules with short timers (exit streak 3 minutes, round 5 minutes, heartbeat 10 minutes). Use ← and → to step.</p>
     </div>
   );
+}
+
+/** A scene's line, matched to the covenant it shows: the exit scene falls back to a cooldown or a wind-down when no
+ *  round is open, and then says what that covenant is actually doing. */
+function sayFor(step: Step, v?: CovenantView): ReactNode {
+  if (step.scene !== "exit" || step.at !== "1:45" || !v || v.state === "EXIT_ROUND") return step.say;
+  if (v.state === "COOLDOWN") return <>No exit round is open right now; {v.terms.name}&apos;s last one has closed. <span className="soft">Holders who wanted out burned at book value, everyone who stayed kept the same book value, and the streak has to build again before the next round.</span></>;
+  if (v.state === "WIND_DOWN") return <>No exit round is open right now. {v.terms.name} is wound down instead, which is the exit for good. <span className="soft">Any holder can burn tokens for a pro-rata share of the treasury at book value, with no fee and no deadline.</span></>;
+  return step.say;
 }
 
 function Scene({ step, v: maybe }: { step: Step; v?: CovenantView }) {
