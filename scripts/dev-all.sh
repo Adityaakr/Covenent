@@ -11,7 +11,8 @@
 #   scripts/dev-all.sh --no-chain keep the running chain and deployment; restart only the processes
 #   scripts/dev-all.sh status     what is running, with log paths
 #   scripts/dev-all.sh stop       stop the processes and the chain
-#   scripts/dev-all.sh stop-issuer   kill the issuer agent (the stage moment: nothing sends heartbeats any more)
+#   scripts/dev-all.sh stop-issuer   kill the issuer agent (the stage moment: nothing sends heartbeats any more; after
+#                                 the 10-minute window the keeper declares abandonment on its next tick, within 10 s)
 #
 # WEB_PORT (default 8080) moves the web app; 8081-8083 and 8085 are also origins the Privy app allows.
 # Every key used here is one of anvil's public test keys; signing is refused on any non-loopback RPC.
@@ -141,7 +142,7 @@ wait_http http://127.0.0.1:8787/health api
 
 say "keeper (anvil #$(jq -r .accounts.keeper.anvilIndex "$DEPLOY")), pokes every 20 s with the local Atlas test signer"
 KEEPER_PRIVATE_KEY="$(key "$(jq -r .accounts.keeper.anvilIndex "$DEPLOY")")" \
-KEEPER_TICK_SECONDS=10 KEEPER_POKE_INTERVAL_SECONDS=20 \
+KEEPER_TICK_SECONDS=10 KEEPER_POKE_INTERVAL_SECONDS=20 KEEPER_DECLARE_ABANDONED=true \
   start keeper "$ROOT/server" pnpm keeper
 
 # One issuer agent per live covenant (the team wallet, anvil #1): "issuer" runs the ACTIVE one (Lumen), the one

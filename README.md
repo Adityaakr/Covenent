@@ -21,8 +21,9 @@ Every screen reads the chain or the server; there is no stand-in data. `/app/fau
 BNB and Demo USDC (dev chain only) and swaps dUSDC to BNB on the local pool.
 
 - `scripts/dev-all.sh status` shows what runs and where the logs are (`.dev/`); `stop` stops everything.
-- `scripts/dev-all.sh stop-issuer` kills the issuer agent, the stage moment: after the heartbeat window anyone can
-  press "Declare abandoned" on the sheet.
+- `scripts/dev-all.sh stop-issuer` kills the issuer agent, the stage moment: once the heartbeat window passes, the
+  keeper declares abandonment on its next tick (on by default) and the sheet shows the outcome and the agent's ERC-8004
+  record. If the keeper is offline, the sheet's "Declare abandoned" button (anyone can press it) is the fallback.
 - `scripts/dev-demo.sh use <launcher>` points the scripted scenes (`trade`, `slide`, `poke`, `advance <s>`, ...) at a
   covenant you created in the web app; `scripts/dev-demo.sh live` seeds another running covenant.
 - MCP investor agent: `INVESTOR_PRIVATE_KEY=<anvil #4 key> pnpm --dir server investor` lists covenants under book over

@@ -51,9 +51,9 @@ With the contracts lane's local node up and the demo factory timers (exit streak
 KEEPER_PRIVATE_KEY=<anvil #5> KEEPER_POKE_INTERVAL_SECONDS=20 KEEPER_TICK_SECONDS=5 pnpm keeper
 ISSUER_PRIVATE_KEY=<team key> ISSUER_TICK_SECONDS=20 ISSUER_PERIOD_SECONDS=120 pnpm issuer
 CUSTOMER_PRIVATE_KEY=<anvil #6> pnpm issuer:earn <team address> 2   # revenue scene
-# kill the issuer process on stage: nothing sends heartbeats any more;
-# after the window, anyone declares abandonment (web button, MCP declare_abandoned, or the keeper
-# with KEEPER_DECLARE_ABANDONED=true) and the treasury opens to holders
+# kill the issuer process on stage: nothing sends heartbeats any more; once the window passes the keeper
+# declares abandonment on its next tick (on by default) and the treasury opens to holders. If the keeper is
+# offline, anyone can press the sheet's "Declare abandoned" button or call MCP declare_abandoned instead
 INVESTOR_PRIVATE_KEY=<holder key> pnpm investor
 ```
 
@@ -76,7 +76,7 @@ Every tick, for each covenant: resolve any pending tx by receipt, decide whether
 - **Restart-safe.** State lives in `.data/keeper-state.json` (atomic writes) and a pid lock stops two processes sharing one key and state dir.
 - **Exit fix 3.** If Atlas cannot be reached the keeper still pokes, with no report: the observation is untrusted, tap rate and unlocks do not move, the exit streak still steps.
 - **Alerts** (stdout, `.data/alerts.jsonl` served at `/api/covenants/:vault/alerts`, optional `ALERT_WEBHOOK_URL`), deduplicated across restarts: `exit-streak-building` (each quarter of the streak, per round), `exit-round-open`, `heartbeat-due` (80% of the window), `abandonable`, `poke-failed`, `tax-dispatched`.
-- **Keeper agent role.** With `KEEPER_DECLARE_ABANDONED=true` it calls `declareAbandoned()` when due.
+- **Keeper agent role.** It calls `declareAbandoned()` on its first tick after the heartbeat window has passed (default on; `KEEPER_DECLARE_ABANDONED=false` leaves the switch to a person). The anyone-can-press button and MCP `declare_abandoned` are the fallback when no keeper runs.
 
 ## API (`:8787`)
 

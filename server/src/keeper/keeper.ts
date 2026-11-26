@@ -92,7 +92,9 @@ export class Keeper {
     this.store = new JsonStore<KeeperState>(opts.cfg.keeper.stateFile, { vaults: {} });
     this.log = opts.log ?? ((m) => console.log(`[keeper ${new Date().toISOString()}] ${m}`));
     this.alerter = new Alerter(opts.cfg.keeper.alertsFile, opts.cfg.keeper.alertWebhook, this.log);
-    this.declare = opts.declareAbandoned ?? process.env.KEEPER_DECLARE_ABANDONED === 'true';
+    // On by default (owner decision): the keeper flips the abandonment switch on its first tick after it is due.
+    // The anyone-can-press button (web, MCP declare_abandoned) stays as the fallback when no keeper runs.
+    this.declare = opts.declareAbandoned ?? process.env.KEEPER_DECLARE_ABANDONED !== 'false';
   }
 
   get client(): PublicClient {
