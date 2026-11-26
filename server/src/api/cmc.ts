@@ -17,12 +17,14 @@ export interface CmcRoute {
 
 /** The endpoints listed in docs/DESIGN.md "CoinMarketCap DEX API in the app". */
 export const CMC_ROUTES: CmcRoute[] = [
-  { name: 'pair-quote', method: 'GET', path: '/v4/dex/pairs/quotes/latest', defaults: { aux: 'holders,security_scan' }, use: 'Live pair quote, holders and security scan on the covenant sheet' },
-  { name: 'token-liquidity', method: 'GET', path: '/v1/dex/token-liquidity/query', use: 'Liquidity now, for depth alerts' },
-  { name: 'liquidity-change', method: 'GET', path: '/v1/dex/liquidity-change/list', use: 'Liquidity changes, for depth alerts' },
-  { name: 'candles', method: 'GET', path: '/v1/k-line/candles', use: 'Price history for the price against book chart' },
-  { name: 'transactions', method: 'GET', path: '/v1/dex/tokens/transactions', use: 'Recent swaps, to show who is selling into an exit round' },
-  { name: 'new-list', method: 'POST', path: '/v1/dex/new/list', use: 'Sample of new launches for the simulator' },
+  // Parameters verified with the owner's key on 2026-11-26 (data/covenant-server/keys-check.md). BSC is
+  // network_id=14 on the v4 pair route (network_slug=bsc answers "network is not supported") and platform=bsc on v1.
+  { name: 'pair-quote', method: 'GET', path: '/v4/dex/pairs/quotes/latest', defaults: { network_id: '14', aux: 'holders,security_scan' }, use: 'Live pair quote, holders and security scan on the covenant sheet (contract_address=<pair>)' },
+  { name: 'token-liquidity', method: 'GET', path: '/v1/dex/token-liquidity/query', defaults: { platform: 'bsc' }, use: 'Liquidity now, for depth alerts (unresolved: CMC answers 400 "Parameter error" to every documented parameter set)' },
+  { name: 'liquidity-change', method: 'GET', path: '/v1/dex/liquidity-change/list', defaults: { platform: 'bsc' }, use: 'Liquidity changes, for depth alerts (address=<token>)' },
+  { name: 'candles', method: 'GET', path: '/v1/k-line/candles', defaults: { platform: 'bsc', interval: '1d', unit: 'native', limit: '500' }, use: 'Price history for the price against book chart (address=<token or pool>; rows [o, h, l, c, volume, ts_ms, traders])' },
+  { name: 'transactions', method: 'GET', path: '/v1/dex/tokens/transactions', defaults: { platform: 'bsc' }, use: 'Recent swaps, to show who is selling into an exit round (address=<token>)' },
+  { name: 'new-list', method: 'POST', path: '/v1/dex/new/list', use: 'Sample of new launches for the simulator (plan-gated: 403 error 1006 below the Startup plan)' },
 ];
 
 const FORBIDDEN_PARAMS = /key|token_secret|auth/i;

@@ -4,7 +4,7 @@ import { loadConfig } from '../config.js';
 import { SimulatorResult } from '../schema.js';
 import type { ExitRule } from './replay.js';
 import { runSimulation } from './run.js';
-import { CmcSource, GeckoTerminalSource, type MarketSource } from './sources.js';
+import { CmcSource, GeckoTerminalSource, HybridSource, type MarketSource } from './sources.js';
 
 const cfg = loadConfig();
 const arg = (name: string, dflt: string) => {
@@ -23,7 +23,13 @@ const out = arg('out', cfg.simulatorFile);
 
 let source: MarketSource = cfg.cmc.apiKey ? new CmcSource(cfg.cmc.apiKey, cfg.cmc.baseUrl) : new GeckoTerminalSource();
 let result = await runSimulation(source, opts);
-if (source.name === 'coinmarketcap' && result.sample.withCandles === 0) {
+if (source.name === 'coinmarketcap' && result.sample.withCandles === 0 && cfg.cmc.apiKey) {
+  // new/list is plan-gated on lower CMC plans: keep CMC candles on the GeckoTerminal sample
+  console.log('[sim] CoinMarketCap new/list gave no sample; GeckoTerminal sample with CoinMarketCap candles');
+  source = new HybridSource(new GeckoTerminalSource(), new CmcSource(cfg.cmc.apiKey, cfg.cmc.baseUrl));
+  result = await runSimulation(source, opts);
+}
+if (source.name !== 'geckoterminal' && result.sample.withCandles === 0) {
   console.log('[sim] CoinMarketCap returned nothing usable; falling back to GeckoTerminal');
   source = new GeckoTerminalSource();
   result = await runSimulation(source, opts);

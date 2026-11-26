@@ -46,19 +46,24 @@ class Reader {
   }
   /** First name the ABI has, so the real contracts' names and the design doc's names both read. */
   async first<T = unknown>(fns: string[], args: unknown[] = []): Promise<T | null> {
-    const fn = fns.find((f) => hasFunction(this.abi, f));
-    if (!fn) {
-      this.missing.push(`${this.label}.${fns[0]}`);
-      return null;
+    for (const fn of fns) {
+      if (!hasFunction(this.abi, fn)) continue;
+      try {
+        return (await this.client.readContract({ address: this.address, abi: this.abi, functionName: fn, args })) as T;
+      } catch {
+        /* try the next name */
+      }
     }
-    return this.get<T>(fn, args);
+    this.missing.push(`${this.label}.${fns[0]}`);
+    return null;
   }
 }
 
 /** Views whose name differs between docs/DESIGN.md (first) and the real contracts (aliases). */
 const VAULT_ALIASES: Record<string, string[]> = {
-  exitStreakTarget: ['exitStreakTarget', 'exitStreakNeeded'],
-  totalTapPaid: ['totalTapPaid', 'tapPaid'],
+  exitStreakTarget: ['exitStreakNeeded', 'exitStreakTarget'],
+  totalTapPaid: ['tapPaid', 'totalTapPaid'],
+  token: ['token', 'taxToken'],
 };
 
 const big = (v: unknown): bigint | null => (typeof v === 'bigint' ? v : typeof v === 'number' ? BigInt(v) : null);
@@ -231,9 +236,12 @@ export class CovenantService {
     const count = num(r.trancheCount) ?? 0;
     const tranches = await Promise.all(
       Array.from({ length: count }, async (_, k) => {
-        if (!hasFunction(this.abis.vault, 'trancheMultiple')) {
-          // real contracts: trancheProgress(k) -> (amount, multiple x100, progress seconds, unlocked, targetUsd)
-          const t = await v.get<readonly [bigint, bigint, bigint, boolean, bigint]>('trancheProgress', [BigInt(k)]);
+        // real contracts: trancheProgress(k) -> (amount, multiple x100, progress seconds, unlocked, targetUsd)
+        const t = await this.client
+          .readContract({ address: ref.vault, abi: this.abis.vault, functionName: 'trancheProgress', args: [BigInt(k)] })
+          .then((x) => (Array.isArray(x) && x.length >= 4 ? (x as unknown as readonly [bigint, bigint, bigint, boolean]) : null))
+          .catch(() => null);
+        if (t) {
           return {
             index: k,
             multiple: t ? Number(t[1]) / 100 : null,
@@ -395,12 +403,13 @@ export class CovenantService {
 
   async launcherInfo(launcher: Address): Promise<CovenantSheet['launcherInfo']> {
     const l = new Reader(this.client, launcher, this.abis.launcher, 'launcher');
-    const real = hasFunction(this.abis.launcher, 'terms') && !hasFunction(this.abis.launcher, 'minRaise');
-    const [state, committed, minRaise, cap, deadline] = real
-      ? await Promise.all([l.get('state'), l.get('committed'), l.get<Raw>('terms'), null, l.get('saleDeadline')]).then(
-          ([st, c, t, , d]) => [st, c, t?.minRaise ?? null, t?.cap ?? null, d] as const,
-        )
-      : await Promise.all([l.get('state'), l.get('committed'), l.get('minRaise'), l.get('cap'), l.get('deadline')]);
+    // real contracts keep minRaise and cap in terms() and the deadline in saleDeadline()
+    const terms = hasFunction(this.abis.launcher, 'terms')
+      ? ((await this.client.readContract({ address: launcher, abi: this.abis.launcher, functionName: 'terms' }).catch(() => null)) as Raw | null)
+      : null;
+    const [state, committed, minRaise, cap, deadline] = terms?.minRaise !== undefined
+      ? await Promise.all([l.get('state'), l.get('committed'), terms.minRaise, terms.cap, l.first(['saleDeadline', 'deadline'])])
+      : await Promise.all([l.get('state'), l.get('committed'), l.get('minRaise'), l.get('cap'), l.first(['deadline', 'saleDeadline'])]);
     return {
       state: state === null ? 'UNKNOWN' : (LAUNCHER_STATES[Number(state)] ?? 'UNKNOWN'),
       committedWei: str(big(committed)),

@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "computedFromRealData": true,
-  "generatedAt": "2026-11-26T02:15:31.515Z",
+  "generatedAt": "2026-11-26T03:32:27.368Z",
   "source": {
     "sample": "GeckoTerminal pool listings for BNB Chain: /dexes/pancakeswap_v2/pools (sort h24_tx_count_desc, h24_volume_usd_desc), /pools (sort h24_tx_count_desc) and /trending_pools, pages 1-10 each; WBNB-quoted pools created inside the age window",
-    "candles": "GeckoTerminal /networks/bsc/pools/{pool}/ohlcv/day?currency=token&token=base (price in WBNB per token)",
+    "candles": "CoinMarketCap GET /v1/k-line/candles (platform=bsc, token address, interval 1d, unit native: BNB per token)",
     "notes": [
-      "No CoinMarketCap API key was available, so this run uses GeckoTerminal as the stated fallback (the keyless CMC /public-api route answered with an anonymous-access limit).",
+      "CoinMarketCap /v1/dex/new/list is not on this key's plan (403, error 1006), so the sample comes from GeckoTerminal and the daily candles from CoinMarketCap.",
       "Survivorship bias: the listings rank pools by current activity, so tokens that died quietly are under-sampled. The trigger share is therefore a conservative estimate for launches in general.",
-      "Days with no trades are filled with the previous close. A pool whose liquidity was pulled shows no candles after that, so a rug after launch can be missed."
+      "Days with no trades are filled with the previous close. A pool whose liquidity was pulled shows no candles after that, so a rug after launch can be missed.",
+      "1 of 27 sampled pools failed to return candles and are excluded."
     ]
   },
   "terms": {
@@ -19,50 +20,50 @@
   },
   "sample": {
     "requested": 150,
-    "withCandles": 29,
+    "withCandles": 26,
     "minDays": 14,
     "windowStart": "2026-06-08T08:01:45.000Z",
     "windowEnd": "2026-11-08T08:36:23.000Z"
   },
   "headline": {
-    "text": "5 of 29 actively traded BNB Chain launches (17.2%) would have opened a Covenant exit round, a median 15 days after launch, with 73% of the raise still in the treasury for holders.",
+    "text": "4 of 26 actively traded BNB Chain launches (15.4%) would have opened a Covenant exit round, a median 9 days after launch, with 74% of the raise still in the treasury for holders.",
     "rule": "decay",
-    "value": 17.2,
+    "value": 15.4,
     "reason": null
   },
   "variants": [
     {
       "rule": "reset",
       "description": "Original rule: 3 consecutive days below the floor; one day at or above resets the streak to zero.",
-      "triggered": 5,
-      "triggeredShare": 0.1724137931034483,
-      "medianDaysToTrigger": 15,
-      "p25DaysToTrigger": 11,
-      "p75DaysToTrigger": 22,
-      "medianRedeemableShareOfRaise": 0.7348469228349535,
-      "medianRedeemVsMarket": 1.025736635393311
+      "triggered": 4,
+      "triggeredShare": 0.15384615384615385,
+      "medianDaysToTrigger": 8.5,
+      "p25DaysToTrigger": 5.25,
+      "p75DaysToTrigger": 22.5,
+      "medianRedeemableShareOfRaise": 0.7413795897282148,
+      "medianRedeemVsMarket": 1.0557126399847856
     },
     {
       "rule": "decay",
       "description": "Fixed rule (decay): a day below adds one, a day at or above subtracts one instead of resetting; opens at 3.",
-      "triggered": 5,
-      "triggeredShare": 0.1724137931034483,
-      "medianDaysToTrigger": 15,
-      "p25DaysToTrigger": 11,
-      "p75DaysToTrigger": 22,
-      "medianRedeemableShareOfRaise": 0.7348469228349535,
-      "medianRedeemVsMarket": 1.025736635393311
+      "triggered": 4,
+      "triggeredShare": 0.15384615384615385,
+      "medianDaysToTrigger": 8.5,
+      "p25DaysToTrigger": 5.25,
+      "p75DaysToTrigger": 22.5,
+      "medianRedeemableShareOfRaise": 0.7413795897282148,
+      "medianRedeemVsMarket": 1.0557126399847856
     },
     {
       "rule": "twap72",
       "description": "Fixed rule (72h average): the 3-day average price is below the floor.",
-      "triggered": 5,
-      "triggeredShare": 0.1724137931034483,
-      "medianDaysToTrigger": 14,
-      "p25DaysToTrigger": 10,
-      "p75DaysToTrigger": 21,
-      "medianRedeemableShareOfRaise": 0.7358475340315458,
-      "medianRedeemVsMarket": 1.0150910962146042
+      "triggered": 4,
+      "triggeredShare": 0.15384615384615385,
+      "medianDaysToTrigger": 7.5,
+      "p25DaysToTrigger": 4.5,
+      "p75DaysToTrigger": 21.5,
+      "medianRedeemableShareOfRaise": 0.7423890961918811,
+      "medianRedeemVsMarket": 1.0245893699050934
     }
   ],
   "tokens": [
@@ -72,9 +73,9 @@
       "symbol": "买王得羊",
       "createdAt": 1785934704,
       "days": 114,
-      "openPrice": 3.2519090133129e-7,
+      "openPrice": 2.2386541411e-8,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 17.850442616586548,
+      "lastPriceShareOfOpen": 267.07606534737715,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -87,9 +88,9 @@
       "symbol": "AI人生",
       "createdAt": 1793645320,
       "days": 25,
-      "openPrice": 8.22409013312901e-8,
+      "openPrice": 1.03009298237e-7,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 265.420170766911,
+      "lastPriceShareOfOpen": 212.6382598159899,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -102,9 +103,9 @@
       "symbol": "星链",
       "createdAt": 1789312232,
       "days": 75,
-      "openPrice": 3.7019090133129e-7,
-      "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 51.50687712143547,
+      "openPrice": 0.000002206490006113,
+      "minPriceShareOfOpen": 0.9321109124537187,
+      "lastPriceShareOfOpen": 8.807115779467436,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -117,9 +118,9 @@
       "symbol": "ALD",
       "createdAt": 1781971792,
       "days": 139,
-      "openPrice": 0.0000350154162829032,
-      "minPriceShareOfOpen": 0.9082589970486663,
-      "lastPriceShareOfOpen": 1.218333077945873,
+      "openPrice": 0.000036462358311599,
+      "minPriceShareOfOpen": 1,
+      "lastPriceShareOfOpen": 1.1642070764314594,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -132,9 +133,9 @@
       "symbol": "CASHCOW",
       "createdAt": 1793966392,
       "days": 21,
-      "openPrice": 7.0269090133129e-7,
-      "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 11.611537587259626,
+      "openPrice": 0.000007702007679911,
+      "minPriceShareOfOpen": 0.7085539542853405,
+      "lastPriceShareOfOpen": 1.0774031212681014,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -147,9 +148,9 @@
       "symbol": "RMT",
       "createdAt": 1783503445,
       "days": 142,
-      "openPrice": 2.0058125313283198e-10,
-      "minPriceShareOfOpen": 0.9977056201496847,
-      "lastPriceShareOfOpen": 17980.066081040644,
+      "openPrice": 2.03234472e-10,
+      "minPriceShareOfOpen": 0.9991835587813075,
+      "lastPriceShareOfOpen": 17791.56544845896,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -162,9 +163,9 @@
       "symbol": "CRAM",
       "createdAt": 1787911023,
       "days": 91,
-      "openPrice": 0.0000108441149138788,
-      "minPriceShareOfOpen": 0.9955362037975318,
-      "lastPriceShareOfOpen": 4.553882013822067,
+      "openPrice": 0.000013719278204946,
+      "minPriceShareOfOpen": 0.9958168839937723,
+      "lastPriceShareOfOpen": 3.5986295345613866,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -177,40 +178,13 @@
       "symbol": "Cake king",
       "createdAt": 1794126983,
       "days": 19,
-      "openPrice": 0.000004619902005012529,
+      "openPrice": 0.000005781598029907,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 718.0599226080171,
+      "lastPriceShareOfOpen": 577.7132198501549,
       "triggers": {
         "reset": null,
         "decay": null,
         "twap72": null
-      }
-    },
-    {
-      "token": "0xe28cd11c99af2df76bb8ada4cd0ef3904378280f",
-      "pair": "0x9e3eedc213db7491c25e99b8affe41fbe6caf796",
-      "symbol": "SOXSB",
-      "createdAt": 1788351962,
-      "days": 86,
-      "openPrice": 0.07716806186339009,
-      "minPriceShareOfOpen": 0.0911966409359558,
-      "lastPriceShareOfOpen": 1.401210700082312,
-      "triggers": {
-        "reset": {
-          "day": 22,
-          "price": 0.044570893633501994,
-          "floor": 0.04493531053817041
-        },
-        "decay": {
-          "day": 22,
-          "price": 0.044570893633501994,
-          "floor": 0.04493531053817041
-        },
-        "twap72": {
-          "day": 21,
-          "price": 0.04482516117348514,
-          "floor": 0.04499649712472287
-        }
       }
     },
     {
@@ -219,13 +193,52 @@
       "symbol": "B13B",
       "createdAt": 1789413610,
       "days": 74,
-      "openPrice": 0.00734539001399337,
-      "minPriceShareOfOpen": 1.7152245901666932e-10,
-      "lastPriceShareOfOpen": 0.7509229607701915,
+      "openPrice": 0.01543214938132868,
+      "minPriceShareOfOpen": 0.31514873511468805,
+      "lastPriceShareOfOpen": 0.35555318807551173,
       "triggers": {
-        "reset": null,
-        "decay": null,
-        "twap72": null
+        "reset": {
+          "day": 3,
+          "price": 0.009221257955341905,
+          "floor": 0.009221568406907348
+        },
+        "decay": {
+          "day": 3,
+          "price": 0.009221257955341905,
+          "floor": 0.009221568406907348
+        },
+        "twap72": {
+          "day": 3,
+          "price": 0.008978898065586391,
+          "floor": 0.009221568406907348
+        }
+      }
+    },
+    {
+      "token": "0xe28cd11c99af2df76bb8ada4cd0ef3904378280f",
+      "pair": "0x9e3eedc213db7491c25e99b8affe41fbe6caf796",
+      "symbol": "SOXSB",
+      "createdAt": 1788351962,
+      "days": 121,
+      "openPrice": 0.11507760007263677,
+      "minPriceShareOfOpen": 0.44416274288256297,
+      "lastPriceShareOfOpen": 0.9313993822563116,
+      "triggers": {
+        "reset": {
+          "day": 57,
+          "price": 0.061176973687270306,
+          "floor": 0.06389360452445157
+        },
+        "decay": {
+          "day": 57,
+          "price": 0.061176973687270306,
+          "floor": 0.06389360452445157
+        },
+        "twap72": {
+          "day": 56,
+          "price": 0.06259402304771548,
+          "floor": 0.06398060584961351
+        }
       }
     },
     {
@@ -234,9 +247,9 @@
       "symbol": "AGC",
       "createdAt": 1793611033,
       "days": 25,
-      "openPrice": 6.783566177348129e-10,
+      "openPrice": 8.5733161e-10,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 4.537156879004555,
+      "lastPriceShareOfOpen": 3.5871491487407074,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -248,10 +261,10 @@
       "pair": "0xc70953a1012dd41b478995e4999c659e5fa137fa",
       "symbol": "FXIon",
       "createdAt": 1786797283,
-      "days": 104,
-      "openPrice": 0.059018285753446,
-      "minPriceShareOfOpen": 0.00003586897171429714,
-      "lastPriceShareOfOpen": 0.9632233896828023,
+      "days": 165,
+      "openPrice": 0.06558335429323797,
+      "minPriceShareOfOpen": 0.00883259485293271,
+      "lastPriceShareOfOpen": 0.8720841268600503,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -264,9 +277,9 @@
       "symbol": "GANG",
       "createdAt": 1792663047,
       "days": 36,
-      "openPrice": 1.25000626566416e-7,
+      "openPrice": 1.64445863328e-7,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 22.006148692743544,
+      "lastPriceShareOfOpen": 16.25064990944641,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -279,52 +292,13 @@
       "symbol": "超级雪球",
       "createdAt": 1793177780,
       "days": 30,
-      "openPrice": 6.03691498282946e-8,
-      "minPriceShareOfOpen": 0.1889838015399892,
-      "lastPriceShareOfOpen": 3.062651346331906,
+      "openPrice": 8.994795856e-9,
+      "minPriceShareOfOpen": 1,
+      "lastPriceShareOfOpen": 18.90524313195708,
       "triggers": {
-        "reset": {
-          "day": 15,
-          "price": 1.501155651710405e-8,
-          "floor": 3.548966718838763e-8
-        },
-        "decay": {
-          "day": 15,
-          "price": 1.501155651710405e-8,
-          "floor": 3.548966718838763e-8
-        },
-        "twap72": {
-          "day": 14,
-          "price": 3.473971805848256e-8,
-          "floor": 3.553799202618519e-8
-        }
-      }
-    },
-    {
-      "token": "0xf7ebc958289bda28a6049b548668711a11cf4f9e",
-      "pair": "0x7945f6f53ceff5563a17537cd08f93722ee2f1bb",
-      "symbol": "春晚China",
-      "createdAt": 1780905705,
-      "days": 171,
-      "openPrice": 0.000422116290290363,
-      "minPriceShareOfOpen": 0.30154734483968343,
-      "lastPriceShareOfOpen": 0.959534962264175,
-      "triggers": {
-        "reset": {
-          "day": 6,
-          "price": 0.00022801247497005998,
-          "floor": 0.00025121039693553905
-        },
-        "decay": {
-          "day": 6,
-          "price": 0.00022801247497005998,
-          "floor": 0.00025121039693553905
-        },
-        "twap72": {
-          "day": 5,
-          "price": 0.000247812694706867,
-          "floor": 0.00025155245992588865
-        }
+        "reset": null,
+        "decay": null,
+        "twap72": null
       }
     },
     {
@@ -333,9 +307,9 @@
       "symbol": "次第花开",
       "createdAt": 1790845743,
       "days": 57,
-      "openPrice": 8.35409013312901e-8,
+      "openPrice": 1.14763656411e-7,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 162.72659200939898,
+      "lastPriceShareOfOpen": 124.70785648870468,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -343,30 +317,45 @@
       }
     },
     {
+      "token": "0xf7ebc958289bda28a6049b548668711a11cf4f9e",
+      "pair": "0x7945f6f53ceff5563a17537cd08f93722ee2f1bb",
+      "symbol": "春晚China",
+      "createdAt": 1780905705,
+      "days": 171,
+      "openPrice": 0.000452227793224731,
+      "minPriceShareOfOpen": 0.15034961536481634,
+      "lastPriceShareOfOpen": 0.9449895613420194,
+      "triggers": {
+        "reset": {
+          "day": 6,
+          "price": 0.0002522263882162337,
+          "floor": 0.0002691303938142782
+        },
+        "decay": {
+          "day": 6,
+          "price": 0.0002522263882162337,
+          "floor": 0.0002691303938142782
+        },
+        "twap72": {
+          "day": 5,
+          "price": 0.00026927448573153134,
+          "floor": 0.0002694968577362539
+        }
+      }
+    },
+    {
       "token": "0x88510365f39b26c1eaa21eef6d40f0dde1964444",
       "pair": "0xc8b24d91635d4a1599fce3053d6185949553ab83",
       "symbol": "旺旺",
       "createdAt": 1784277887,
-      "days": 117,
-      "openPrice": 9.642105262234388e-8,
-      "minPriceShareOfOpen": 0.08458306065071773,
-      "lastPriceShareOfOpen": 0.1961181129295726,
+      "days": 127,
+      "openPrice": 6.5369564e-9,
+      "minPriceShareOfOpen": 0.9067674982504089,
+      "lastPriceShareOfOpen": 2.8830063253902076,
       "triggers": {
-        "reset": {
-          "day": 27,
-          "price": 5.481857560854132e-8,
-          "floor": 5.57657090392588e-8
-        },
-        "decay": {
-          "day": 27,
-          "price": 5.481857560854132e-8,
-          "floor": 5.57657090392588e-8
-        },
-        "twap72": {
-          "day": 26,
-          "price": 5.3239432962631706e-8,
-          "floor": 5.584164293939044e-8
-        }
+        "reset": null,
+        "decay": null,
+        "twap72": null
       }
     },
     {
@@ -375,24 +364,9 @@
       "symbol": "VNX",
       "createdAt": 1786568242,
       "days": 81,
-      "openPrice": 1.64751879699248e-7,
+      "openPrice": 2.18518184156e-7,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 73.47554424787515,
-      "triggers": {
-        "reset": null,
-        "decay": null,
-        "twap72": null
-      }
-    },
-    {
-      "token": "0x2b1d6b8475d542d3e1c826d0ff22ea5c2cb57777",
-      "pair": "0x61d049cad25d09b92194a2e8278aa2388a625f91",
-      "symbol": "WHALE",
-      "createdAt": 1794058041,
-      "days": 20,
-      "openPrice": 1.3104042727029e-7,
-      "minPriceShareOfOpen": 0.9263964804688732,
-      "lastPriceShareOfOpen": 1.0559385667040855,
+      "lastPriceShareOfOpen": 55.42307209479647,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -405,24 +379,9 @@
       "symbol": "FLY",
       "createdAt": 1789184308,
       "days": 74,
-      "openPrice": 0.000414670506564023,
-      "minPriceShareOfOpen": 0.9315830006334035,
-      "lastPriceShareOfOpen": 3.967643586320889,
-      "triggers": {
-        "reset": null,
-        "decay": null,
-        "twap72": null
-      }
-    },
-    {
-      "token": "0x7ab8d02cbb51ff7223fde700eaaa2a91bf750314",
-      "pair": "0x30000a407fabebe29439f8e437050512ff6661be",
-      "symbol": "TART",
-      "createdAt": 1787522174,
-      "days": 88,
-      "openPrice": 6.708300721772679e-8,
-      "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 20.05077892773796,
+      "openPrice": 0.000546164741885901,
+      "minPriceShareOfOpen": 0.9665084699984746,
+      "lastPriceShareOfOpen": 3.3957254042965697,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -435,9 +394,9 @@
       "symbol": "BAN",
       "createdAt": 1782131015,
       "days": 158,
-      "openPrice": 7.960416925323059e-8,
+      "openPrice": 2.0914742377e-8,
       "minPriceShareOfOpen": 1,
-      "lastPriceShareOfOpen": 471.8935360505681,
+      "lastPriceShareOfOpen": 1843.2787026609233,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -445,14 +404,14 @@
       }
     },
     {
-      "token": "0x9b8e987e6fec8cf1380c4dca7071e2c7853aeea1",
-      "pair": "0x02eda8dbc97a0c9adfbbfab589430d76a7c7f5b6",
-      "symbol": "FXIon",
-      "createdAt": 1789186777,
-      "days": 67,
-      "openPrice": 0.0475714899509748,
-      "minPriceShareOfOpen": 0.0000036962674404787245,
-      "lastPriceShareOfOpen": 1.1939668801486238,
+      "token": "0x7ab8d02cbb51ff7223fde700eaaa2a91bf750314",
+      "pair": "0x30000a407fabebe29439f8e437050512ff6661be",
+      "symbol": "TART",
+      "createdAt": 1787522174,
+      "days": 88,
+      "openPrice": 8.3431053241e-8,
+      "minPriceShareOfOpen": 1,
+      "lastPriceShareOfOpen": 15.895665593303066,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -460,14 +419,14 @@
       }
     },
     {
-      "token": "0x4902c5ebc598265ed2212b559b042de8a5eeec3f",
-      "pair": "0xfc58462502b7c47f166292df6e6b11e1ae41f314",
-      "symbol": "B13B",
-      "createdAt": 1789538288,
-      "days": 72,
-      "openPrice": 0.006755487514488659,
-      "minPriceShareOfOpen": 0.7624221713252959,
-      "lastPriceShareOfOpen": 0.8128920240637726,
+      "token": "0x3cf98f15368cb6335ec33cbb22cd5fcd122f7777",
+      "pair": "0xac866a798864a241355e30763ab94b0a06845e2b",
+      "symbol": "天秤",
+      "createdAt": 1783125878,
+      "days": 146,
+      "openPrice": 2.1034335237e-8,
+      "minPriceShareOfOpen": 1,
+      "lastPriceShareOfOpen": 1116.0393063380748,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -479,10 +438,10 @@
       "pair": "0x47bc06722295ac316a569eef87ac32faa455f441",
       "symbol": "QQQB",
       "createdAt": 1784039861,
-      "days": 136,
-      "openPrice": 1.23793432580251,
-      "minPriceShareOfOpen": 0.7370184588706353,
-      "lastPriceShareOfOpen": 0.9252671178370336,
+      "days": 150,
+      "openPrice": 1.308297583380164,
+      "minPriceShareOfOpen": 0.6801191534383388,
+      "lastPriceShareOfOpen": 0.8776423037596989,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -494,10 +453,10 @@
       "pair": "0x66faad27cf481f82d0089ec8156b3aa3636010c7",
       "symbol": "SPCXB",
       "createdAt": 1785595204,
-      "days": 118,
-      "openPrice": 0.18798208209795597,
-      "minPriceShareOfOpen": 0.7626247919759891,
-      "lastPriceShareOfOpen": 1.2297932719738809,
+      "days": 168,
+      "openPrice": 0.3021128947887261,
+      "minPriceShareOfOpen": 0.6225061917557567,
+      "lastPriceShareOfOpen": 0.7632868281425262,
       "triggers": {
         "reset": null,
         "decay": null,
@@ -510,40 +469,25 @@
       "symbol": "SHOPINX",
       "createdAt": 1792678085,
       "days": 36,
-      "openPrice": 0.0000599192423081167,
-      "minPriceShareOfOpen": 0.05918560979390152,
-      "lastPriceShareOfOpen": 0.7899499815525624,
+      "openPrice": 0.000078811438656605,
+      "minPriceShareOfOpen": 0.04759075617659294,
+      "lastPriceShareOfOpen": 0.6088944505154424,
       "triggers": {
         "reset": {
           "day": 11,
-          "price": 0.000034528773208788824,
-          "floor": 0.00003541742765544175
+          "price": 0.00004363096236914026,
+          "floor": 0.00004658434118188911
         },
         "decay": {
           "day": 11,
-          "price": 0.000034528773208788824,
-          "floor": 0.00003541742765544175
+          "price": 0.00004363096236914026,
+          "floor": 0.00004658434118188911
         },
         "twap72": {
           "day": 10,
-          "price": 0.00003501067695346213,
-          "floor": 0.00003546565412760253
+          "price": 0.00004425037605440741,
+          "floor": 0.000046647773186465864
         }
-      }
-    },
-    {
-      "token": "0x4902c5ebc598265ed2212b559b042de8a5eeec3f",
-      "pair": "0x320e8096e5e7a46e43446141a5b15d801fc596f5",
-      "symbol": "B13B",
-      "createdAt": 1789388212,
-      "days": 74,
-      "openPrice": 0.007667148300578569,
-      "minPriceShareOfOpen": 0.6709198866203391,
-      "lastPriceShareOfOpen": 0.7191390092251597,
-      "triggers": {
-        "reset": null,
-        "decay": null,
-        "twap72": null
       }
     },
     {
@@ -551,10 +495,10 @@
       "pair": "0xdebed59510885e29ce1d3da0e5412d49d21f0354",
       "symbol": "NVDAB",
       "createdAt": 1785667742,
-      "days": 117,
-      "openPrice": 0.344961975974897,
-      "minPriceShareOfOpen": 0.6643973898232928,
-      "lastPriceShareOfOpen": 0.792620324120758,
+      "days": 168,
+      "openPrice": 0.36858568052546575,
+      "minPriceShareOfOpen": 0.607794711005671,
+      "lastPriceShareOfOpen": 0.7450978860850233,
       "triggers": {
         "reset": null,
         "decay": null,

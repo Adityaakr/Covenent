@@ -28,6 +28,11 @@ async function getJson(url: string, init: RequestInit = {}, tries = 4): Promise<
       await sleep(15_000 * (i + 1));
       continue;
     }
+    // CoinMarketCap answers an intermittent 500 "system is busy": retry it quickly
+    if (res.status >= 500 && i < tries) {
+      await sleep(2_000 * (i + 1));
+      continue;
+    }
     if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url.replace(/\?.*/, '')}`);
     return res.json();
   }
@@ -90,10 +95,12 @@ export class GeckoTerminalSource implements MarketSource {
           const age = (now - created) / 86_400;
           if (age < opts.minAgeDays || age > opts.maxAgeDays) continue;
           const pair = p.attributes.address.toLowerCase() as `0x${string}`;
-          if (seen.has(pair)) continue;
-          seen.set(pair, {
+          const token = p.relationships.base_token.data.id.replace(/^bsc_/, '').toLowerCase() as `0x${string}`;
+          // one entry per launch: a token with several WBNB pools is still one launch (keyed by token, not pool)
+          if (seen.has(token)) continue;
+          seen.set(token, {
             pair,
-            token: p.relationships.base_token.data.id.replace(/^bsc_/, '').toLowerCase() as `0x${string}`,
+            token,
             symbol: p.attributes.name.split(' / ')[0] ?? null,
             createdAt: created,
           });
@@ -126,7 +133,7 @@ export class CmcSource implements MarketSource {
   name = 'coinmarketcap';
   sampleLabel = 'new BNB Chain launches';
   sampleDescription = 'CoinMarketCap POST /v1/dex/new/list (BNB Chain)';
-  candleDescription = 'CoinMarketCap GET /v1/k-line/candles (interval 1d)';
+  candleDescription = 'CoinMarketCap GET /v1/k-line/candles (platform=bsc, token address, interval 1d, unit native: BNB per token)';
   notes = ['Sample and candles from the CoinMarketCap DEX API with a server-side key.'];
   constructor(
     private apiKey: string,
@@ -161,17 +168,52 @@ export class CmcSource implements MarketSource {
     return out;
   }
 
+  /**
+   * Token-level daily candles priced in BNB. Verified with the owner's key (keys-check, 2026-11-26):
+   * platform=bsc&address=<token>&interval=1d&unit=native, limit at most 500, rows [o, h, l, c, volume, ts_ms, traders].
+   */
   async dailyCandles(p: SampledPool): Promise<Candle[]> {
-    const q = new URLSearchParams({ network_slug: 'bsc', contract_address: p.pair, interval: '1d', convert: 'BNB' });
+    const q = new URLSearchParams({ platform: 'bsc', address: p.token, interval: '1d', unit: 'native', limit: '500' });
     const j = (await getJson(`${this.base}/v1/k-line/candles?${q}`, { headers: this.headers() })) as { data?: unknown[] };
     if (!Array.isArray(j.data)) throw new Error('unrecognized /v1/k-line/candles response');
     return (j.data as (number[] | Record<string, number>)[])
       .map((k) =>
         Array.isArray(k)
-          ? { t: k[0]! > 1e12 ? k[0]! / 1000 : k[0]!, o: k[1]!, h: k[2]!, l: k[3]!, c: k[4]! }
+          ? { t: k[5]! > 1e12 ? k[5]! / 1000 : k[5]!, o: k[0]!, h: k[1]!, l: k[2]!, c: k[3]! }
           : { t: k.time ?? k.timestamp ?? 0, o: k.open ?? 0, h: k.high ?? 0, l: k.low ?? 0, c: k.close ?? 0 },
       )
       .filter((k) => k.o > 0 && k.c > 0)
       .sort((a, b) => a.t - b.t);
+  }
+}
+
+/**
+ * GeckoTerminal sample, CoinMarketCap candles. POST /v1/dex/new/list is plan-gated (403, error 1006) on the owner's
+ * key, so the doc's unbiased new-launch sample needs a higher CMC plan; until then the sample is GeckoTerminal's and
+ * only the price history comes from CoinMarketCap.
+ */
+export class HybridSource implements MarketSource {
+  name = 'geckoterminal+coinmarketcap';
+  sampleLabel: string;
+  sampleDescription: string;
+  candleDescription: string;
+  notes: string[];
+  constructor(
+    private gt: GeckoTerminalSource,
+    private cmc: CmcSource,
+  ) {
+    this.sampleLabel = gt.sampleLabel;
+    this.sampleDescription = gt.sampleDescription;
+    this.candleDescription = cmc.candleDescription;
+    this.notes = [
+      'CoinMarketCap /v1/dex/new/list is not on this key\'s plan (403, error 1006), so the sample comes from GeckoTerminal and the daily candles from CoinMarketCap.',
+      ...gt.notes.slice(1),
+    ];
+  }
+  sample(opts: { maxPools: number; minAgeDays: number; maxAgeDays: number }) {
+    return this.gt.sample(opts);
+  }
+  dailyCandles(p: SampledPool) {
+    return this.cmc.dailyCandles(p);
   }
 }

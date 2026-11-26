@@ -175,6 +175,15 @@ function parseCovenantEnv(v: string | undefined): CovenantRef[] {
     });
 }
 
+/**
+ * First block worth reading logs from. On a fork, deployedAtBlock is the fork block itself; any log range that
+ * touches it or anything below makes anvil ask the upstream public RPC, which rate-limits, so start one above.
+ */
+function firstLocalBlock(d: Deployments | null): number {
+  if (!d?.deployedAtBlock) return 0;
+  return (d as { mode?: string }).mode === 'fork' ? d.deployedAtBlock + 1 : d.deployedAtBlock;
+}
+
 export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
   const deployments = overrides.deployments !== undefined ? overrides.deployments : loadDeployments();
   const fromEnv = parseCovenantEnv(env('COVENANT_VAULTS'));
@@ -210,7 +219,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
       ),
     ],
     covenantVaultFactory: addrEnv('COVENANT_VAULT_FACTORY') ?? deploymentAddress(deployments, 'vaultFactory', 'CovenantVaultFactory'),
-    startBlock: BigInt(env('START_BLOCK') ?? deployments?.startBlock ?? deployments?.deployedAtBlock ?? 0),
+    startBlock: BigInt(env('START_BLOCK') ?? deployments?.startBlock ?? firstLocalBlock(deployments)),
     apiPort,
     apiBaseUrl: env('API_BASE_URL') ?? `http://127.0.0.1:${apiPort}`,
     corsOrigins: (env('CORS_ORIGINS') ?? 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080').split(',').map((s) => s.trim()),

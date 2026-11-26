@@ -173,7 +173,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
         if (cfg.chainId !== 56 || !s.pool.pair) {
           return json({ onchain, coinmarketcap: null, note: `Chain ${cfg.chainId} is not BNB Chain mainnet, so CoinMarketCap has no data for this pair. On-chain reserves shown.` });
         }
-        const quote = await cmc.call(CMC_ROUTES.find((r) => r.name === 'pair-quote')!, { network_slug: 'bsc', contract_address: s.pool.pair });
+        const quote = await cmc.call(CMC_ROUTES.find((r) => r.name === 'pair-quote')!, { network_id: '14', contract_address: s.pool.pair });
         return json({ onchain, coinmarketcap: { mode: quote.mode, status: quote.status, body: quote.body } });
       } catch (e) {
         return fail(e);
