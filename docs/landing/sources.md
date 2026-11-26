@@ -7,7 +7,8 @@ streak decays instead of resetting and reads on-chain numbers only). Logo source
 `web/public/landing/logos/SOURCES.md`.
 
 Where it shows up: **P** = home "The problem today" (`web/src/landing/content/problem.ts`), **V** = home "Who named
-this problem" (`content/voices.ts`), **U** = use cases (`content/useCases.tsx`), **C** = home compare note.
+this problem" (`content/voices.ts`), **U** = use cases (`content/useCases.tsx`), **A** = home "Why we built it"
+(`sections/home/HomePriorArt.tsx`), **B** = home "How it's built" (`sections/home/HomeBuiltOn.tsx`).
 
 ## The problem today
 
@@ -21,7 +22,7 @@ this problem" (`content/voices.ts`), **U** = use cases (`content/useCases.tsx`),
 | $106K in ETH (55.5) sent from the AIXBT agent's wallet by two prompts after its dashboard was breached | The attacker "made two prompts for it to transfer 55.5 Ether, worth $106,200, from its wallet." The developer said the dashboard was breached; the AI itself was not manipulated. | Cointelegraph, 19 Mar 2025. https://cointelegraph.com/news/hacker-breaches-ai-crypto-bot-aixbt-steals-55-eth | P, U |
 | −91%: VIRTUAL from $4.61 to $0.42 between Jan 2 and Apr 7, 2025; Virtuals revenue near $500 a day | VIRTUAL hit "an all-time high of $4.61" on Jan 2 and fell "as low as $0.42" by Apr 7 (−90.9%). Headline: "Virtuals revenue plunges to $500 a day". | Cointelegraph, 9 Apr 2025. https://cointelegraph.com/news/ai-agents-virtual-revenue-plunge-token-price-decline | P, U |
 | $47,316 prize pool an AI agent paid out in a public challenge after 482 attempts | Final prize $47,316.05; "challenged by 195 players with 482 attempts". It was a designed game, and the page says so. | The Block, 29 Nov 2024. https://www.theblock.co/post/328747/human-player-outwits-freysa-ai-agent-in-47000-crypto-challenge | P |
-| $580M committed to MetaDAO's capped raises over 14 launches; $535M (92.2%) refunded above the caps; about 13x demand | "MetaDAO's launchpad has taken roughly $580M in ICO commitments and refunded $535M (92.2%) over 14 launches." "everything above the cap is refunded pro rata." 580 / 45 ≈ 12.9. | Basis Point, "MetaDAO Ownership Coins", 2 Aug 2026. https://basispointres.substack.com/p/metadao-ownership-coins | P, C |
+| $580M committed to MetaDAO's capped raises over 14 launches; $535M (92.2%) refunded above the caps; about 13x demand (also A: "Buyers offered $580M across 14 raises") | "MetaDAO's launchpad has taken roughly $580M in ICO commitments and refunded $535M (92.2%) over 14 launches." "everything above the cap is refunded pro rata." 580 / 45 ≈ 12.9. | Basis Point, "MetaDAO Ownership Coins", 2 Aug 2026. https://basispointres.substack.com/p/metadao-ownership-coins | P, A |
 
 Wording fixed against the sources: the earlier stats row said "$580M committed to protected raises, 92.2% of it
 refunded", which read as protections paying out. The refunds were oversubscription above the caps, so the page now
@@ -32,7 +33,9 @@ definition.
 
 ## Who named this problem
 
-Quotes are copied from the page. The one paraphrase is labelled on the page.
+On the page: the owner's five, in this order: Buterin (DAICO, 2018), Buterin ($100 a day, 2026), BNB Chain (21 May
+2026), Dixon and Harkavy (a16z crypto, May 2026), MetaDAO docs. The other rows were verified the same way and are
+kept here for reference; they are not on the page. Quotes are copied from the page.
 
 | Who | Date | Exact quote (or paraphrase) | Source |
 | --- | --- | --- | --- |
@@ -65,14 +68,46 @@ Checked and left off the page:
 
 ## Use cases
 
-Each use case's "What goes wrong today" cites rows above: AI agent (CoinDesk, Cointelegraph Mar 2025), community
-round (Cernera et al.), inference agent (Cointelegraph Apr 2025), self-owning machine (Tomašev et al.), launchpad
-(Solidus Labs, MemeChain). Every number on a use-case covenant sheet is illustrative and labelled so on the page. The
-sheets use DESIGN.md's default terms (Appendix A): sale 60%, pool 15%, team 25%, so the treasury is 75% of the
-accepted raise, the starting floor is 60% of the sale price and the tap cap is 4% of the treasury per 30 days. The
-community round is DESIGN.md's worked example (1,400 BNB committed, 500 accepted, 375 BNB treasury).
+Each use case's "What goes wrong today" cites rows above: working capital (CoinDesk, Cointelegraph Mar 2025),
+community round (Cernera et al.), inference agent (Cointelegraph Apr 2025), self-owning machine (Tomašev et al.),
+protected tier (Solidus Labs, MemeChain). Every number on a use-case covenant sheet and cover card is illustrative
+and labelled so on the sheet. They use DESIGN.md's default terms (Appendix A): sale 60%, pool 15%, team 25%, so the
+treasury is 75% of the accepted raise, the starting floor is 60% of the sale price and the tap cap is 4% of the
+treasury per 30 days. The community round is DESIGN.md's worked example (1,400 BNB committed, 500 accepted, 900
+refunded, 375 BNB treasury).
 
-## Compare note
+Covers are live HTML (`sections/usecases/Cover.tsx`), not images: the template's own hero sky photo
+(`web/public/landing/home/hero-plate.jpg`) under one product card per case. No third-party photos are used.
 
-MetaDAO mechanics: Basis Point (above) and RockawayX, as cited in DESIGN.md "Positioning and prior art". DAICO:
-Buterin 2018 (above).
+## Why we built it (prior art)
+
+| Claim on the page | Source |
+| --- | --- |
+| The DAICO: a tap the team can lower but not raise; holders can vote to shut it down and get their money back; both run on a vote | Buterin, "Explanation of DAICOs" (row above): "they can always vote to shut the DAICO down entirely and get their money back." The tap and the vote to raise it are in the same post (DESIGN.md "What the precedents teach"). |
+| Ownership coins: the treasury sits under market oversight so the team can't easily rug it; it moves only by decision market | MetaDAO docs, https://docs.metadao.fi/benefits/ownership-coins: "Treasury governed by decision markets: money sits in a treasury with market oversight so that the team can't easily rug it." and "The valuable parts of the organization—intellectual property, treasury, mint authority—are controlled by decision markets." "A holder who wants out alone sells at the market price" is our reading of that: there is no individual redemption. |
+| Buyers offered $580M across 14 raises | Basis Point (row above). |
+| Launchpads: 98.6% of Pump.fun tokens fell below $1,000 of liquidity | Solidus Labs (row above). |
+| Locks and vesting: say nothing about the raise or the treasury; a team can vest into a dead token | Our own analysis (DESIGN.md "Why the usual fixes fall short"); labelled "Our own read" on the page. |
+| Covenant's limits: a contract right to treasury BNB, not the company or its IP; no holder vote in v1 | DESIGN.md "Where Covenant is weaker, stated up front". |
+
+## How it's built (integrations)
+
+Each line is checked against the code in this repository.
+
+| Integration | What the page says | Where it is in the build |
+| --- | --- | --- |
+| Flap Pool Launch | Flap creates the token, seeds the PancakeSwap pool at the sale price, hands reserved tokens to the vault through its Token Dock, routes trading tax to the vault | `contracts/src/launcher`, `contracts/src/flap` (Pool Launch bases, `ITokenDock` in `ILaunchVaultSpec.sol`); DESIGN.md "Launch sequence", "Tax flow" |
+| PancakeSwap | The pool, liquidity locked at launch; its time-weighted price is what the exit reads on-chain | DESIGN.md "Launch sequence" (the Portal seeds the V2 pool and locks the liquidity); `CovenantVault.sol` header: the exit reads the pool TWAP only |
+| Atlas | Signed BNB/USD for the dollar tap and unlocks, a trust gate for unlock counting, never needed for the exit. Status: local test signer until production keys | `contracts/src/oracle/CovenantOracle.sol`; README "Contracts": on the dev chain the signer is anvil account 9 |
+| CoinMarketCap | Live pair data on covenant sheets and the simulator | `server/` and `web/src/lib/api/server.ts` ("CoinMarketCap DEX API") |
+| Four.meme / OpenFour | The Covenant Lite tax-vault template | `contracts/src/openfour/CovenantLiteVault.sol` |
+| ERC-8004 | Identity bound to the team wallet; outcomes written to the reputation record | `contracts/src/agent/IERC8004.sol`; `CovenantVault.sol` calls `giveFeedback` inside try/catch |
+| Cournot | Planned: a market checks each report; the vault's verdict hook is built, the relayer is not wired | `CovenantVault.recordVerdict` (relayer fixed at creation); no Cournot relayer in the repo |
+| BNB Chain | Everything runs there; local fork today, testnet and mainnet next | README "Contracts", `docs/DEPLOY.md` |
+
+## Launch on Four.meme
+
+Founder's tax share to a vault, a capped draw per period that counts as a heartbeat, pro rata redemption after
+silence or wind-down, template fixed at creation; no raise and no book-value exit: DESIGN.md "Four.meme and OpenFour"
+and `contracts/src/openfour/CovenantLiteVault.sol`.
+

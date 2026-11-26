@@ -1,5 +1,9 @@
 # Covenant landing: final copy and sources
 
+> **v2 (26 Nov 2026):** `content/home-v2.md` describes the current home and use-case pages and overrides this file where
+> they differ. The /pricing and /changelog copy, and the home fees, FAQ and milestones sections, below are retired.
+
+
 Every section's final copy on the code rebuild of the Framer template, with the `docs/DESIGN.md` section behind each fact.
 The per-page source files are in `docs/landing/content/`; this file concatenates them in site order.
 No customer, testimonial or number here is invented: quotes are DESIGN.md lines attributed to a role, and every number is a DESIGN.md figure or a term of the default covenant.

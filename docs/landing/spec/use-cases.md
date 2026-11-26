@@ -7,7 +7,7 @@ Tokens: `$border` = `--c-border`, `$surface`, `$text`, `$text2`, `$accent`, `$bg
 Reference screenshots: `docs/landing/spec/reference/use-cases/`. Final shots: `docs/landing/screens/use-cases/`.
 
 Code: `web/src/landing/pages/UseCasesPage.tsx`, `UseCasePage.tsx`, `web/src/landing/sections/usecases/*`,
-content `web/src/landing/content/useCases.tsx`, images `web/public/landing/usecases/cover-1..6.jpg`.
+content `web/src/landing/content/useCases.tsx`, images `web/public/landing/usecases/<slug>.jpg` (covers made for each case; see docs/landing/sources.md).
 
 ## CMS "Stories" (`D9wcyChdJ`) -> `content/useCases.tsx`
 

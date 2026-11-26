@@ -18,10 +18,10 @@ the template, and every fact and number comes from `docs/DESIGN.md`.
 | `web/src/landing/pages/<route>.tsx` | Default exports for the app router: `features`, `pricing`, `use-cases`, `use-case` (dynamic, with `generateStaticParams`), `changelog`, `changelog-entry` (dynamic), `contact`, `not-found`. |
 | `web/src/landing/components/` | Foundation: navigation, footer, section shell, buttons, page CTA, FAQ, card grids, motion helpers. |
 | `web/src/landing/sections/` | Sections for each page. |
-| `web/src/landing/content/` | Covenant data: FAQs, plans, use cases, milestones, the problem stats (`problem.ts`) and the cited voices (`voices.ts`). |
+| `web/src/landing/content/` | Covenant data: FAQs (used on /contact), use cases, the problem stories (`problem.ts`) and the cited voices (`voices.ts`). |
 | `web/src/landing/meta.ts` | Page metadata and Open Graph, including the home headline and subline. |
 | `web/src/landing/styles/landing.css` | Tokens and text styles, scoped under `.landing-root`. |
-| `web/public/landing/` | Images reused from the template (plates and covers), served at `/landing/...`. |
+| `web/public/landing/` | Plates reused from the template, served at `/landing/...`. Use-case covers are live components, not images. |
 | `web/public/landing/logos/` | The Built-on marks, monochrome SVGs from each project's own site or Simple Icons. Sources: `SOURCES.md` there. |
 | `docs/landing/sources.md` | Every outside number and quote on the landing, with the exact source wording and link. |
 | `docs/landing/content.md` | Every section's final copy, with the DESIGN.md source for each fact. The v2 sections are in `content/home-v2.md`. |
@@ -30,8 +30,9 @@ the template, and every fact and number comes from `docs/DESIGN.md`.
 
 ## Routes
 
-`/`, `/features` (the five rules and the agent layer), `/pricing` (how Covenant is paid for), `/use-cases` and
-`/use-cases/<slug>` (five cases), `/changelog` and `/changelog/<slug>` (build milestones), `/contact`, plus a 404 page.
+`/`, `/features` (the five rules and the agent layer), `/use-cases` and `/use-cases/<slug>` (five cases), `/contact`,
+plus a 404 page. `/pricing`, `/changelog` and `/changelog/<slug>` are retired: their page modules redirect to `/`
+for good, so the existing routes stay valid until `app/pricing` and `app/changelog` are deleted.
 "Launch app" and "Connect wallet" go to `/app` on the same origin. The app runs at http://localhost:8080.
 
 ## Requirements in the app shell
