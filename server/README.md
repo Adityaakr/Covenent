@@ -93,7 +93,7 @@ Every tick, for each covenant: resolve any pending tx by receipt, decide whether
 | `GET /api/covenants/:vault/history` | `History`: `Observed` points (TWAP, book, BNB/USD, trusted, state) and exit-round bands |
 | `GET /api/covenants/:vault/downside?holder=&tokens=` | `Downside`: redeem at book now vs. sell on pool, floor path at the tap cap, runway |
 | `GET /api/covenants/:vault/alerts` | `{ alerts: Alert[] }` |
-| `GET /api/covenants/:vault/tx/:action` | `UnsignedTx` for `commit?amount=`, `claim-refund`, `claim-tokens`, `redeem?amount=&from=`, `declare-abandoned`, `claim-tap`, `heartbeat`, `lower-tap?usd=` |
+| `GET /api/covenants/:vault/tx/:action` | `UnsignedTx` for `commit?amount=`, `finalize` (carries `gas`), `claim-refund`, `claim-tokens`, `redeem?amount=&from=`, `declare-abandoned`, `claim-tap`, `heartbeat`, `lower-tap?usd=` |
 | `GET /api/poke-report?vault=` (alias `/poke-report`) | `PokeReport`: signed report + ready `poke(vault)` tx for the web's poke button |
 | `GET /api/simulator` | `SimulatorResult` |
 | `GET /api/simulator/sample` | the simulator's launches with their daily candles (BNB per token), for the web's "try other terms" replay |

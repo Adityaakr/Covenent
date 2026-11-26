@@ -512,6 +512,25 @@ otherwise. After changing a contract, run `scripts/dev-abi.sh` to re-export the 
 
 - **No admin keys.** No owner, no pause, no fee switch. Flap's Guardian is the only upgrade path. Its calls to team
   functions never count as a heartbeat.
+- **What Flap's Guardian can do (Flap's Pool Launch spec, disclosed).** Upgrade the vault and launcher logic through
+  their beacons, so the treasury and the refund BNB are only as safe as the Guardian. Call every team function:
+  `windDown()` on any covenant (it ends the tap early and opens fee-free redemption; it moves no funds, the vault
+  records it as a Guardian wind-down and the app says so), `claimTap()` (pays only the fixed team wallet),
+  `lowerTap()`, `postReport()`. It cannot count as a heartbeat, raise the tap, change the team wallet or any term,
+  unlock team tokens, or send treasury BNB or tokens anywhere but the team wallet's accrued tap and redeeming holders,
+  short of an upgrade.
+- **One Atlas signer.** It prices the dollar tap, which never exceeds its cap of the treasury per 30 days. It cannot
+  unlock team tokens on its own: a tranche also needs the multiple in BNB from the pool's own TWAP, with no oracle.
+- **Refused at creation, not at finalize.** The launcher factory screens the name and symbol against Flap's blocklist
+  and checks the minimum raise against Flap's live liquidity floor for the chosen pool share (graduation floor in
+  production), so no raise collects money for a launch Flap would refuse. The trading tax runs 30 days to 100 years
+  (default 100); after it ends the treasury grows only from issuer revenue (`depositRevenue`).
+- **The raise.** No per-wallet cap, by design: above the cap commitments are scaled back pro rata and the excess
+  refunds. Refunds and tokens are pull payments; the leftover rounding buffer (at most one wei per contributor) is
+  swept into the treasury once every refund is claimed. `finalize()` must be sent with a gas limit of 16.7M (every
+  client does); about 5 to 7M is used.
+- **Four.meme Lite vault.** `CovenantLiteVault` is outside Flap's audit scope: it never touches Flap's Portal or
+  Guardian and needs its own review.
 - **The exit needs no oracle.** It compares the pool TWAP with book value, two BNB numbers the vault reads itself. A
   wrong or missing Atlas rate cannot open or block a round.
 - **Manipulation limits.** Pokes are at least an hour apart. One poke adds at most six hours to any counter. The TWAP
@@ -520,6 +539,9 @@ otherwise. After changing a contract, run `scripts/dev-abi.sh` to re-export the 
   treasury to holders.
 - **What it does not protect.** The floor starts below the sale price and falls as the team spends. The treasury is
   BNB, so its dollar value moves. Holders get exit, not voice.
+- **Flap's review (26 Nov 2026).** Findings and fixes: name screen and floor at creation, finalize gas, tax
+  duration, Guardian wind-down disclosure, the Atlas unlock guard, the dust sweep; see the Security notes above and
+  [docs/DEPLOY.md](docs/DEPLOY.md#redeploy-with-the-audit-fixes-26-nov-2026).
 - **Before mainnet:** Flap's factory audit, an independent review of the vault, launcher and oracle, Atlas production
   credentials, and legal review of redemption rights ([checklist](docs/DEPLOY.md#mainnet-checklist-from-the-design-document)).
 
