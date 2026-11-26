@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createWalletClient, http, keccak256, parseEther, toBytes } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';
+import { decodeDecision } from '../../agents/issuer/decision.js';
 import { IssuerAgent } from '../../agents/issuer/issuer.js';
 import { createApp } from '../../src/api/app.js';
 import { CovenantService } from '../../src/covenant/read.js';
@@ -48,6 +49,16 @@ describe('issuer agent', () => {
     const after = await agent.svc.sheet(fx.vault);
     expect(after.tap.accruedWei).toBe('0');
     expect(after.heartbeat.ageSeconds).toBeLessThanOrEqual(2);
+    // the decision is on-chain: a ReportPosted data URI holding the record, its hash = keccak256 of the JSON
+    const posted = o.actions.find((a) => a.kind === 'decision-posted')!;
+    expect(posted).toBeDefined();
+    const logs = await fx.client.getContractEvents({ address: fx.vault, abi: fx.abis.vault, eventName: 'ReportPosted', fromBlock: 0n });
+    const last = logs.at(-1) as unknown as { args: { uri: string; hash: string }; transactionHash: string };
+    expect(last.transactionHash).toBe(posted.tx);
+    const rec = decodeDecision(last.args.uri)!;
+    expect(rec).toMatchObject({ kind: 'covenant.decision', action: 'claim_tap', author: { kind: 'rule', why: 'ANTHROPIC_API_KEY not set' } });
+    expect(rec.tx).toBe(o.actions.find((a) => a.kind === 'tap-claimed')!.tx);
+    expect(keccak256(toBytes(Buffer.from(last.args.uri.split(',')[1]!, 'base64').toString('utf8')))).toBe(last.args.hash);
   });
 
   it('forwards revenue it earns to the vault, raising book value', async () => {

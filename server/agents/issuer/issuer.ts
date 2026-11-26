@@ -1,13 +1,14 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { encodeFunctionData, keccak256, parseEther, toBytes, type Address, type Hex, type WalletClient } from 'viem';
+import { encodeFunctionData, erc20Abi, formatEther, formatUnits, keccak256, parseEther, toBytes, toHex, type Address, type Hex, type WalletClient } from 'viem';
 import { hasFunction } from '../../src/abi/index.js';
 import { assertLocalNodeIfLoopback, assertSigningAllowed, isLoopbackRpc, walletClient } from '../../src/chain.js';
-import type { ServerConfig } from '../../src/config.js';
+import { deploymentAddress, type ServerConfig } from '../../src/config.js';
 import { CovenantService } from '../../src/covenant/read.js';
 import { revertReason } from '../../src/keeper/keeper.js';
 import { JsonStore } from '../../src/keeper/store.js';
 import type { CovenantSheet } from '../../src/schema.js';
+import { actionLabel, Decider, encodeDecision, nothingToDecide, type Decision, type DecisionFacts, type DecisionOptions, type DecisionRecord } from './decision.js';
 import { Reporter, type LedgerEntry, type PeriodReport } from './report.js';
 
 export interface IssuerPolicy {
@@ -33,6 +34,8 @@ export interface IssuerPolicy {
   /** BNB kept in the agent wallet for gas */
   gasReserveWei: bigint;
   periodSeconds: number;
+  /** post each decision it acts on as an on-chain decision record (postReport with a data URI; also a heartbeat) */
+  postDecisions: boolean;
 }
 
 export const DEFAULT_POLICY: IssuerPolicy = {
@@ -45,6 +48,7 @@ export const DEFAULT_POLICY: IssuerPolicy = {
   minRevenueWei: parseEther('0.001'),
   gasReserveWei: parseEther('0.05'),
   periodSeconds: 30 * 86_400,
+  postDecisions: true,
 };
 
 interface IssuerState {
@@ -57,7 +61,11 @@ interface IssuerState {
   /** the period in which a "cut due, needs a person" note was last written */
   payCutNotedPeriod?: number;
   recordedBalance: string | null;
+  /** the agent wallet's Demo USDC balance at the last tick (test-funds revenue for the agent economy demo) */
+  recordedUsdc?: string | null;
   ledger: LedgerEntry[];
+  /** the last decisions, with inputs and reasoning, newest last */
+  decisions?: (DecisionRecord & { recordTx?: Hex; overrides: string[] })[];
   reports: { period: number; uri: string; hash: Hex; author: PeriodReport['author']; tx?: Hex }[];
 }
 
@@ -69,23 +77,29 @@ export interface TickOutcome {
 
 /**
  * The reference issuer agent from docs/DESIGN.md "Issuer agent loop". It holds the team wallet and
- * runs on its tap as a compute budget. Every money decision is a fixed rule in this file (claim
- * above a minimum, heartbeat on a schedule, cut its own pay when the pool trades close to book,
- * forward any revenue it earns to the vault). The LLM only writes the period report and the
- * explanation in it. Kill the process and nothing else keeps the covenant alive: after the
- * heartbeat window anyone can declare it abandoned and the treasury opens to holders.
+ * runs on its tap as a compute budget. Each tick it forwards revenue it earned to the vault (a fixed
+ * rule), then decides whether to claim its tap, cut its own pay and send a heartbeat. With
+ * ANTHROPIC_API_KEY Claude proposes that plan with its reasoning (decision.ts) and the policy here
+ * bounds it: it claims only what has accrued past the minimum, cuts only when the pay-cut condition
+ * has held on the oracle's TWAP for several ticks (and, on a public chain, only when a person allowed
+ * automatic cuts), never below the floor and once a period, and never skips a due heartbeat; without
+ * a key the fixed rules decide. Every decision it acts on is posted on-chain as a decision record
+ * (postReport with a data URI and its hash), and Claude writes the period report. The vault enforces
+ * the rules whatever the agent decides. Kill the process and nothing else keeps the covenant alive:
+ * after the heartbeat window anyone can declare it abandoned and the treasury opens to holders.
  */
 export class IssuerAgent {
   readonly svc: CovenantService;
   readonly wallet: WalletClient;
   readonly store: JsonStore<IssuerState>;
   private reporter: Reporter;
+  readonly decider: Decider;
   private log: (m: string) => void;
 
   constructor(
     readonly cfg: ServerConfig,
     readonly vault: Address,
-    opts: { privateKey?: Hex; wallet?: WalletClient; svc?: CovenantService; policy?: Partial<IssuerPolicy>; reporter?: Reporter; log?: (m: string) => void } = {},
+    opts: { privateKey?: Hex; wallet?: WalletClient; svc?: CovenantService; policy?: Partial<IssuerPolicy>; reporter?: Reporter; decider?: Decider; log?: (m: string) => void } = {},
     readonly policy: IssuerPolicy = { ...DEFAULT_POLICY, ...(opts.policy ?? {}) },
   ) {
     this.svc = opts.svc ?? new CovenantService({ cfg });
@@ -104,6 +118,7 @@ export class IssuerAgent {
       reports: [],
     });
     this.reporter = opts.reporter ?? new Reporter(cfg.anthropic.apiKey, cfg.anthropic.model);
+    this.decider = opts.decider ?? new Decider(cfg.anthropic.apiKey, cfg.anthropic.model);
     this.log = opts.log ?? ((m) => console.log(`[issuer ${new Date().toISOString()}] ${m}`));
   }
 
@@ -139,7 +154,7 @@ export class IssuerAgent {
   private record(e: LedgerEntry) {
     this.store.update((d) => {
       d.ledger.push(e);
-      if (e.kind !== 'note' && e.kind !== 'revenue-forwarded') d.lastActionAt = e.at;
+      if (e.kind !== 'note' && e.kind !== 'revenue-forwarded' && e.kind !== 'usdc-revenue') d.lastActionAt = e.at;
     });
     this.log(`${e.kind}${e.amountWei ? ` ${e.amountWei} wei` : ''}: ${e.reason}${e.tx ? ` (${e.tx})` : ''}`);
   }
@@ -167,7 +182,11 @@ export class IssuerAgent {
       const amount = earned < sendable ? earned : sendable;
       if (amount > 0n) {
         try {
-          const tx = await this.send(this.vault, '0x', amount);
+          // depositRevenue(tag) marks it as issuer revenue on-chain (and is a heartbeat); a plain send also counts
+          const data = hasFunction(this.svc.abis.vault, 'depositRevenue')
+            ? encodeFunctionData({ abi: this.svc.abis.vault, functionName: 'depositRevenue', args: [keccak256(toHex('issuer-revenue'))] })
+            : '0x';
+          const tx = await this.send(this.vault, data, amount);
           this.record({ at: now, kind: 'revenue-forwarded', amountWei: amount.toString(), tx, reason: 'Revenue the agent earned goes to the vault, raising book value for every holder.' });
         } catch (e) {
           this.record({ at: now, kind: 'note', reason: `revenue forward failed: ${revertReason(e)}` });
@@ -175,36 +194,15 @@ export class IssuerAgent {
       }
     }
 
+    // 1b. dollar revenue in Demo USDC (test funds): customers pay the agent for its service. It stays in the agent
+    // wallet, shown beside the BNB treasury; the treasury is BNB because Flap's pools are BNB-quoted.
+    const usdc = await this.usdcRevenue(now);
+
     const live = s.state === 'ACTIVE' || s.state === 'COOLDOWN' || s.state === 'EXIT_ROUND';
     const accrued = BigInt(s.tap.accruedWei ?? '0');
-    let beat = false;
 
-    // 2. claim the tap (also a heartbeat), or heartbeat on schedule
-    if ((live || s.state === 'WIND_DOWN') && accrued >= this.policy.minClaimWei) {
-      try {
-        const tx = await this.call('claimTap');
-        beat = true;
-        this.record({ at: now, kind: 'tap-claimed', amountWei: accrued.toString(), tx, reason: `Claimed the accrued tap as this period's compute budget (minimum claim ${this.policy.minClaimWei} wei).` });
-      } catch (e) {
-        this.record({ at: now, kind: 'note', reason: `claimTap failed: ${revertReason(e)}` });
-      }
-    }
-    if (live && !beat) {
-      const age = s.heartbeat.ageSeconds ?? Infinity;
-      const every = Math.min(this.policy.heartbeatEverySeconds, s.heartbeat.windowSeconds ? Math.floor(s.heartbeat.windowSeconds / 3) : Infinity);
-      if (age >= every) {
-        try {
-          const tx = await this.call('heartbeat');
-          beat = true;
-          this.record({ at: now, kind: 'heartbeat', tx, reason: `Last team action ${age}s ago; heartbeat every ${every}s keeps the abandonment switch closed.` });
-        } catch (e) {
-          this.record({ at: now, kind: 'note', reason: `heartbeat failed: ${revertReason(e)}` });
-        }
-      }
-    }
-
-    // 3. a pay cut when the pool trades close to book (once per period). The pool spot alone can be pushed for a block,
-    // so the oracle-observed TWAP must agree, on several consecutive ticks; on a public chain a person confirms.
+    // 2. the pay-cut gate. The pool spot alone can be pushed for a block, so the oracle-observed TWAP must agree, on
+    // several consecutive ticks; on a public chain a person confirms (the agent only notes that a cut is due).
     const cur = s.tap.tapUsdPer30d === null ? null : parseEther(String(s.tap.tapUsdPer30d));
     const twapPremium = await this.twapPremiumPct(s);
     const near = (p: number | null) => p !== null && p <= this.policy.payCutBelowPremiumPct;
@@ -213,10 +211,12 @@ export class IssuerAgent {
     this.store.update((d) => {
       d.payCutStreak = condition ? (d.payCutStreak ?? 0) + 1 : 0;
     });
+    let cutTarget: bigint | null = null;
+    let cutWhy = '';
     if (condition && (this.store.get().payCutStreak ?? 0) >= this.policy.payCutConfirmTicks) {
       const target = (cur! * BigInt(Math.round((1 - this.policy.payCutShare) * 10_000))) / 10_000n;
       const next = target < this.policy.minTapUsdPer30d ? this.policy.minTapUsdPer30d : target;
-      const why = `Pool spot ${s.premiumToBookPct!.toFixed(1)}% and observed TWAP ${twapPremium!.toFixed(1)}% vs book for ${this.store.get().payCutStreak} ticks (rule: cut at or below ${this.policy.payCutBelowPremiumPct}%)`;
+      cutWhy = `Pool spot ${s.premiumToBookPct!.toFixed(1)}% and observed TWAP ${twapPremium!.toFixed(1)}% vs book for ${this.store.get().payCutStreak} ticks (rule: cut at or below ${this.policy.payCutBelowPremiumPct}%)`;
       const auto = this.policy.autoPayCut ?? isLoopbackRpc(this.cfg.rpcUrl);
       if (next < cur! && !auto) {
         if (this.store.get().payCutNotedPeriod !== this.store.get().period) {
@@ -226,27 +226,32 @@ export class IssuerAgent {
           this.record({
             at: now,
             kind: 'note',
-            reason: `${why}. A pay cut to $${Number(next / 10n ** 18n)} per 30 days is due, but it is irreversible and this is a public chain: not sent. A person sends lower_tap, or sets ISSUER_AUTO_PAY_CUT=1.`,
+            reason: `${cutWhy}. A pay cut to $${Number(next / 10n ** 18n)} per 30 days is due, but it is irreversible and this is a public chain: not sent. A person sends lower_tap, or sets ISSUER_AUTO_PAY_CUT=1.`,
           });
         }
-      } else if (next < cur!) {
-        try {
-          const tx = await this.call('lowerTap', [next]);
-          this.store.update((d) => {
-            d.lastPayCutPeriod = d.period;
-            d.payCutStreak = 0;
-          });
-          this.record({
-            at: now,
-            kind: 'tap-lowered',
-            usdPer30d: next.toString(),
-            tx,
-            reason: `${why}. Lowered the tap from $${Number(cur! / 10n ** 18n)} to $${Number(next / 10n ** 18n)} per 30 days to protect the floor; it can never be raised again.`,
-          });
-        } catch (e) {
-          this.record({ at: now, kind: 'note', reason: `lowerTap failed: ${revertReason(e)}` });
-        }
-      }
+      } else if (next < cur!) cutTarget = next;
+    }
+
+    // 3. decide: claim the tap, cut its own pay (only inside the gate above), heartbeat. Claude proposes (with
+    // ANTHROPIC_API_KEY) and the policy bounds the plan; without a key the fixed rules decide.
+    const age = s.heartbeat.ageSeconds ?? Infinity;
+    const every = Math.min(this.policy.heartbeatEverySeconds, s.heartbeat.windowSeconds ? Math.floor(s.heartbeat.windowSeconds / 3) : Infinity);
+    const usd = (w: bigint) => Number(w / 10n ** 18n);
+    const options: DecisionOptions = {
+      claim: (live || s.state === 'WIND_DOWN') && accrued >= this.policy.minClaimWei ? { accruedWei: accrued.toString() } : null,
+      heartbeat: live ? { ageSeconds: Number.isFinite(age) ? age : -1, windowSeconds: s.heartbeat.windowSeconds, required: age >= every } : null,
+      lowerTap: cutTarget !== null && cur !== null ? { currentUsd: usd(cur), minUsd: usd(this.policy.minTapUsdPer30d), ruleSuggestsUsd: usd(cutTarget) } : null,
+    };
+    if (!nothingToDecide(options)) {
+      const facts: DecisionFacts = {
+        state: s.state, period: this.store.get().period, treasuryBnb: s.treasuryBnb, bookValueBnb: s.bookValueBnb, poolPriceBnb: s.poolPriceBnb,
+        premiumToBookPct: s.premiumToBookPct, tapUsdPer30d: s.tap.tapUsdPer30d, tapCapBps: s.tap.capBps, exitStreakSeconds: s.exit.streakSeconds,
+        exitTargetSeconds: s.exit.targetSeconds,
+        revenueForwardedThisPeriodBnb: Number(formatEther(this.store.get().ledger.filter((e) => e.kind === 'revenue-forwarded' && e.at >= this.store.get().periodStartedAt).reduce((n, e) => n + BigInt(e.amountWei ?? 0), 0n))),
+        usdcRevenue: usdc,
+      };
+      const d = await this.decider.decide(options, facts);
+      await this.act(now, d, options, facts, cutWhy);
     }
 
     // 4. period report
@@ -259,6 +264,84 @@ export class IssuerAgent {
     const after = await this.svc.client.getBalance({ address: this.address });
     this.store.update((d) => (d.recordedBalance = after.toString()));
     return { actions: this.store.get().ledger.slice(before), state: s.state, report };
+  }
+
+  /** Demo USDC that arrived since the last tick: revenue from customers paying the agent (test funds). */
+  private async usdcRevenue(now: number): Promise<DecisionFacts['usdcRevenue']> {
+    const token = deploymentAddress(this.cfg.deployments, 'demoUsdc');
+    if (!token) return null;
+    try {
+      const bal = await this.svc.client.readContract({ address: token, abi: erc20Abi, functionName: 'balanceOf', args: [this.address] });
+      const prev = this.store.get().recordedUsdc;
+      const delta = prev === null || prev === undefined ? 0n : bal - BigInt(prev);
+      this.store.update((d) => (d.recordedUsdc = bal.toString()));
+      if (delta > 0n) this.record({ at: now, kind: 'usdc-revenue', amountWei: delta.toString(), reason: `Customers paid ${formatUnits(delta, 6)} dUSDC for the agent's service (test funds, kept in the agent wallet; the treasury stays BNB).` });
+      return { balance: Number(formatUnits(bal, 6)), sinceLastTick: Number(formatUnits(delta > 0n ? delta : 0n, 6)) };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Carry out a decision, then post it on-chain (postReport with the decision record; also a heartbeat). */
+  private async act(now: number, d: Decision, o: DecisionOptions, facts: DecisionFacts, cutWhy: string): Promise<void> {
+    const txs: Hex[] = [];
+    const by = d.author.kind === 'llm' ? `decided with ${d.author.model}` : `fixed rule (${d.author.why})`;
+    if (d.claimTap) {
+      try {
+        const tx = await this.call('claimTap');
+        txs.push(tx);
+        this.record({ at: now, kind: 'tap-claimed', amountWei: o.claim!.accruedWei, tx, reason: `${d.reason} (${by})` });
+      } catch (e) {
+        this.record({ at: now, kind: 'note', reason: `claimTap failed: ${revertReason(e)}` });
+      }
+    }
+    if (d.lowerTapToUsd !== null && o.lowerTap) {
+      const next = parseEther(String(d.lowerTapToUsd));
+      try {
+        const tx = await this.call('lowerTap', [next]);
+        txs.push(tx);
+        this.store.update((x) => {
+          x.lastPayCutPeriod = x.period;
+          x.payCutStreak = 0;
+        });
+        this.record({ at: now, kind: 'tap-lowered', usdPer30d: next.toString(), tx, reason: `${cutWhy}. ${d.reason} Lowered the tap from $${o.lowerTap.currentUsd} to $${d.lowerTapToUsd} per 30 days to protect the floor; it can never be raised again. (${by})` });
+      } catch (e) {
+        this.record({ at: now, kind: 'note', reason: `lowerTap failed: ${revertReason(e)}` });
+      }
+    }
+    const record: DecisionRecord = {
+      v: 1, kind: 'covenant.decision', action: actionLabel(d), reason: d.overrides.length ? `${d.reason} [policy: ${d.overrides.join('; ')}]` : d.reason, author: d.author,
+      inputs: {
+        state: facts.state, treasuryBnb: +facts.treasuryBnb.toFixed(6), bookValueBnb: facts.bookValueBnb, premiumToBookPct: facts.premiumToBookPct === null ? null : +facts.premiumToBookPct.toFixed(2),
+        tapAccruedBnb: o.claim ? +Number(formatEther(BigInt(o.claim.accruedWei))).toFixed(6) : 0, tapUsdPer30d: facts.tapUsdPer30d, heartbeatAgeSeconds: o.heartbeat?.ageSeconds ?? null,
+        ...(facts.usdcRevenue ? { usdcRevenue: facts.usdcRevenue.sinceLastTick, usdcBalance: facts.usdcRevenue.balance } : {}),
+      },
+      ...(txs[0] ? { tx: txs[0] } : {}),
+      at: now,
+    };
+    let recordTx: Hex | undefined;
+    // a "wait" stays in the local log: posting it would itself be a heartbeat the agent decided it did not need
+    const canPost = this.policy.postDecisions && hasFunction(this.svc.abis.vault, 'postReport') && facts.state !== 'WIND_DOWN' && record.action !== 'wait';
+    if (canPost) {
+      const { uri, hash } = encodeDecision(record);
+      try {
+        recordTx = await this.call('postReport', [BigInt(this.store.get().period), uri, hash]);
+        this.record({ at: now, kind: d.heartbeat ? 'heartbeat' : 'decision-posted', tx: recordTx, reason: d.heartbeat ? `${d.reason} Decision record posted on-chain (a heartbeat). (${by})` : `Decision record posted on-chain (${by}).` });
+      } catch (e) {
+        this.record({ at: now, kind: 'note', reason: `decision record not posted: ${revertReason(e)}` });
+      }
+    }
+    if (d.heartbeat && !recordTx) {
+      try {
+        const tx = await this.call('heartbeat');
+        this.record({ at: now, kind: 'heartbeat', tx, reason: `${d.reason} (${by})` });
+      } catch (e) {
+        this.record({ at: now, kind: 'note', reason: `heartbeat failed: ${revertReason(e)}` });
+      }
+    }
+    this.store.update((x) => {
+      x.decisions = [...(x.decisions ?? []), { ...record, recordTx, overrides: d.overrides }].slice(-50);
+    });
   }
 
   private async postPeriodReport(now: number, s: CovenantSheet): Promise<TickOutcome['report']> {

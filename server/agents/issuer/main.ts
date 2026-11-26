@@ -43,6 +43,7 @@ const policy: Partial<IssuerPolicy> = Object.fromEntries(
     gasReserveWei: eth('ISSUER_GAS_RESERVE_BNB'),
     payCutConfirmTicks: process.env.ISSUER_PAY_CUT_CONFIRM_TICKS ? num('ISSUER_PAY_CUT_CONFIRM_TICKS', 3) : undefined,
     autoPayCut: process.env.ISSUER_AUTO_PAY_CUT === undefined ? undefined : process.env.ISSUER_AUTO_PAY_CUT === '1',
+    postDecisions: process.env.ISSUER_POST_DECISIONS !== undefined ? process.env.ISSUER_POST_DECISIONS !== '0' : undefined,
   }).filter(([, v]) => v !== undefined),
 );
 
@@ -51,7 +52,8 @@ assertPublicUriBase(cfg.chainId, cfg.rpcUrl, cfg.apiBaseUrl, 'API_BASE_URL (the 
 const agent = new IssuerAgent(cfg, vault, { privateKey: key, svc, policy });
 const tickSeconds = num('ISSUER_TICK_SECONDS', 120);
 console.log(
-  `[issuer] team wallet ${me} on covenant ${vault}; tick ${tickSeconds}s; report author ${cfg.anthropic.apiKey ? cfg.anthropic.model : 'fixed template (no ANTHROPIC_API_KEY)'}.` +
+  `[issuer] team wallet ${me} on covenant ${vault}; tick ${tickSeconds}s; decisions and report by ${cfg.anthropic.apiKey ? `${cfg.anthropic.model} within the fixed policy` : 'the fixed rules and template (no ANTHROPIC_API_KEY)'}` +
+    `; decision records ${agent.policy.postDecisions ? 'posted on-chain' : 'kept locally (ISSUER_POST_DECISIONS=0)'}.` +
     ' Kill this process to stop the agent: the covenant then has nothing sending heartbeats.',
 );
 if (process.argv.includes('--once')) {

@@ -5,7 +5,8 @@ import type { CovenantSheet } from '../../src/schema.js';
 
 export interface LedgerEntry {
   at: number; // chain time
-  kind: 'tap-claimed' | 'heartbeat' | 'tap-lowered' | 'revenue-forwarded' | 'report-posted' | 'note';
+  kind: 'tap-claimed' | 'heartbeat' | 'tap-lowered' | 'revenue-forwarded' | 'usdc-revenue' | 'decision-posted' | 'report-posted' | 'note';
+  /** wei for BNB amounts; for usdc-revenue, Demo USDC base units (6 decimals) */
   amountWei?: string;
   usdPer30d?: string;
   tx?: string;
@@ -44,9 +45,10 @@ export function templateReport(period: number, ledger: LedgerEntry[], s: Covenan
     '',
     `## Revenue`,
     `Forwarded to the vault: ${fmt(sum('revenue-forwarded').toString())}.`,
+    ...(ledger.some((e) => e.kind === 'usdc-revenue') ? [`Paid by customers in Demo USDC (test funds, kept in the agent wallet): ${Number(sum('usdc-revenue')) / 1e6} dUSDC.`] : []),
     '',
     `## Budget decisions`,
-    ...(ledger.filter((e) => e.kind !== 'heartbeat').map((e) => `- ${e.kind}: ${e.reason}`) || []),
+    ...(ledger.filter((e) => e.kind !== 'heartbeat' && e.kind !== 'decision-posted').map((e) => `- ${e.kind}: ${e.reason}`) || []),
     '',
     `## Covenant status`,
     `Exit streak ${s.exit.streakSeconds ?? 'n/a'}s of ${s.exit.targetSeconds ?? 'n/a'}s. Heartbeats sent: ${ledger.filter((e) => e.kind === 'heartbeat' || e.kind === 'tap-claimed').length}.`,
