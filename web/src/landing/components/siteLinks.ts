@@ -2,12 +2,15 @@
 
 /** The public source repository. */
 export const REPO_URL = "https://github.com/Adityaakr/Covenent";
+/** The judge guide: every claim with the command that checks it. */
+export const JUDGES_URL = `${REPO_URL}/blob/main/JUDGES.md`;
 
 export const navLinks = [
   { label: "Rules", href: "/features" },
   { label: "Use cases", href: "/use-cases" },
   { label: "Why we built it", href: "/#prior-art" },
   { label: "GitHub", href: REPO_URL },
+  { label: "For judges", href: JUDGES_URL },
 ] as const;
 
 export const navSecondary = { label: "Connect wallet", href: "/app" } as const;
@@ -32,6 +35,7 @@ export const footerColumns = [
       { label: "Why we built it", href: "/#prior-art" },
       { label: "Who named the problem", href: "/#research" },
       { label: "Source on GitHub", href: REPO_URL },
+      { label: "Judge guide (JUDGES.md)", href: JUDGES_URL },
     ],
   },
   {
