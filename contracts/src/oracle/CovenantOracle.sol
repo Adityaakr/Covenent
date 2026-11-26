@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import {PullOracleConsumerStandard} from "src/vendor/atlas/PullOracleConsumerStandard.sol";
 
@@ -133,6 +133,14 @@ contract CovenantOracle is PullOracleConsumerStandard {
         points[vault] = pt;
     }
 
+    /// @notice BNB/USD from the push feed alone, 1e18 USD per BNB, or 0 with no push feed or a stale round. Vaults
+    ///         read it once at launch to fix the dollar sale price in the launch transaction.
+    /// @return rate the fresh push rate, or 0
+    function pushBnbUsd() external view returns (uint256 rate) {
+        (bool ok, uint256 p,) = _readPush();
+        return ok ? p : 0;
+    }
+
     /// @notice The earliest time `vault` can be poked again (0 if never poked).
     function nextPokeAt(address vault) external view returns (uint256) {
         Point memory pt = points[vault];
@@ -168,6 +176,10 @@ contract CovenantOracle is PullOracleConsumerStandard {
             if (p == 0) return (false, 0, 0);
             return (true, p, uint64(t));
         }
+        return _readPush();
+    }
+
+    function _readPush() internal view returns (bool ok, uint256 price, uint64 ts) {
         address feed = PUSH_FEED;
         if (feed == address(0)) return (false, 0, 0);
         try IAggregatorV3(feed).latestRoundData() returns (uint80, int256 answer, uint256, uint256 updatedAt, uint80) {

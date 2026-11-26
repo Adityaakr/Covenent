@@ -68,18 +68,20 @@ contract VaultRulesTest is CovenantTestBase {
         assertEq(v.owedTeam(), bal * 400 * 1 hours / (10_000 * 30 days));
     }
 
-    function test_tap_neverAnyAtlas_waitsForThePoolOnlyFallback() public {
+    /// @dev M-1 and M-2: with no verified rate the tap does not run (no cap-only fallback a poker could reach by
+    ///      withholding reports), and no dollar sale price is set, so no unlock counter moves.
+    function test_tap_neverAnyAtlas_paysNothing() public {
         (CovenantLauncher l2, CovenantVault v2,) = _launchDefault("no-atlas-ever");
         l2;
         _poke(v2, 0);
-        for (uint256 i; i < 13 * 4; ++i) {
+        for (uint256 i; i < 20 * 4; ++i) {
             _step(v2, 6 hours, 0);
         }
-        assertEq(v2.owedTeam(), 0, "no dollar rate, no tap before the fallback");
-        vm.warp(uint256(v2.launchedAt()) + 14 days);
-        _step(v2, 6 hours, 0);
-        assertGt(v2.owedTeam(), 0, "after 14 days the cap alone");
+        assertEq(v2.owedTeam(), 0, "no verified rate, no tap, even after staleAfter");
         assertEq(v2.usdSalePrice(), 0, "and the unlock counters stay frozen");
+        _step(v2, 6 hours, BNB_USD);
+        _step(v2, 6 hours, BNB_USD);
+        assertGt(v2.owedTeam(), 0, "a verified rate restarts the tap");
     }
 
     function test_tap_unclaimedBalance_stopsAtOnePeriodsCap() public {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import {LibString} from "solady/utils/LibString.sol";
 import {
@@ -61,7 +61,7 @@ library CovenantVaultDisplay {
             (s.saleAmount / 1e18).toString(),
             " tokens pro rata. Exit fee ",
             bps(s.exitFeeBps),
-            ", kept by the treasury; none at wind-down. No Covenant admin keys; Flap's Guardian can upgrade."
+            ", kept by the treasury; none at wind-down. No Covenant admin keys. Flap's Guardian can upgrade the vault and launcher, wind the covenant down, lower the tap, post a report and claim the tap to the team wallet."
         );
         return string.concat(head, team, tokens);
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import {Initializable} from "@openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -98,6 +98,8 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     event Finalized(State state, uint256 committed, uint256 accepted, uint256 poolQuote, uint256 treasury);
     event Launched(address indexed token, address indexed pool, address indexed vault);
     event LaunchFailed(bytes reason);
+    /// @notice The Portal refused the launch inside the retry window: the raise stays RAISING; retry `finalize`.
+    event LaunchRefused(bytes reason, uint256 retryUntil);
     event Refunded(address indexed account, uint256 amount);
     event DustSwept(address indexed vault, uint256 amount);
 
@@ -229,7 +231,10 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     }
 
     /// @notice Anyone, after the deadline. Below the minimum: FAILED. Otherwise settles, launches through the
-    ///         Portal and forwards the treasury to the vault in one transaction. A reverted launch ends in FAILED.
+    ///         Portal and forwards the treasury to the vault in one transaction. If the Portal refuses the launch,
+    ///         the raise stays RAISING until `saleDeadline + launchRetryWindow` (L-5: a transient refusal, such as a
+    ///         factory Flap has not enabled yet, must not fail it for good) and anyone may retry; a refusal after
+    ///         that window ends in FAILED and every commitment refunds in full. Send with `FINALIZE_GAS_LIMIT`.
     function finalize() external nonReentrant {
         if (_state != State.RAISING) revert NotRaising();
         if (block.timestamp < saleDeadline) revert SaleOpen();
@@ -270,11 +275,22 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
             if (gasleft() < g / 8) revert InsufficientGas();
             accepted = 0;
             poolQuote = 0;
+            uint256 retryUntil = uint256(saleDeadline) + _profile.launchRetryWindow;
+            if (block.timestamp < retryUntil) {
+                launching = false;
+                emit LaunchRefused(reason, retryUntil);
+                return;
+            }
             _state = State.FAILED;
             emit LaunchFailed(reason);
         }
         launching = false;
         emit Finalized(_state, c, accepted, poolQuote, treasuryForwarded);
+    }
+
+    /// @notice Until when a refused launch can be retried (sale deadline + the profile's retry window), seconds.
+    function launchRetryUntil() external view returns (uint256) {
+        return uint256(saleDeadline) + _profile.launchRetryWindow;
     }
 
     /// @dev External so `finalize` can wrap launch and funding in one try/catch: if either reverts, both unwind.

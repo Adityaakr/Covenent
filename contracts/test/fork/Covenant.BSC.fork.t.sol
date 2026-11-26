@@ -10,6 +10,7 @@ import {Terms, State} from "src/vault/CovenantTypes.sol";
 import {CovenantProfiles} from "src/launcher/CovenantProfiles.sol";
 import {CovenantLauncher} from "src/launcher/CovenantLauncher.sol";
 import {CovenantLauncherFactory} from "src/launcher/CovenantLauncherFactory.sol";
+import {CovenantTermsLib} from "src/launcher/CovenantTermsLib.sol";
 import {CovenantVault} from "src/vault/CovenantVault.sol";
 import {CovenantVaultFactory} from "src/vault/CovenantVaultFactory.sol";
 import {CovenantOracle, IAggregatorV3} from "src/oracle/CovenantOracle.sol";
@@ -36,6 +37,19 @@ interface IRouterLike {
 interface ITaxTokenLike {
     function taxProcessor() external view returns (address);
     function taxExpirationTime() external view returns (uint256);
+}
+
+interface IV2RouterFactoryLike {
+    function factory() external view returns (address);
+}
+
+interface IV2FactoryLike {
+    function createPair(address a, address b) external returns (address);
+}
+
+interface IWBNBLike {
+    function deposit() external payable;
+    function transfer(address, uint256) external returns (bool);
 }
 
 interface INameScreenLike {
@@ -448,6 +462,9 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         vm.prank(alice);
         l.contribute{value: 300 ether}();
         vm.warp(l.saleDeadline());
+        l.finalize{gas: l.FINALIZE_GAS_LIMIT()}();
+        assertEq(uint8(l.state()), uint8(State.RAISING), "refused inside the retry window: still open (L-5)");
+        vm.warp(l.launchRetryUntil());
         vm.recordLogs();
         l.finalize{gas: l.FINALIZE_GAS_LIMIT()}();
         assertEq(uint8(l.state()), uint8(State.FAILED), "the Portal refused the launch");
@@ -527,6 +544,50 @@ abstract contract CovenantForkBase is Test, StackBuilder {
                 graduation
             )
         );
+    }
+
+    /// @dev Pre-audit M-3 on the live Portal: terms it refuses at launch (no tax, a tax shorter than the anti-farmer
+    ///      window) are refused by the factory at creation; the 100-year maximum and one-sided taxes still create.
+    function test_fork_termsThePortalRefuses_areRefusedAtCreate() public {
+        _open();
+        CovenantLauncherFactory f = pairF.launcherFactory;
+        Terms memory t = _terms("fork-m3", 0);
+        t.buyTaxBps = 0;
+        t.sellTaxBps = 0;
+        vm.expectRevert(CovenantTermsLib.BadTax.selector);
+        f.checkTerms(t);
+        t.buyTaxBps = 0;
+        t.sellTaxBps = 100;
+        f.checkTerms(t);
+        t.taxDuration = 1;
+        vm.expectRevert(abi.encodeWithSelector(CovenantTermsLib.BadTaxDuration.selector, 1));
+        f.checkTerms(t);
+        t.taxDuration = type(uint32).max;
+        vm.expectRevert(abi.encodeWithSelector(CovenantTermsLib.BadTaxDuration.selector, type(uint32).max));
+        f.checkTerms(t);
+    }
+
+    /// @dev Pre-audit "ruled out", kept as evidence: pre-creating (and funding) the PancakeSwap pair for the
+    ///      predictable 7777 token address does not break the launch, and the pool still opens at the sale price.
+    function test_fork_preCreatedPairWithDonation_doesNotBreakTheLaunch() public {
+        _open();
+        Terms memory t = _terms("fork-precreate", 0);
+        CovenantLauncher l = _create(t);
+        vm.prank(alice);
+        l.contribute{value: 300 ether}();
+        address predicted = Clones.predictDeterministicAddress(BSC_TOKEN_IMPL, t.salt, BSC_PORTAL);
+        address griefer = address(uint160(0xC0DE1F00));
+        vm.deal(griefer, 10 ether);
+        vm.startPrank(griefer);
+        address pair = IV2FactoryLike(IV2RouterFactoryLike(E.router).factory()).createPair(predicted, E.wbnb);
+        IWBNBLike(E.wbnb).deposit{value: 1 ether}();
+        IWBNBLike(E.wbnb).transfer(pair, 1 ether);
+        vm.stopPrank();
+        vm.warp(l.saleDeadline());
+        vm.prank(keeper);
+        l.finalize{gas: l.FINALIZE_GAS_LIMIT()}();
+        assertEq(uint8(l.state()), uint8(State.ACTIVE), "the launch went through");
+        assertEq(l.pool(), pair, "the Portal reused the pre-created pair");
     }
 
     function _launchFailedReason(Vm.Log[] memory logs, address launcher) internal pure returns (bytes memory) {
@@ -649,6 +710,9 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         l.finalize();
         assertEq(uint8(l.state()), uint8(State.ACTIVE));
         CovenantVault v = CovenantVault(payable(l.vault()));
+        // Pre-audit M-2: with a live push feed the dollar sale price is fixed in the launch transaction.
+        assertEq(v.usdSaleRefAt(), v.launchedAt(), "dollar sale price set at launch");
+        assertEq(v.usdSalePrice(), v.salePriceBnb() * push.pushBnbUsd() / 1e18);
 
         // A plain poke (no pull report attached): the oracle reads the push feed.
         vm.prank(keeper);

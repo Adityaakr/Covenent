@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 /// @notice One numbering for the six covenant states. The launcher reports RAISING, FAILED or ACTIVE (launched);
 ///         the vault reports ACTIVE, EXIT_ROUND, COOLDOWN or WIND_DOWN. FAILED and WIND_DOWN are terminal.
@@ -74,6 +74,9 @@ struct Profile {
     // Portal (`graduationFloorV2`): true = the graduation floor (twice the creation floor; the token is marked
     // graduated at launch), false = the creation floor only (the demo profile, so testnet demos stay cheap).
     bool requireGraduation;
+    // L-5: after a refused launch, how long past the sale deadline `finalize` may be retried before the raise ends
+    // FAILED (a transient refusal, such as a factory Flap has not enabled yet, must not fail the raise for good)
+    uint32 launchRetryWindow;
 }
 
 /// @notice One observation the oracle sends to a vault.
@@ -122,6 +125,12 @@ interface ICovenantLauncher {
     function saleAmount() external view returns (uint256);
     function poolAmount() external view returns (uint256);
     function teamAmount() external view returns (uint256);
+}
+
+/// @notice The oracle's push-feed BNB/USD, read once by the vault in its launch transaction (M-2).
+interface ICovenantRateSource {
+    /// @return rate BNB/USD, 1e18 USD per BNB, from a fresh push round; 0 if there is no push feed or it is stale
+    function pushBnbUsd() external view returns (uint256 rate);
 }
 
 /// @notice The vault surface the oracle uses.

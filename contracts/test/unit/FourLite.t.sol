@@ -40,11 +40,11 @@ contract FourLiteTest is Test {
     }
 
     function _launch() internal returns (FourLiteLauncher.Launch memory l) {
-        bytes memory vaultData = launcher.encodeVaultData(address(template), 400, 1 days, 7 days, 100);
+        bytes memory vaultData = launcher.encodeVaultData(address(template), 400, 30 days, 7 days, 100);
         // the exact bytes the live ForwardVault decodes: one struct (address template, bytes initData)
         assertEq(
             vaultData,
-            abi.encode(ForwardVault.InitParams(address(template), abi.encode(uint16(400), uint32(1 days), uint32(7 days), uint16(100))))
+            abi.encode(ForwardVault.InitParams(address(template), abi.encode(uint16(400), uint32(30 days), uint32(7 days), uint16(100))))
         );
         vm.prank(founder);
         l = launcher.launch{value: 20 ether}("Forge Agent", "FORGE", 1_000_000_000 ether, 500, vaultData, 300_000_000 ether);

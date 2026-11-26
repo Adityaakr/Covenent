@@ -118,16 +118,23 @@ contract LauncherTest is CovenantTestBase {
         l.finalize();
     }
 
-    /// @dev If Flap's launch call reverts for any reason, the launcher catches it, moves to FAILED and every
-    ///      commitment refunds in full. Here Flap disables the factory mid-sale.
+    /// @dev If Flap's launch call reverts for any reason, the launcher catches it. Inside the retry window (L-5) the
+    ///      raise stays RAISING; a refusal after it moves to FAILED and every commitment refunds in full. Here Flap
+    ///      disables the factory mid-sale.
     function test_revertedLaunch_endsFailed_andRefundsInFull() public {
         CovenantLauncher l = _create(prod, _terms("launch-revert"));
         _raiseOversubscribed(l);
         vm.prank(admin);
         portal.setLauncherFactoryMultiplier(address(prod.launcherFactory), 10_000, false);
-        vm.recordLogs();
         _finalize(l);
-        assertEq(uint8(l.state()), uint8(State.FAILED), "a refused launch fails the raise");
+        assertEq(uint8(l.state()), uint8(State.RAISING), "a refusal inside the retry window keeps the raise open");
+        vm.prank(whale);
+        vm.expectRevert(CovenantLauncher.RefundUnavailable.selector);
+        l.claimRefund();
+        vm.warp(l.launchRetryUntil());
+        vm.recordLogs();
+        l.finalize();
+        assertEq(uint8(l.state()), uint8(State.FAILED), "a refused launch fails the raise"); 
         assertEq(l.accepted(), 0);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bool sawFailure;
@@ -142,12 +149,33 @@ contract LauncherTest is CovenantTestBase {
         assertEq(whale.balance - before, 600 ether, "full refund");
     }
 
+    /// @dev L-5: a transient refusal (here Flap enables the factory only after the deadline) is retried, not final.
+    function test_refusedLaunch_canBeRetried_insideTheWindow() public {
+        CovenantLauncher l = _create(prod, _terms("retry"));
+        _raiseOversubscribed(l);
+        vm.prank(admin);
+        portal.setLauncherFactoryMultiplier(address(prod.launcherFactory), 10_000, false);
+        vm.warp(l.saleDeadline());
+        vm.expectEmit(false, false, false, false, address(l));
+        emit CovenantLauncher.LaunchRefused("", 0);
+        l.finalize();
+        assertEq(uint8(l.state()), uint8(State.RAISING));
+        assertEq(l.launchRetryUntil(), uint256(l.saleDeadline()) + 3 days);
+        vm.prank(admin);
+        portal.setLauncherFactoryMultiplier(address(prod.launcherFactory), 10_000, true);
+        vm.warp(l.saleDeadline() + 1 days);
+        vm.prank(stranger);
+        l.finalize();
+        assertEq(uint8(l.state()), uint8(State.ACTIVE), "the retry launches");
+        assertTrue(l.vault() != address(0));
+    }
+
     function test_launchBelowFlapFloor_failsSafely() public {
         CovenantLauncher l = _create(prod, _terms("floor"));
         _raiseOversubscribed(l);
         vm.prank(admin);
         portal.setMinPoolQuote(200 ether); // above the 125 BNB this raise seeds
-        _finalize(l);
+        _finalizeFinal(l);
         assertEq(uint8(l.state()), uint8(State.FAILED));
     }
 
@@ -177,7 +205,7 @@ contract LauncherTest is CovenantTestBase {
         _raiseOversubscribed(l);
         vm.prank(admin);
         portal.setMinPoolQuote(1_000 ether);
-        vm.warp(l.saleDeadline());
+        vm.warp(l.launchRetryUntil());
         l.finalize{gas: l.LAUNCH_GAS_FLOOR() + 1_000_000}();
         assertEq(uint8(l.state()), uint8(State.FAILED));
     }
@@ -406,7 +434,7 @@ contract LauncherTest is CovenantTestBase {
         t.symbol = "ETH";
         CovenantLauncher la = _create(p, t);
         _contribute(la, alice, 300 ether);
-        _finalize(la);
+        _finalizeFinal(la);
         assertEq(uint8(la.state()), uint8(State.FAILED), "the Portal refused the name at launch");
         uint256 before = alice.balance;
         vm.prank(alice);

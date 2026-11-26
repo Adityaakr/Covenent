@@ -104,6 +104,18 @@ abstract contract CovenantTestBase is Test, StackBuilder {
         vm.stopPrank();
     }
 
+    /// @dev Finalize, and if the Portal refused inside the retry window (L-5), retry once the window is over, which
+    ///      settles the raise as FAILED for good.
+    function _finalizeFinal(CovenantLauncher l) internal {
+        _finalize(l);
+        if (l.state() == State.RAISING) {
+            vm.warp(l.launchRetryUntil());
+            vm.startPrank(keeper);
+            l.finalize();
+            vm.stopPrank();
+        }
+    }
+
     /// @dev Create, raise 1,400 BNB, finalize. Returns the live vault.
     function _launchDefault(bytes32 seed) internal returns (CovenantLauncher l, CovenantVault v, IERC20 token) {
         l = _create(prod, _terms(seed));

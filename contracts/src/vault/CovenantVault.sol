@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import {Initializable} from "@openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -13,7 +13,7 @@ import {ITokenDock} from "src/flap/ILaunchVaultSpec.sol";
 import {VaultUISchema} from "src/flap/IVaultSchemas.sol";
 
 import {
-    State, Terms, Profile, Observation, VaultEnv, ICovenantLauncher, CovenantMath
+    State, Terms, Profile, Observation, VaultEnv, ICovenantLauncher, ICovenantRateSource, CovenantMath
 } from "src/vault/CovenantTypes.sol";
 import {CovenantVaultDisplay} from "src/vault/CovenantVaultDisplay.sol";
 import {IERC8004Reputation} from "src/agent/IERC8004.sol";
@@ -136,7 +136,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     uint256 public saleClaimed;
     mapping(address account => bool) public tokensClaimed;
 
-    uint256 public usdSalePrice; // dollar sale price, set by the first strict observation
+    uint256 public usdSalePrice; // dollar sale price, USD per token 1e18: salePriceBnb x the reference BNB/USD
     uint256 public lastBnbUsd; // last strict BNB/USD
     uint256 public lastTwap;
     uint256 public lastSpot;
@@ -155,7 +155,20 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     /// @notice Who ended it (the team wallet, the Guardian, or whoever declared abandonment).
     address public windDownBy;
 
-    uint256[29] private __gap;
+    /// @notice When the dollar sale price got its first BNB/USD reference (the launch-time push read, else the first
+    ///         strict observation). For `staleAfter` after that, a higher strict rate raises it; a dip never lowers it.
+    uint64 public usdSaleRefAt;
+    /// @notice Rule 5: the verdict on each period (0 none, 1 passed, 2 failed) and how many periods stand failed.
+    mapping(uint256 period => uint8) public verdictOf;
+    uint256 public failedPeriods;
+    /// @notice Rule 5: who posted each period's report (the team wallet, or Flap's Guardian per Flap's spec).
+    mapping(uint256 period => address) public reportPostedBy;
+    /// @notice Sum of the commitments of every account that has claimed its sale tokens (bounds what is still owed).
+    uint256 public claimedCommitments;
+    /// @notice Sale-token rounding dust (and stray tokens sent to the vault) burned to the dead address.
+    uint256 public saleDustBurned;
+
+    uint256[22] private __gap;
 
     // ── events (design doc list, plus a few the app needs) ──────────────────
     event TreasuryFunded(uint256 amount, address pair);
@@ -178,6 +191,8 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     event WoundDown(bool abandoned, uint256 forfeitedTap, uint256 burnedTeamTokens);
     /// @notice Emitted with `WoundDown`: who ended the covenant and how (see `windDownCause`).
     event WindDownCaused(address indexed by, uint8 cause);
+    event SaleDustBurned(uint256 amount, uint256 total);
+    event UsdSalePriceSet(uint256 usdSalePrice, uint256 bnbUsd);
     event ReportPosted(uint256 indexed period, string uri, bytes32 hash);
     event VerdictRecorded(uint256 indexed period, bool passed, bytes32 proofHash);
     event OutcomeRecorded(uint256 indexed agentId, int128 value, string outcome, bool ok);
@@ -202,6 +217,8 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     error Ended();
     error TapNotLower(uint256 current, uint256 proposed);
     error InsufficientGas();
+    error ReportExists(uint256 period);
+    error NoReport(uint256 period);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -308,6 +325,11 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         lastHeartbeat = uint64(block.timestamp);
         lastTapAt = uint64(block.timestamp);
         emit TreasuryFunded(msg.value, pool);
+        // M-2: fix the dollar sale price in the launch transaction when the oracle has a fresh push rate, so no poker
+        // picks the moment. A failing read never blocks the launch; the first strict observation then sets it.
+        try ICovenantRateSource(_env.oracle).pushBnbUsd() returns (uint256 rate) {
+            if (rate > 0) _setStrictRate(rate);
+        } catch {}
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -509,18 +531,18 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
             return;
         }
 
-        if (o.strict) {
-            lastBnbUsd = o.bnbUsd;
-            lastStrictAt = uint64(block.timestamp);
-            if (usdSalePrice == 0) usdSalePrice = salePriceBnb * o.bnbUsd / WAD;
-        }
+        if (o.strict) _setStrictRate(o.bnbUsd);
 
         _accrueTap(o);
 
         uint256 dt = o.elapsed > maxStep ? maxStep : o.elapsed;
         uint256 b = bookValue();
         if (o.trusted && dt > 0) {
+            // H-1: whoever pokes decides whether a verified rate rides along, so a trusted observation without one
+            // counts against unlocking (it resets the counters) instead of being skipped. Withholding reports while
+            // the price is under a multiple can then only delay an unlock, never earn one.
             if (o.strict) _stepTranches(dt, o.twapBnb, o.twapBnb * o.bnbUsd / WAD);
+            else _resetTranches();
             if (s == State.ACTIVE) {
                 // Exit fix 1: the streak decays instead of resetting, so an hour above book cancels an hour
                 // below book, not three days.
@@ -554,8 +576,9 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
 
     /// @dev Tap accrual over the vault's own clock since the last accrual, excluding the most recent exit round,
     ///      capped at `maxStep`. Rate: min(dollar budget at BNB/USD, capBps of the free treasury) per 30 days.
-    ///      BNB/USD is the strict observation's, else the last strict one; with none ever, nothing accrues until
-    ///      `staleAfter` past launch, then the cap alone (the design's pool-only fallback).
+    ///      BNB/USD is the strict observation's, else the last strict one while it is at most `staleAfter` old
+    ///      (M-1). With no fresh rate nothing accrues: a cap-only fallback would let whoever pokes turn the dollar
+    ///      budget into the cap by withholding reports, so an Atlas outage pauses the tap instead of raising it.
     function _accrueTap(Observation calldata o) internal {
         uint256 from = lastTapAt;
         uint256 to = block.timestamp;
@@ -580,14 +603,10 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         if (bal <= owed) return;
         uint256 capAmt = (bal - owed) * tapCapBps * span / (BPS * PERIOD);
 
-        uint256 ref = o.strict ? o.bnbUsd : lastBnbUsd;
-        uint256 amt;
-        if (ref > 0) {
-            uint256 usdAmt = tapUsdPer30d * WAD * span / (ref * PERIOD);
-            amt = usdAmt < capAmt ? usdAmt : capAmt;
-        } else if (to >= uint256(launchedAt) + staleAfter) {
-            amt = capAmt;
-        }
+        uint256 ref = o.strict ? o.bnbUsd : freshBnbUsd();
+        if (ref == 0) return;
+        uint256 usdAmt = tapUsdPer30d * WAD * span / (ref * PERIOD);
+        uint256 amt = usdAmt < capAmt ? usdAmt : capAmt;
 
         // A stolen key reaches at most one period's cap: unclaimed tap stops growing there.
         uint256 maxOwed = bal * tapCapBps / BPS;
@@ -628,6 +647,41 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         }
     }
 
+    /// @dev H-1: a trusted observation with no verified rate (or a shallow pool) resets every locked tranche.
+    function _resetTranches() internal {
+        uint256 n = _tranches.length;
+        for (uint256 k; k < n; ++k) {
+            Tranche storage t = _tranches[k];
+            if (!t.unlocked && t.progress != 0) t.progress = 0;
+        }
+    }
+
+    /// @dev Records a verified BNB/USD rate (1e18 USD per BNB) and, M-2, the dollar sale price: set by the first
+    ///      reference (launch-time push read or first strict observation), then raised, never lowered, by higher
+    ///      strict rates for `staleAfter`, then fixed. A poker who waits for a dip cannot lower the dollar targets.
+    function _setStrictRate(uint256 rate) internal {
+        lastBnbUsd = rate;
+        lastStrictAt = uint64(block.timestamp);
+        uint256 usd = salePriceBnb * rate / WAD;
+        uint256 refAt = usdSaleRefAt;
+        if (refAt == 0) {
+            usdSaleRefAt = uint64(block.timestamp);
+            usdSalePrice = usd;
+            emit UsdSalePriceSet(usd, rate);
+        } else if (block.timestamp <= refAt + staleAfter && usd > usdSalePrice) {
+            usdSalePrice = usd;
+            emit UsdSalePriceSet(usd, rate);
+        }
+    }
+
+    /// @notice The last verified BNB/USD (1e18) if it is at most `staleAfter` old, else 0 (M-1: a stale rate never
+    ///         prices the tap).
+    function freshBnbUsd() public view returns (uint256) {
+        uint256 at = lastStrictAt;
+        if (at == 0 || block.timestamp - at > staleAfter) return 0;
+        return lastBnbUsd;
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // Holders
     // ═════════════════════════════════════════════════════════════════════════
@@ -640,6 +694,7 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         if (amount == 0) revert NothingToClaim();
         tokensClaimed[msg.sender] = true;
         saleClaimed += amount;
+        claimedCommitments += ICovenantLauncher(launcher).contributions(msg.sender);
         ITokenDock(_getTokenDockRouter()).withdraw(taxToken, amount, msg.sender);
         emit TokensClaimed(msg.sender, amount);
     }
@@ -680,6 +735,27 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
         address to = teamWallet;
         ITokenDock(_getTokenDockRouter()).withdraw(taxToken, amt, to);
         emit TeamReleased(to, amt);
+    }
+
+    /// @notice Anyone: burn sale tokens no contributor can ever claim (the rounding remainder of a_i) and any tax
+    ///         tokens sent to the vault itself, so they stop counting in R. Only what exceeds an upper bound on the
+    ///         allocations still unclaimed is burned: sum(a_i) over unclaimed accounts <= A * (C - claimed) / C, so no
+    ///         claim is ever touched. Everything left is burned once every contributor has claimed.
+    /// @return amount tokens (18 decimals) sent to the dead address by this call
+    function burnSaleDust() external nonReentrant returns (uint256 amount) {
+        if (!distributionInitialized) revert NotLive();
+        uint256 c = ICovenantLauncher(launcher).committed();
+        uint256 owed = c == 0 ? 0 : _divUp(saleAmount * (c - claimedCommitments), c);
+        uint256 left = saleAmount - saleClaimed - saleDustBurned;
+        uint256 dust = left > owed ? left - owed : 0;
+        uint256 stray = IERC20(taxToken).balanceOf(address(this));
+        amount = dust + stray;
+        if (amount == 0) revert NothingToClaim();
+        uint256 total = saleDustBurned + amount;
+        saleDustBurned = total;
+        if (dust > 0) ITokenDock(_getTokenDockRouter()).withdraw(taxToken, dust, DEAD);
+        if (stray > 0) taxToken.safeTransfer(DEAD, stray);
+        emit SaleDustBurned(amount, total);
     }
 
     /// @notice Rule 4: after `heartbeat` of silence anyone ends the covenant. Unclaimed tap is forfeited to the
@@ -739,30 +815,56 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     /// @dev Team wallet or Flap's Guardian (Flap's spec: every permissioned function also accepts the Guardian).
     ///      A Guardian call ends the tap early on any covenant; it moves no funds, and the vault records which of
     ///      the two called (`windDownCause`, `WindDownCaused`) so the app shows it.
+    ///      L-4: past the heartbeat deadline a wind-down is an abandonment: the unclaimed tap is forfeited to the
+    ///      treasury, exactly as `declareAbandoned` would, so a lapsed team cannot wind down first to keep it.
     function windDown() external onlyTeam nonReentrant {
         _tick();
         if (!funded) revert NotLive();
         if (_state == State.WIND_DOWN) revert Ended();
         _sync();
-        _windDown(false, 0, msg.sender == teamWallet ? WIND_DOWN_TEAM : WIND_DOWN_GUARDIAN);
+        if (block.timestamp > heartbeatDeadline()) {
+            uint256 forfeited = owedTeam;
+            owedTeam = 0;
+            _windDown(true, forfeited, WIND_DOWN_ABANDONED);
+        } else {
+            _windDown(false, 0, msg.sender == teamWallet ? WIND_DOWN_TEAM : WIND_DOWN_GUARDIAN);
+        }
     }
 
-    /// @notice Rule 5: store a report pointer. A heartbeat.
+    /// @notice Rule 5: store a report pointer, once per period (L-1: a verdict always judges the report that is on
+    ///         record). A heartbeat from the team wallet. The Guardian can post too (Flap's spec); `reportPostedBy`
+    ///         records who did.
+    /// @param period the reporting period, from 1
+    /// @param uri where the report lives (ipfs:// or https://)
+    /// @param hash keccak256 of the report text
     function postReport(uint256 period, string calldata uri, bytes32 hash) external onlyTeam {
         Report storage r = _reports[period];
-        if (r.postedAt == 0) ++reportsPosted;
+        if (r.postedAt != 0) revert ReportExists(period);
+        ++reportsPosted;
         r.hash = hash;
         r.uri = uri;
         r.postedAt = uint64(block.timestamp);
+        reportPostedBy[period] = msg.sender;
         emit ReportPosted(period, uri, hash);
         if (msg.sender == teamWallet && _state != State.WIND_DOWN) _beat();
     }
 
-    /// @notice Rule 5: the relayer fixed at creation records the verdict on a period. A failed (or missing)
-    ///         report pauses tap accrual until a passing verdict lands.
+    /// @notice Rule 5: the relayer fixed at creation records the verdict on a period. A pass needs a posted report;
+    ///         a fail may also mark a missing one. Tap accrual pauses while any period stands failed (L-2: a late
+    ///         pass on an old period cannot lift a newer failure).
+    /// @param period the period judged
+    /// @param passed the verdict
+    /// @param proofHash the relayer's proof reference (stored in the event only)
     function recordVerdict(uint256 period, bool passed, bytes32 proofHash) external {
         if (msg.sender != reportRelayer || reportRelayer == address(0)) revert NotRelayer();
-        disclosurePaused = !passed;
+        if (passed && _reports[period].postedAt == 0) revert NoReport(period);
+        uint8 prev = verdictOf[period];
+        uint256 failed = failedPeriods;
+        if (prev == 2) --failed;
+        if (!passed) ++failed;
+        failedPeriods = failed;
+        verdictOf[period] = passed ? 1 : 2;
+        disclosurePaused = failed > 0;
         emit VerdictRecorded(period, passed, proofHash);
     }
 
@@ -814,6 +916,10 @@ contract CovenantVault is DirectLaunchVaultBase, IStrategy, Initializable, Reent
     // ═════════════════════════════════════════════════════════════════════════
     // Flap disclosure surface
     // ═════════════════════════════════════════════════════════════════════════
+
+    function _divUp(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a == 0 ? 0 : (a - 1) / b + 1;
+    }
 
     /// @inheritdoc DirectLaunchVaultBase
     function description() public view override returns (string memory) {

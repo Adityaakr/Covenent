@@ -139,14 +139,16 @@ contract VaultHandler is Test, StackBuilder {
         (bool ok,) = address(oracle).call(data);
         if (!ok) return;
 
-        // Ghost for invariant 7: an untrusted observation moves no counter; a non-strict one moves no tranche.
+        // Ghost for invariant 7: an untrusted observation moves no counter; a non-strict one never adds unlock time
+        // (H-1: a trusted one without a verified rate resets the tranches instead).
         if (!v.lastTrusted() && wasActive && v.state() == State.ACTIVE && v.exitStreak() != streak0) {
             untrustedMovedACounter = true;
         }
         if (!v.lastStrict()) {
             uint256[] memory prog1 = _progress();
             for (uint256 k; k < prog1.length; ++k) {
-                if (prog1[k] != prog0[k]) untrustedMovedACounter = true;
+                if (prog1[k] > prog0[k]) untrustedMovedACounter = true;
+                if (!v.lastTrusted() && prog1[k] != prog0[k]) untrustedMovedACounter = true;
             }
         }
         // Ghost for invariant 4: every accrual with the free treasury and revenue before it.
@@ -344,7 +346,7 @@ contract CovenantInvariantTest is CovenantTestBase {
         if (h.lastState() == State.WIND_DOWN) assertEq(uint8(v.state()), uint8(State.WIND_DOWN));
     }
 
-    /// 7. With no trusted observation, no counter changes (and with no strict one, no tranche counter).
+    /// 7. With no trusted observation, no counter changes; with no strict one, no tranche counter grows (H-1).
     function invariant_7_untrustedObservationsMoveNoCounter() public view {
         assertFalse(h.untrustedMovedACounter());
     }

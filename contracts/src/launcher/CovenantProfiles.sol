@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import {Profile, Terms} from "src/vault/CovenantTypes.sol";
 
@@ -22,6 +22,7 @@ library CovenantProfiles {
         p.staleAfter = 14 days;
         p.antiFarmerDuration = 1 days;
         p.requireGraduation = true;
+        p.launchRetryWindow = 3 days;
     }
 
     /// @notice Demo bounds: the same rules with time in minutes, for the stage and the local stack only.
@@ -41,6 +42,7 @@ library CovenantProfiles {
         p.staleAfter = 1 hours;
         p.antiFarmerDuration = 1 days;
         p.requireGraduation = false; // creation floor only: a demo token may launch without graduating
+        p.launchRetryWindow = 10 minutes;
     }
 
     /// @notice Default terms (Appendix A): 1B supply, 60% sale, 15% pool, 25% team at 2x/4x/8x, 200 to 500 BNB,

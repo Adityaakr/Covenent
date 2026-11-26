@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import {Terms, Profile} from "src/vault/CovenantTypes.sol";
 
@@ -44,6 +44,7 @@ library CovenantTermsLib {
     error BadUnlock();
     error BadExit();
     error BadHeartbeat(uint256 got);
+    error BadRelayer();
 
     struct Split {
         uint256 sale; // A
@@ -97,7 +98,10 @@ library CovenantTermsLib {
             revert BadSaleDuration(t.saleDuration);
         }
 
+        // Flap's launch refuses a tax rate above 10% and a launch with no tax at all (`InvalidTaxBps`, read on forks of
+        // both chains): at least one rate must be set.
         if (t.buyTaxBps > MAX_TAX_BPS || t.sellTaxBps > MAX_TAX_BPS) revert BadTax();
+        if (t.buyTaxBps == 0 && t.sellTaxBps == 0) revert BadTax();
         // The tax is the treasury's revenue stream: when it ends, the treasury grows only from revenue the issuer
         // deposits (`CovenantVault.depositRevenue`). Flap also needs it to outlast the anti-farmer window.
         uint256 td = t.taxDuration;
@@ -105,6 +109,8 @@ library CovenantTermsLib {
 
         // Rule 1.
         if (t.teamWallet == address(0)) revert BadTeamWallet();
+        // Rule 5: a relayer that is the team itself would verify its own reports.
+        if (t.reportRelayer != address(0) && t.reportRelayer == t.teamWallet) revert BadRelayer();
         if (t.tapCapBps > MAX_TAP_CAP_BPS || t.tapUsdPer30d > MAX_TAP_USD) revert BadTap();
 
         // Rule 2.

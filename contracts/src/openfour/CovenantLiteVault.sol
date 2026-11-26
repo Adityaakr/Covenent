@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -30,8 +30,9 @@ contract CovenantLiteVault is BaseTaxVault, ReentrancyGuardUpgradeable {
     address public constant DEAD = 0x000000000000000000000000000000000000dEaD;
     uint256 internal constant BPS = 10_000;
 
-    uint256 public constant MAX_TAP_BPS = 5_000;
-    uint256 public constant MIN_TAP_PERIOD = 1 days;
+    /// @dev Covenant's own tap bounds (L-12): at most 10% of the treasury per period, periods of at least 30 days.
+    uint256 public constant MAX_TAP_BPS = 1_000;
+    uint256 public constant MIN_TAP_PERIOD = 30 days;
     uint256 public constant MAX_TAP_PERIOD = 90 days;
     uint256 public constant MIN_HEARTBEAT = 7 days;
     uint256 public constant MAX_HEARTBEAT = 180 days;
@@ -226,12 +227,14 @@ contract CovenantLiteVault is BaseTaxVault, ReentrancyGuardUpgradeable {
     {
         if (!open) revert Closed();
         if (amount == 0) revert ZeroAmount();
-        uint256 r = redeemableSupply();
-        (uint256 n, uint256 q) = balances();
         IERC20 t = IERC20(_taxVaultToken);
         uint256 deadBefore = t.balanceOf(DEAD);
         t.safeTransferFrom(msg.sender, DEAD, amount);
         uint256 burned = t.balanceOf(DEAD) - deadBefore;
+        // L-11: read R and the balances after the transfer, so a token that moves its own balance (or pays tax into
+        // this vault) inside transferFrom cannot shift the pro rata share. R now excludes the burned tokens.
+        uint256 r = redeemableSupply() + burned;
+        (uint256 n, uint256 q) = balances();
         if (burned > r) burned = r;
 
         uint256 keep = BPS - params.redeemFeeBps;
