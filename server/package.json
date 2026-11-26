@@ -20,6 +20,7 @@
     "mcp": "tsx mcp/main.ts",
     "mcp:http": "tsx mcp/http-main.ts",
     "demo:agent": "tsx scripts/agent-demo.ts",
+    "gen:llms": "tsx scripts/gen-llms.ts",
     "build:fixtures": "forge build --root test/fixtures/contracts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

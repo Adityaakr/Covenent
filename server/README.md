@@ -15,7 +15,8 @@ server/
     sim/             simulator job: sample launches, daily candles, replay covenant terms
   agents/issuer/     issuer agent loop, period reports (Claude or labelled template), ERC-8004 registration
   agents/investor/   investor agent: under book -> downside -> redeem, over MCP
-  mcp/               Covenant MCP server (stdio) + SKILL.md
+  mcp/               Covenant MCP server (stdio and stateless streamable HTTP) + SKILL.md
+  scripts/           agent-demo.ts (a scripted agent session on BNB testnet), gen-llms.ts (web/public/llms-full.txt)
   data/simulator/    latest simulator output (real data, see provenance inside)
   test/              vitest: unit + chain (anvil) with a Solidity fake-chain fixture
 ```
@@ -36,7 +37,10 @@ pnpm keeper                 # needs KEEPER_PRIVATE_KEY; --once for one tick: pnp
 pnpm sim                    # writes data/simulator/latest.json (needs network)
 pnpm issuer                 # needs ISSUER_PRIVATE_KEY (the team wallet); --once: pnpm issuer:once
 pnpm investor               # needs INVESTOR_PRIVATE_KEY; drives the MCP server over stdio
-pnpm mcp                    # stdio MCP server
+pnpm mcp                    # stdio MCP server (BNB testnet from 97.json when there is no local.json)
+pnpm mcp:http               # streamable HTTP MCP, stateless, read-only by default: POST http://127.0.0.1:8788/mcp
+pnpm demo:agent             # scripted agent session over MCP against BNB testnet (docs/AGENT-DEMO.md)
+pnpm gen:llms               # regenerate web/public/llms-full.txt from the tool list
 ```
 
 Everything reads `contracts/deployments/local.json` (`{chainId, rpcUrl, addresses{...}, demo{...}}`) and `contracts/abi/<Contract>.json` at runtime. Until those exist the code runs on the interfaces in `docs/DESIGN.md`; point at any other file with `COVENANT_DEPLOYMENTS` / `COVENANT_ABI_DIR`. Vaults are found anywhere in the deployments JSON under a key ending in `vault` (factories, implementations and registries are skipped), or listed in `COVENANT_VAULTS`.
@@ -125,7 +129,23 @@ Every money decision is a fixed rule in code; **the LLM never decides a rule**. 
 
 ## Investor agent and MCP server
 
-`pnpm mcp` serves 16 tools over stdio: `list_covenants`, `get_terms`, `get_status`, `get_downside`, `get_issuer`, `get_market`, `commit`, `claim_tokens`, `claim_refund`, `redeem`, `poke`, `declare_abandoned`, `claim_tap`, `heartbeat`, `lower_tap`, `post_report`. Writes return unsigned transactions only; the server never holds a key. `mcp/SKILL.md` documents the same surface for skill-based agents.
+`pnpm mcp` serves 27 tools, 3 prompts (`explain_covenant`, `should_i_redeem`, `before_you_commit`) and 3 resources
+(`covenant://network`, `covenant://guide`, `covenant://covenants/{address}`) over stdio. Reads: `get_network`,
+`list_covenants`, `get_covenant`, `get_terms`, `get_status`, `get_raise`, `get_position`, `get_actions`, `get_downside`,
+`get_issuer`, `get_market`, `get_events`, `simulate_transaction`. Writes: `commit`, `finalize`, `claim_tokens`,
+`claim_refund`, `redeem`, `poke`, `declare_abandoned`, `release_team`, `deposit_revenue`, and for the team wallet
+`claim_tap`, `heartbeat`, `lower_tap`, `post_report`, `wind_down`. Every covenant tool takes any of the covenant's
+addresses. Writes return `{unsignedTransaction, simulation, howToSend}`: an eth_call at the latest block with the custom
+error decoded and a gas estimate; the server never holds a key. `finalize` carries `FINALIZE_GAS` from
+`src/covenant/gas.ts`, the one place that number lives (the web's copy is checked against it in `test/unit/gas.test.ts`).
+
+Guards (`src/safety.ts`): the chain allowlist (31337, 56 on a loopback fork, 97; `COVENANT_ALLOWED_CHAINS`), the RPC's
+chain id must match the record, a per-call BNB cap on built transactions (`COVENANT_MAX_VALUE_BNB`; 1 BNB on testnet),
+RPC URLs printed host-only, and third-party text (token names, descriptions, URIs, event args) sanitized, listed in
+`untrustedFields`, and fenced in `<untrusted-data>` blocks inside prompts. `pnpm mcp:http` adds a per-IP limit
+(`MCP_HTTP_RATE_PER_MIN`, 120) and a Host allowlist on loopback (`MCP_HTTP_ALLOWED_HOSTS`); write tools only with
+`MCP_HTTP_WRITES=1`. The API rate-limits `/tx/*` and `/poke-report` per IP (`API_TX_RATE_PER_MIN`, 60).
+`mcp/SKILL.md` documents the same surface for skill-based agents; `web/public/llms-full.txt` is generated from it.
 
 `pnpm investor` spawns the MCP server over stdio, lists covenants under book, computes the downside of its position, waits if no round is open, and redeems (approval + redeem, signed with its own key) when a round is open and redemption beats the pool by `INVESTOR_MIN_EDGE_PCT`.
 

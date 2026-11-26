@@ -15,7 +15,7 @@ Capital, budgets and exits for businesses run by AI agents. Enforced by code, no
   <a href="contracts/foundry.toml"><img alt="Solidity 0.8.26" src="https://img.shields.io/badge/Solidity-0.8.26-363636?logo=solidity&logoColor=white"></a>
   <a href="https://book.getfoundry.sh"><img alt="Built with Foundry" src="https://img.shields.io/badge/built_with-Foundry-FFDB1C"></a>
   <a href="web/package.json"><img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white"></a>
-  <a href="#for-ai-agents"><img alt="MCP: 16 tools" src="https://img.shields.io/badge/MCP-16_tools-5B6CFF"></a>
+  <a href="#for-ai-agents"><img alt="MCP: 27 tools" src="https://img.shields.io/badge/MCP-27_tools-5B6CFF"></a>
   <a href="#testing"><img alt="Tests: 203 passing" src="https://img.shields.io/badge/tests-203_passing-2EA44F"></a>
   <a href="#security"><img alt="Audit: none" src="https://img.shields.io/badge/audit-none-D73A49"></a>
 </p>
@@ -250,7 +250,9 @@ sequenceDiagram
     Note over A,V: If the agent stops, anyone calls declareAbandoned()<br/>and the vault records it on ERC-8004
 ```
 
-**Connect an MCP client.** `pnpm --dir server mcp` serves 16 tools over stdio.
+**Connect an MCP client.** `pnpm --dir server mcp` serves 27 tools, 3 prompts and 3 resources over stdio. With no
+local dev chain it reads BNB testnet from the committed `contracts/deployments/97.json`, so reads need no key and no
+env. `pnpm --dir server mcp:http` serves the read tools over stateless streamable HTTP for remote agents.
 
 ```bash
 claude mcp add covenant -- pnpm --dir /absolute/path/to/Covenent/server mcp
@@ -262,11 +264,15 @@ claude mcp add covenant -- pnpm --dir /absolute/path/to/Covenent/server mcp
     "covenant": {
       "command": "pnpm",
       "args": ["--dir", "/absolute/path/to/Covenent/server", "mcp"],
-      "env": { "COVENANT_DEPLOYMENTS": "/absolute/path/to/Covenent/contracts/deployments/local.json" }
+      "env": { "COVENANT_NETWORK": "testnet" }
     }
   }
 }
 ```
+
+The same JSON works in Claude Desktop (`claude_desktop_config.json`) and Cursor (`.cursor/mcp.json`). For the local dev
+chain, set `COVENANT_DEPLOYMENTS` to `contracts/deployments/local.json` instead. [docs/AGENT-DEMO.md](docs/AGENT-DEMO.md)
+is a recorded session against the live testnet covenant (`pnpm --dir server demo:agent` replays it).
 
 One command starts anvil (a BNB Chain fork with chain id 56 when a BNB RPC that serves older state answers, else the
 offline mock stack on 31337; `--fork` / `--mock` force one; a block every second), deploys every contract, deploys the
@@ -279,9 +285,8 @@ Every screen reads the chain or the server; there is no stand-in data. Settings,
 sends a connected wallet test BNB and Demo USDC on the dev chain (and swaps dUSDC to BNB on the local pool), or a
 0.003 tBNB drip on BNB testnet, once per wallet a day.
 
-For BNB testnet, set `COVENANT_DEPLOYMENTS` to `contracts/deployments/97.local.json`, which `scripts/testnet-up.sh`
-writes. Agents that read skills can use [server/mcp/SKILL.md](server/mcp/SKILL.md). The site serves
-[`/llms.txt`](web/public/llms.txt).
+Agents that read skills can use [server/mcp/SKILL.md](server/mcp/SKILL.md). The site serves
+[`/llms.txt`](web/public/llms.txt) and the generated, complete [`/llms-full.txt`](web/public/llms-full.txt).
 
 | Role | Command | What it does |
 |---|---|---|
@@ -290,31 +295,46 @@ writes. Agents that read skills can use [server/mcp/SKILL.md](server/mcp/SKILL.m
 | Keeper | `pnpm --dir server keeper` | Pokes about hourly, dispatches trading tax, declares abandonment when due |
 
 <details>
-<summary><b>All 16 MCP tools</b> (<a href="server/mcp/tools.ts"><code>server/mcp/tools.ts</code></a>)</summary>
+<summary><b>All 27 MCP tools</b> (<a href="server/mcp/tools.ts"><code>server/mcp/tools.ts</code></a>)</summary>
 
 <br>
 
+Every covenant tool takes `covenant`: the vault, token, launcher or pool address, any one.
+
 | Tool | Kind | Inputs | Returns |
 |---|---|---|---|
-| `list_covenants` | read | `under_book_only?` | Each covenant: token, state, treasury, book value, pool price, premium to book |
-| `get_terms` | read | `vault` | Terms, tranches, sale price, and a plain summary of the five rules |
-| `get_status` | read | `vault` | State, exit streak, round end, tap, heartbeat, tranches, trust, treasury, book, price |
-| `get_downside` | read | `vault`, `holder?` or `tokens?` | Redeem at book now vs. sell into the pool, the floor at 6, 12 and 24 months, runway |
-| `get_issuer` | read | `vault` | Team wallet, ERC-8004 agent id, owner check, reputation from covenant vaults only |
-| `get_market` | read | `vault` | On-chain reserves, plus the CoinMarketCap pair quote on BNB Chain mainnet |
-| `commit` | write | `vault`, `amount_bnb` | `contribute()`, with the pro-rata outcome if the raise closed now |
-| `claim_tokens` | write | `vault` | `claimTokens()` |
-| `claim_refund` | write | `vault` | `claimRefund()` |
-| `redeem` | write | `vault`, `holder`, `tokens?`, `slippage_bps?` | Approval as a prerequisite, then `redeem(amount, minOut)`. Only in `EXIT_ROUND` or `WIND_DOWN` |
-| `poke` | write | `vault` | `CovenantOracle.poke(vault)` with a signed report, or plain where the push feed prices it |
-| `declare_abandoned` | write | `vault` | `declareAbandoned()`, with a note on whether it is due |
-| `claim_tap` | issuer | `vault` | `claimTap()` from the team wallet |
-| `heartbeat` | issuer | `vault` | `heartbeat()` from the team wallet |
-| `lower_tap` | issuer | `vault`, `usd_per_30d` | `lowerTap(newUsd)`, a permanent pay cut |
-| `post_report` | issuer | `vault`, `period`, `uri`, `report_text?` or `hash?` | `postReport(period, uri, hash)` |
+| `get_network` | read | none | Chain, redacted RPC host, block, contract addresses, limits (per-call cap, finalize gas) |
+| `list_covenants` | read | `under_book_only?`, `state?`, `include_raises?` | Each covenant (state, treasury, book, price, premium to book) and each open or failed raise |
+| `get_covenant` | read | `covenant` | Overview from any address, with a plain summary |
+| `get_terms` | read | `covenant` | Terms, tranches, sale price, and a plain summary of the five rules |
+| `get_status` | read | `covenant` | State, exit streak, round end, tap, heartbeat, tranches, trust, treasury, book, price, ledger |
+| `get_raise` | read | `covenant` | Launcher state, committed, minimum, cap, deadline, seconds left, whether finalize is due |
+| `get_position` | read | `covenant`, `wallet` | Tokens, commitment, claimable allocation, refund, team-wallet check, downside |
+| `get_actions` | read | `covenant`, `wallet?` | Every action with available yes or no, who may sign, and why |
+| `get_downside` | read | `covenant`, `wallet?` or `tokens?` or `tokens_wei?` | Redeem at book now vs. sell into the pool, the floor at 6, 12 and 24 months, runway |
+| `get_issuer` | read | `covenant` | Team wallet, ERC-8004 agent id, owner check, reputation from covenant vaults only |
+| `get_market` | read | `covenant` | On-chain reserves, plus the CoinMarketCap pair quote on BNB Chain mainnet |
+| `get_events` | read | `covenant`, `kind?`, `limit?` | The ledger, newest first |
+| `simulate_transaction` | read | `to`, `data`, `value_wei?`, `gas?`, `from?` | eth_call with the Covenant revert reason decoded |
+| `commit` | write | `covenant`, `amount_bnb`, `from?` | `contribute()`, with the pro-rata outcome if the raise closed now |
+| `finalize` | write | `covenant`, `from?` | `finalize()` with gas 16,700,000 (the launch refuses less than 15M) |
+| `claim_tokens` | write | `covenant`, `from?` | `claimTokens()` |
+| `claim_refund` | write | `covenant`, `from?` | `claimRefund()` |
+| `redeem` | write | `covenant`, `wallet`, `tokens?` or `tokens_wei?`, `slippage_bps?` | Approval as a prerequisite, then `redeem(amount, minOut)`. Only in `EXIT_ROUND` or `WIND_DOWN` |
+| `poke` | write | `covenant`, `from?` | `CovenantOracle.poke(vault)` with a signed report, or plain where the push feed prices it |
+| `declare_abandoned` | write | `covenant`, `from?` | `declareAbandoned()`, with a note on whether it is due |
+| `release_team` | write | `covenant`, `from?` | `releaseTeam()`: unlocked team tranches to the team wallet |
+| `deposit_revenue` | write | `covenant`, `amount_bnb`, `tag?`, `from?` | `depositRevenue(tag)`: revenue that raises book value |
+| `claim_tap` | issuer | `covenant` | `claimTap()` from the team wallet |
+| `heartbeat` | issuer | `covenant` | `heartbeat()` from the team wallet |
+| `lower_tap` | issuer | `covenant`, `usd_per_30d` | `lowerTap(newUsd)`, a permanent pay cut |
+| `post_report` | issuer | `covenant`, `period`, `uri`, `report_text?` or `hash?` | `postReport(period, uri, hash)` |
+| `wind_down` | issuer | `covenant`, `confirm_irreversible: true` | `windDown()`, irreversible |
 
-An unsigned transaction is `{chainId, to, data, value, from, prerequisites[]}`. Send each prerequisite first, then the
-transaction, from the wallet in `from` when it is set.
+A write returns `{unsignedTransaction {chainId, to, data, value, from, gas?, prerequisites[]}, simulation {ok, gasEstimate,
+error, note}, howToSend}`. Nothing is signed or sent. Send each prerequisite first, then the transaction, from the wallet
+in `from` when it is set. Prompts: `explain_covenant`, `should_i_redeem`, `before_you_commit`. Resources:
+`covenant://network`, `covenant://guide`, `covenant://covenants/{address}`.
 
 </details>
 

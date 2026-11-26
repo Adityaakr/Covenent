@@ -88,6 +88,13 @@ async function main() {
     await call('commit', { covenant, amount_bnb: '0.01', ...(wallet ? { from: wallet } : {}) }, 'an unsigned write, simulated before signing');
     await call('poke', { covenant }, 'anyone may record a price observation');
     await call('get_terms', { covenant: '0x0000000000000000000000000000000000000001' }, 'an error an agent can act on');
+
+    const p = await mcp.getPrompt({ name: 'explain_covenant', arguments: { covenant } });
+    const text = (p.messages[0]!.content as { text: string }).text;
+    say('\n### prompt `explain_covenant` — live data fenced as untrusted\n');
+    say('```text');
+    say(text.split('\n').slice(0, 12).join('\n') + '\n…');
+    say('```');
   }
   say(`\n---\nChain ${net.chainId}, block ${net.blockNumber}, RPC ${net.rpc}.`);
   await mcp.close();
