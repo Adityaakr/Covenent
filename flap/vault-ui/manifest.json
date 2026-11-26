@@ -1,0 +1,20 @@
+{
+  "artifactId": "vaultui_covenant-vault_01M8CE66GAFS2GH973DAR062SG",
+  "name": "Covenant Vault",
+  "match": {
+    "bindings": [
+      {
+        "chainId": 97,
+        "factoryAddress": "0xcd43cdec6d587110510c9946bf0791a8ea07d58e",
+        "tokenAddresses": [
+          "0x40002fcb9983c46b299f13e2d64e2c9cb3b07777"
+        ]
+      }
+    ]
+  },
+  "i18n": [
+    "en",
+    "zh",
+    "ko"
+  ]
+}

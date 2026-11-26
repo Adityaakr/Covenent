@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 2,
+  "kind": "launcher-ui",
+  "artifactId": "covenant-launcher",
+  "name": "Covenant Launcher",
+  "chainId": 97,
+  "factoryAddress": "0x270de514c8cbe98e574d842e42c724335e742fd1",
+  "configContract": "launcher-detail/v1",
+  "surfaces": [
+    "launcher-ui"
+  ],
+  "entry": "Component.tsx",
+  "reads": {
+    "state": {
+      "functionName": "state",
+      "returns": "uint256"
+    },
+    "minRaise": {
+      "functionName": "minRaise",
+      "returns": "uint256"
+    },
+    "cap": {
+      "functionName": "cap",
+      "returns": "uint256"
+    },
+    "committed": {
+      "functionName": "committed",
+      "returns": "uint256"
+    },
+    "saleDeadline": {
+      "functionName": "saleDeadline",
+      "returns": "uint256"
+    },
+    "contributorCount": {
+      "functionName": "contributorCount",
+      "returns": "uint256"
+    },
+    "saleAmount": {
+      "functionName": "saleAmount",
+      "returns": "uint256"
+    },
+    "token": {
+      "functionName": "token",
+      "returns": "address"
+    },
+    "vault": {
+      "functionName": "vault",
+      "returns": "address"
+    },
+    "expectedToken": {
+      "functionName": "expectedToken",
+      "returns": "address"
+    },
+    "launchRetryUntil": {
+      "functionName": "launchRetryUntil",
+      "returns": "uint256"
+    },
+    "creator": {
+      "functionName": "creator",
+      "returns": "address"
+    },
+    "contribution": {
+      "functionName": "contributions",
+      "returns": "uint256",
+      "account": true
+    },
+    "refundDue": {
+      "functionName": "refundOf",
+      "returns": "uint256",
+      "account": true
+    },
+    "allocation": {
+      "functionName": "allocationOf",
+      "returns": "uint256",
+      "account": true
+    },
+    "refunded": {
+      "functionName": "refunded",
+      "returns": "bool",
+      "account": true
+    }
+  },
+  "transactions": {
+    "actions": {
+      "contribute": "payable",
+      "finalize": "nonpayable",
+      "claimRefund": "nonpayable"
+    }
+  }
+}
