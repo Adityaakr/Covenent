@@ -273,7 +273,7 @@ set -a && . ./.env && set +a
   ([`0xa41449d9…`](https://testnet.bscscan.com/tx/0xa41449d924c01b477e16562c3e0eb9212dda1e42b1a4d9b27b47c5f43c0399be)),
   5.52M on a chain 97 fork and 6.94M on a BNB Chain fork (26 Nov 2026).
 - **Claims.** Refunds and sale tokens are pull payments. The keeper raises a `claims-open` alert while refunds or
-  tokens wait, the MCP `get_claimable(holder)` lists them with the unsigned claims, and the covenant page shows a Claim
+  tokens wait, the MCP `get_position(covenant, wallet)` shows a wallet's refund and claimable allocation (then `claim_refund` / `claim_tokens`), and the covenant page shows a Claim
   button to the wallet that is owed. Once every refund is claimed, anyone can call `sweepDust()` on the launcher to
   move the leftover rounding buffer (at most one wei per contributor) into the treasury.
 - **Tax.** Tax collects in the token as tokens. On a sell, Flap's tax processor swaps it to BNB only once it is worth

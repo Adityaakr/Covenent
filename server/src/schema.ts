@@ -263,17 +263,6 @@ export const Downside = z.object({
 });
 export type Downside = z.infer<typeof Downside>;
 
-export const Claimable = z.object({
-  vault: Address,
-  launcher: Address,
-  name: z.string().nullable(),
-  /** BNB claimRefund() pays this holder now */
-  refundWei: Wei,
-  /** sale tokens claimTokens() sends this holder now */
-  tokensWei: Wei,
-});
-export type Claimable = z.infer<typeof Claimable>;
-
 export const Alert = z.object({
   id: z.string(),
   kind: z.enum(['exit-streak-building', 'exit-round-open', 'heartbeat-due', 'abandonable', 'poke-failed', 'tax-dispatched', 'raise-finalized', 'claims-open']),

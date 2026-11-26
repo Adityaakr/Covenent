@@ -261,7 +261,13 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     lens: addrEnv('COVENANT_LENS') ?? deploymentAddress(deployments, 'lens', 'CovenantLens'),
     launcherFactories: [
       ...new Set(
-        [deploymentAddress(deployments, 'launcherFactory'), deploymentAddress(deployments, 'demoLauncherFactory')].filter(
+        [
+          deploymentAddress(deployments, 'launcherFactory'),
+          deploymentAddress(deployments, 'demoLauncherFactory'),
+          // Covenant's own earlier deployment on the chain (97.json `previous*`), so its covenants stay readable
+          deploymentAddress(deployments, 'previousLauncherFactory'),
+          deploymentAddress(deployments, 'previousDemoLauncherFactory'),
+        ].filter(
           (a): a is Address => !!a,
         ),
       ),
@@ -269,7 +275,13 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     covenantVaultFactory: addrEnv('COVENANT_VAULT_FACTORY') ?? deploymentAddress(deployments, 'vaultFactory', 'CovenantVaultFactory'),
     vaultFactories: [
       ...new Set(
-        [addrEnv('COVENANT_VAULT_FACTORY'), deploymentAddress(deployments, 'vaultFactory', 'CovenantVaultFactory'), deploymentAddress(deployments, 'demoVaultFactory')].filter(
+        [
+          addrEnv('COVENANT_VAULT_FACTORY'),
+          deploymentAddress(deployments, 'vaultFactory', 'CovenantVaultFactory'),
+          deploymentAddress(deployments, 'demoVaultFactory'),
+          deploymentAddress(deployments, 'previousVaultFactory'),
+          deploymentAddress(deployments, 'previousDemoVaultFactory'),
+        ].filter(
           (a): a is Address => !!a,
         ),
       ),

@@ -14,8 +14,8 @@ describe('finalize gas, one value everywhere', () => {
     expect(FINALIZE_GAS).toBeGreaterThan(floor + 500_000n);
     expect(FINALIZE_GAS).toBeLessThan(TESTNET_TX_GAS_CEILING);
   });
-  it('matches the web app copy (web/src/lib/data/actions.ts)', () => {
-    const web = readFileSync(path.join(REPO_ROOT, 'web', 'src', 'lib', 'data', 'actions.ts'), 'utf8');
+  it('matches the web app copy (web/src/lib/chain/gas.ts, used by web/src/lib/data/actions.ts)', () => {
+    const web = readFileSync(path.join(REPO_ROOT, 'web', 'src', 'lib', 'chain', 'gas.ts'), 'utf8');
     expect(num(web.match(/const FINALIZE_GAS = ([\d_]+)n/)![1]!)).toBe(FINALIZE_GAS);
   });
 });

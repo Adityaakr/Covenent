@@ -364,7 +364,7 @@ export class Keeper {
       kind: 'claims-open',
       vault: ref.vault,
       at: now,
-      message: `Still unclaimed: ${parts.join(' and ')}. Nothing is pushed: each contributor claims with their own wallet (Claim buttons on the covenant page, or MCP get_claimable then claim_refund / claim_tokens).`,
+      message: `Still unclaimed: ${parts.join(' and ')}. Nothing is pushed: each contributor claims with their own wallet (Claim buttons on the covenant page, or MCP get_position then claim_refund / claim_tokens).`,
       data: { launcher, refundsHeldWei: held.toString(), tokensUnclaimedWei: tokensOpen ? (saleAmount! - saleClaimed!).toString() : '0' },
     });
   }

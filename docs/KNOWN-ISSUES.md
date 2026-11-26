@@ -18,7 +18,7 @@ this list's contracts).
 | Flap 5 | Fixed 10 BNB pool floor vs Flap's pool-share floors | Fixed: live `graduationFloorV2` check (graduation floor in production, launch floor in demo); `minRaiseFor` | `CovenantLauncherFactory._checkFloor` |
 | Flap 6 | One Atlas signer could unlock team tokens with a bad rate | Fixed: unlock needs the multiple in BNB (pool TWAP) as well as in dollars | `CovenantVault._stepTranches`; `test_unlock_anOutlierAtlasRateAloneCannotUnlock` |
 | Flap 7 | Rounding dust left in the launcher | Fixed: `sweepDust()` once every refund is out | `CovenantLauncher.sweepDust` |
-| Flap 8 | Refunds are pull-only | Disclosed (kept for safety); Claim CTA, keeper `claims-open` alert, MCP `get_claimable` | |
+| Flap 8 | Refunds are pull-only | Disclosed (kept for safety); Claim CTA, keeper `claims-open` alert, MCP `get_position` | |
 | Flap 9 | No per-wallet cap | Disclosed by design: pro rata above the cap, excess refunded | |
 | Flap 10 | Guardian can upgrade both beacons | Disclosed: refund BNB and treasury are only as safe as the Guardian (Flap's spec) | NatSpec, README, DESIGN.md, app |
 | Pre H-1 | The poker chose strictness: withheld reports skipped the tranche reset | Fixed: a trusted, non-strict observation resets the unlock counters | `test_H1_withheldReports_resetTheTranches_insteadOfSkippingThem` |
