@@ -2,7 +2,7 @@ import path from 'node:path';
 import { BaseError, ContractFunctionRevertedError, decodeErrorResult, encodeFunctionData, type Abi, getAddress, type Address, type Hex, type PublicClient, type WalletClient } from 'viem';
 import { erc20Abi, hasFunction, taxTokenAbi } from '../abi/index.js';
 import { fetchBnbUsdReport, pokeCalldata, type AtlasReport } from '../atlas/report.js';
-import { assertSigningAllowed, walletClient } from '../chain.js';
+import { assertLocalNodeIfLoopback, assertSigningAllowed, walletClient } from '../chain.js';
 import type { CovenantRef, ServerConfig } from '../config.js';
 import { CovenantService } from '../covenant/read.js';
 import { Alerter, alertsFor } from './alerts.js';
@@ -193,9 +193,26 @@ export class Keeper {
       return { vault, action: 'poked', tx, reportMode: rep?.mode ?? 'none' };
     } catch (e) {
       const reason = revertReason(e, this.errorsAbi);
-      this.save(vault, { lastSkip: reason });
       // TooSoon means another keeper or a user already poked: that is success for the system.
-      return { vault, action: /TooSoon/i.test(reason) ? 'skipped' : 'failed', reason, reportMode: rep?.mode ?? 'none' };
+      if (/TooSoon/i.test(reason)) {
+        this.save(vault, { lastSkip: reason });
+        return { vault, action: 'skipped', reason, reportMode: rep?.mode ?? 'none' };
+      }
+      // A report the oracle refuses (wrong signer, feed id, replay, stale) must not stop the exit rule: it steps on
+      // on-chain numbers alone, so send the bare poke.
+      if (rep) {
+        try {
+          const tx = await this.send(vault, 'poke', this.cfg.oracle, pokeCalldata(this.svc.abis.oracle, vault), now);
+          this.log(`poked ${vault} without a report (the ${rep.mode} report was refused: ${reason}) tx ${tx}`);
+          return { vault, action: 'poked', tx, reportMode: 'none', reason: `report refused (${reason}); bare poke sent` };
+        } catch (e2) {
+          const r2 = revertReason(e2, this.errorsAbi);
+          this.save(vault, { lastSkip: r2 });
+          return { vault, action: /TooSoon/i.test(r2) ? 'skipped' : 'failed', reason: `with report: ${reason}; bare: ${r2}`, reportMode: 'none' };
+        }
+      }
+      this.save(vault, { lastSkip: reason });
+      return { vault, action: 'failed', reason, reportMode: 'none' };
     }
   }
 
@@ -247,7 +264,11 @@ export class Keeper {
     }
   }
 
+  private nodeChecked?: Promise<void>;
+
   async tick(opts: { force?: boolean } = {}): Promise<TickResult[]> {
+    this.nodeChecked ??= assertLocalNodeIfLoopback(this.client, this.cfg.chainId, this.cfg.rpcUrl);
+    await this.nodeChecked;
     const { timestamp: now } = await this.svc.chainNow();
     const results: TickResult[] = [];
     await this.svc.discover().catch(() => undefined);

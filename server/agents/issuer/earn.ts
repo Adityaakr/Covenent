@@ -1,5 +1,5 @@
 import { getAddress, isAddress, parseEther, type Hex } from 'viem';
-import { assertSigningAllowed, publicClient, walletClient } from '../../src/chain.js';
+import { assertLocalNodeIfLoopback, assertSigningAllowed, publicClient, walletClient } from '../../src/chain.js';
 import { loadConfig } from '../../src/config.js';
 
 /**
@@ -16,6 +16,7 @@ if (!key || !to || !isAddress(to)) {
   process.exit(2);
 }
 assertSigningAllowed(cfg.chainId, cfg.rpcUrl);
+await assertLocalNodeIfLoopback(publicClient(cfg), cfg.chainId, cfg.rpcUrl);
 const w = walletClient(cfg, key);
 const hash = await w.sendTransaction({ account: w.account!, chain: w.chain, to: getAddress(to), value: amount });
 const r = await publicClient(cfg).waitForTransactionReceipt({ hash });

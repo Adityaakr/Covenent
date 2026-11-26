@@ -64,3 +64,29 @@ export function assertSigningAllowed(chainId: number, rpcUrl?: string): void {
     );
   }
 }
+
+/** Whether the node behind a client is a local dev node (anvil, hardhat, ganache), from web3_clientVersion. */
+export async function isLocalDevNode(client: PublicClient): Promise<boolean> {
+  try {
+    const v = await client.request({ method: 'web3_clientVersion' } as never);
+    return /anvil|hardhat|ganache/i.test(String(v));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Loopback is not proof of a dev chain: a local BNB Chain node or an SSH tunnel to one is loopback too. Before signing on
+ * chain 56 or 97 through a loopback RPC, the node must say it is anvil (or hardhat, ganache), unless
+ * COVENANT_ALLOW_PUBLIC_NETWORK=1 says the real network is intended.
+ */
+export async function assertLocalNodeIfLoopback(client: PublicClient, chainId: number, rpcUrl?: string): Promise<void> {
+  if (chainId !== 56 && chainId !== 97) return;
+  if (!isLoopbackRpc(rpcUrl) || process.env.COVENANT_ALLOW_PUBLIC_NETWORK === '1') return;
+  if (!(await isLocalDevNode(client))) {
+    throw new Error(
+      `Refusing to sign on chain ${chainId}: the loopback RPC is not a local dev node (web3_clientVersion is not anvil). ` +
+        'Set COVENANT_ALLOW_PUBLIC_NETWORK=1 only when the real network is intended.',
+    );
+  }
+}

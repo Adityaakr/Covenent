@@ -2,7 +2,7 @@ import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import type { Hex } from 'viem';
-import { assertSigningAllowed, publicClient, walletClient } from '../../src/chain.js';
+import { assertLocalNodeIfLoopback, assertSigningAllowed, publicClient, walletClient } from '../../src/chain.js';
 import { loadConfig, SERVER_ROOT } from '../../src/config.js';
 import { InvestorAgent } from './investor.js';
 
@@ -13,6 +13,7 @@ if (!key) {
   process.exit(2);
 }
 assertSigningAllowed(cfg.chainId, cfg.rpcUrl);
+await assertLocalNodeIfLoopback(publicClient(cfg), cfg.chainId, cfg.rpcUrl);
 
 // Talk to the Covenant MCP server over stdio, exactly as any MCP client would.
 const transport = new StdioClientTransport({

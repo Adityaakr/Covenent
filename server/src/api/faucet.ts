@@ -2,7 +2,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import path from 'node:path';
 import { formatEther, getAddress, isAddress, parseEther, parseUnits, type Address, type Hex, type PublicClient, type WalletClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { isLoopbackRpc, walletClient } from '../chain.js';
+import { isLocalDevNode, isLoopbackRpc, walletClient } from '../chain.js';
+import { redactUrl } from '../safety.js';
 import { deploymentAddress, type ServerConfig } from '../config.js';
 
 /**
@@ -157,7 +158,7 @@ export class Faucet {
   /** Why the faucet is off, or null when it can pay out. */
   disabledReason(): string | null {
     const m = this.mode();
-    if (m === 'off') return `the chain at ${this.cfg.rpcUrl} is not a local node or BNB testnet; test funds exist only there`;
+    if (m === 'off') return `the chain at ${redactUrl(this.cfg.rpcUrl)} is not a local node or BNB testnet; test funds exist only there`;
     if (m === 'local' && !process.env.FAUCET_PRIVATE_KEY) return 'FAUCET_PRIVATE_KEY is not set (scripts/dev-all.sh sets anvil account #0)';
     if (m === 'testnet' && !this.testnetKey()) return 'TESTNET_FAUCET_PRIVATE_KEY is not set on the server; use a public BNB testnet faucet';
     return null;
@@ -251,6 +252,10 @@ export class Faucet {
       const run = this.queue.then(() => this.sendTestnet(address, ip));
       this.queue = run.catch(() => undefined);
       return run;
+    }
+    // loopback is not proof of a dev chain (a local mainnet node, an SSH tunnel): the node must say it is anvil
+    if (!(await isLocalDevNode(this.client))) {
+      throw new FaucetError(403, 'faucet off: the loopback RPC is not a local dev node (web3_clientVersion is not anvil)', { publicFaucets: PUBLIC_FAUCETS });
     }
     const prev = this.last.get(address) ?? 0;
     if (Date.now() - prev < this.opts.cooldownMs) {
