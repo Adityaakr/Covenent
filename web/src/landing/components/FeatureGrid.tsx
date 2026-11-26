@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { motion } from "motion/react";
 import { ScrollLift } from "./ScrollLift";
 import s from "./FeatureGrid.module.css";
+import { bnb } from "./Bnb";
 
 /** `Capabilities Grid` on /features: Border fill, gap 1px, radius 18, 1px border, clip; 3 / 2 columns, Phone one stack.
  *  Scroll lift from y 32px, scale 0.98. */
@@ -26,8 +27,8 @@ export function FeatureCard({ icon, title, body }: { icon: ReactNode; title: Rea
       transition={{ type: "tween", ease: [0.44, 0, 0.56, 1], duration: 0.25 }}
     >
       <div className={s.iconBox}>{icon}</div>
-      <h4 className={["t-h4", s.text].join(" ")}>{title}</h4>
-      <p className={["t-body", s.text].join(" ")}>{body}</p>
+      <h4 className={["t-h4", s.text].join(" ")}>{bnb(title)}</h4>
+      <p className={["t-body", s.text].join(" ")}>{bnb(body)}</p>
     </motion.div>
   );
 }

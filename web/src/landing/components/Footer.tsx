@@ -10,6 +10,7 @@ import {
   wordmark,
 } from "./siteLinks";
 import s from "./Footer.module.css";
+import { bnb } from "./Bnb";
 
 /* Footer from layout template "Main" (bjIxcK_F0, frame xQFxeZ3LK). */
 export function Footer({ current }: { current?: string }) {
@@ -22,10 +23,10 @@ export function Footer({ current }: { current?: string }) {
               <LogoMark />
               <span className="t-h4">{wordmark}</span>
             </Link>
-            <p className={["t-body", s.tagline].join(" ")}>{footerTagline}</p>
+            <p className={["t-body", s.tagline].join(" ")}>{bnb(footerTagline)}</p>
             <div className={s.status}>
               <span className={s.dot} aria-hidden="true" />
-              <p className="t-small">{footerStatus}</p>
+              <p className="t-small">{bnb(footerStatus)}</p>
             </div>
           </div>
           {footerColumns.map((col) => (
@@ -54,7 +55,7 @@ export function Footer({ current }: { current?: string }) {
           <p className={s.bigWordmark}><span>{wordmark}</span></p>
         </div>
         <div className={s.bottom}>
-          <p className="t-small c-text-2">{footerCopyright}</p>
+          <p className="t-small c-text-2">{bnb(footerCopyright)}</p>
           <p className="t-small c-text-2">{footerNote}</p>
         </div>
       </div>

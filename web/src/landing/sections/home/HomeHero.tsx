@@ -5,6 +5,7 @@ import { AppWindow } from "./hero/AppWindow";
 import { HeroHeading } from "./hero/HeroHeading";
 import { LogoTicker, type TickerItem } from "./hero/LogoTicker";
 import { Icon } from "./hero/icons";
+import { Marked, bnb } from "../../components/Bnb";
 import s from "./hero/HomeHero.module.css";
 
 /* Framer Home (augiA20Il) section "Hero" (NPB4fqmao). Spec: docs/landing/spec/home-a.md.
@@ -34,7 +35,7 @@ export function HomeHero() {
       </div>
 
       <div className={s.intro}>
-        <Link href="/changelog" className={s.announce}>
+        <Link href="/#agent-layer" className={s.announce}>
           <span className={s.chip}>
             <span className="t-small c-bg">Agents</span>
           </span>
@@ -46,8 +47,9 @@ export function HomeHero() {
         </Link>
         <HeroHeading text="The operating stack for autonomous ventures." />
         <p className={["t-lead", s.sub].join(" ")}>
-          {/* non-breaking spaces keep "AI agents", "24/7 on" and "BNB Chain" together at every width */}
-          {"Capital, budgets and exits for businesses run by AI\u00a0agents. Enforced by code, not courts. 24/7\u00a0on BNB\u00a0Chain."}
+          {/* non-breaking spaces keep "AI agents" and "24/7 on" together; bnb() puts the BNB Chain mark before its
+              name and keeps the two on one line */}
+          {bnb("Capital, budgets and exits for businesses run by AI\u00a0agents. Enforced by code, not courts. 24/7\u00a0on\u00a0BNB\u00a0Chain.")}
         </p>
         <div className={s.actions}>
           <Button variant="secondary" href="/features">
@@ -57,7 +59,16 @@ export function HomeHero() {
             Launch app
           </Button>
         </div>
-        <p className={["t-small", "c-text-2", s.note].join(" ")}>No fees in v1 {" · "} Built on Flap Pool Launch</p>
+        <p className={["t-small", "c-text-2", s.note].join(" ")}>
+          Built on{" "}
+          <Marked name="flap" tone="mono">
+            Flap Pool Launch
+          </Marked>
+          {" · "}Data by{" "}
+          <Marked name="cmc" tone="mono">
+            CoinMarketCap
+          </Marked>
+        </p>
       </div>
 
       <div className={s.showcase}>
@@ -79,7 +90,7 @@ export function HomeHero() {
             <p className="t-small c-text-2">Hourly</p>
           </div>
           <p className="t-small c-text-2">
-            Claimed 4.1 BNB of tap at the Atlas rate. Heartbeat sent. Report due in 12 days.
+            {bnb("Claimed 4.1 BNB of tap at the Atlas rate. Heartbeat sent. Report due in 12 days.")}
           </p>
           <div className={s.updateActions}>
             <span className={s.actionEdit}>

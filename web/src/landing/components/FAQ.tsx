@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import { motion } from "motion/react";
 import { IconPlus } from "./icons";
 import s from "./FAQ.module.css";
+import { bnb } from "./Bnb";
 
 /* Framer component FAQ Item (VrMDv2AIP): Closed / Open / Closed Hover. Tap toggles Closed <-> Open.
    All variant changes: spring, duration 0.35s, bounce 0. */
@@ -25,7 +26,7 @@ export function FAQItem({ q, a, defaultOpen = false }: { q: string; a: string; d
         onPointerEnter={() => setHover(true)}
         onPointerLeave={() => setHover(false)}
       >
-        <h4 className={["t-h4", s.question].join(" ")}>{q}</h4>
+        <h4 className={["t-h4", s.question].join(" ")}>{bnb(q)}</h4>
         <motion.span
           className={s.icon}
           initial={false}
@@ -45,7 +46,7 @@ export function FAQItem({ q, a, defaultOpen = false }: { q: string; a: string; d
         aria-hidden={!open}
       >
         <div className={s.answer}>
-          <p className="t-body">{a}</p>
+          <p className="t-body">{bnb(a)}</p>
         </div>
       </motion.div>
     </div>

@@ -1,6 +1,7 @@
 import { Button } from "./Button";
 import { ScrollLift } from "./ScrollLift";
 import s from "./PageCTA.module.css";
+import { bnb } from "./Bnb";
 
 type CTAAction = { label: string; href: string };
 export type PageCTAProps = { heading: string; body: string; primary: CTAAction; secondary: CTAAction };
@@ -13,8 +14,8 @@ export function PageCTA({ heading, body, primary, secondary }: PageCTAProps) {
       <div className={s.inner}>
         <div className={s.content}>
           <ScrollLift className={s.plate}>
-            <h2 className={["t-h2", s.heading].join(" ")}>{heading}</h2>
-            <p className={["t-lead c-text", s.body].join(" ")}>{body}</p>
+            <h2 className={["t-h2", s.heading].join(" ")}>{bnb(heading)}</h2>
+            <p className={["t-lead c-text", s.body].join(" ")}>{bnb(body)}</p>
             <div className={s.actions}>
               <Button variant="secondary" size="lg" href={secondary.href}>
                 {secondary.label}

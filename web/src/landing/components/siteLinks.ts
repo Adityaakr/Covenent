@@ -1,33 +1,33 @@
 /* Covenant global navigation and footer content (content-plan.md "Global"). */
 export const navLinks = [
   { label: "Rules", href: "/features" },
-  { label: "Fees", href: "/pricing" },
   { label: "Use cases", href: "/use-cases" },
-  { label: "Milestones", href: "/changelog" },
+  { label: "Why we built it", href: "/#prior-art" },
   { label: "Contact", href: "/contact" },
 ] as const;
 
 export const navSecondary = { label: "Connect wallet", href: "/app" } as const;
 export const navPrimary = { label: "Launch app", href: "/app" } as const;
 
+/* The chosen headline and subline, verbatim (landing/meta.ts). */
 export const footerTagline =
-  "Investor protections that enforce themselves. A launcher and vault for token raises on BNB Chain.";
+  "The operating stack for autonomous ventures. Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts. 24/7 on BNB Chain.";
 export const footerStatus = "Testnet build · BNB Hack Bangkok";
 export const footerColumns = [
   {
     title: "Product",
     links: [
       { label: "Rules", href: "/features" },
-      { label: "Fees", href: "/pricing" },
-      { label: "Milestones", href: "/changelog" },
+      { label: "Use cases", href: "/use-cases" },
+      { label: "Launch app", href: "/app" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "Use cases", href: "/use-cases" },
+      { label: "Why we built it", href: "/#prior-art" },
+      { label: "Who named the problem", href: "/#research" },
       { label: "Contact", href: "/contact" },
-      { label: "Launch app", href: "/app" },
     ],
   },
   {

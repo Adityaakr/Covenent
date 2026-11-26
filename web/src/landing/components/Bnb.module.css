@@ -1,0 +1,11 @@
+/* Inline brand mark (BNB Chain, Flap, CoinMarketCap): Inter's cap height is about 0.727em, so the mark is that tall (width follows its aspect) and sits on the baseline,
+   with a small gap before the word. The unit never wraps between mark and word. */
+.unit { white-space: nowrap; }
+.mark {
+  display: inline-block !important;
+  height: 0.727em;
+  max-width: none;
+  margin-right: 0.22em;
+  vertical-align: baseline;
+  flex: none;
+}
