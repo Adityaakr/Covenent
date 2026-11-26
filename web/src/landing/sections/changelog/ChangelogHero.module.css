@@ -1,0 +1,54 @@
+/* Changelog Hero Content (bgmlQuZxV): stack vertical, align start, gap 24 / 24 / 36,
+   padding 112 64 88 / 96 48 96 / 64 20 64 (the Section head shell values), left aligned. */
+.content.content {
+  align-items: flex-start;
+  text-align: left;
+}
+.full { width: 100%; }
+.title {
+  width: 100%;
+  max-width: 900px;
+  text-wrap: balance;
+}
+
+/* Subscribe Form: 1px Border, Background fill, padding 6px, radius 14px, gap 8px, max width 460px. */
+.form {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 460px;
+  padding: 6px;
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  background: var(--c-bg);
+}
+
+/* Subscribe Email (FormPlainTextInputNode): 44px, padding 10px 12px, radius 10px, 1px Input Border,
+   Background fill, Inter 500 15px / 1.2em, letter spacing 0, Text Primary; placeholder Text Secondary;
+   focused border 1px Input Focus. */
+.input {
+  flex: 1 1 0;
+  min-width: 1px;
+  width: 1px;
+  height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-input-border);
+  border-radius: 10px;
+  background: var(--c-bg);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 500;
+  font-style: normal;
+  letter-spacing: 0em;
+  line-height: 1.2em;
+  color: var(--c-text);
+  outline: none;
+  text-overflow: ellipsis;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.input::placeholder { color: var(--c-text-2); opacity: 1; }
+.input:focus { border-color: var(--c-input-focus); }

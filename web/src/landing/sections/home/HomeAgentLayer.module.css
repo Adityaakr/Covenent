@@ -1,0 +1,181 @@
+/* Framer "Weekly Update" (b_FQIsQ8W). Content frame has no padding; the columns carry it. */
+.content.content {
+  padding: 0;
+  gap: 0;
+}
+.columns {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+}
+.text {
+  flex: 1 0 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 32px;
+  padding: 96px 56px 96px 64px;
+}
+.fill { width: 100%; }
+.points {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  width: 100%;
+}
+.point {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+}
+.iconBox {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+}
+.pointText {
+  flex: 1 0 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.pointText > * { width: 100%; }
+
+/* Visual plate: photo fill (cover), 1px left border, clip. */
+.visual {
+  flex: 1 0 0;
+  min-width: 0;
+  height: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 40px;
+  overflow: clip;
+  border-left: 1px solid var(--c-border);
+  background: url("/landing/home/agent-plate.jpg") center / cover no-repeat;
+}
+.card {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--c-bg);
+  box-shadow: 0px 30px 60px -20px rgba(21, 23, 28, 0.3), 0px 0px 0px 1px rgba(21, 23, 28, 0.05);
+}
+.header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.avatar {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 5px;
+  border-radius: 9px;
+  background: var(--c-text);
+}
+.avatarDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 9px;
+  background: var(--c-bg);
+}
+.meta {
+  flex: 1 0 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+.meta > * { width: 100%; }
+.pre { white-space: pre-wrap; }
+.line {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+.tag {
+  flex: none;
+  width: 92px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--c-surface);
+}
+.tag > p { white-space: nowrap; }
+.dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 6px;
+}
+.dotAccent { background: var(--c-accent); }
+.dotText { background: var(--c-text); }
+.dotDanger { background: var(--c-danger); }
+.lineText {
+  flex: 1 0 0;
+  min-width: 0;
+}
+.reactions {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+}
+.reaction {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border);
+}
+.reaction > p { white-space: nowrap; }
+
+@media (max-width: 1199.98px) {
+  .columns { flex-direction: column; }
+  .text { flex: none; width: 100%; padding: 80px 48px; }
+  .visual {
+    flex: none;
+    width: 100%;
+    height: 560px;
+    padding: 40px 16px;
+    border-left: 0;
+    border-top: 1px solid var(--c-border);
+  }
+}
+@media (max-width: 809.98px) {
+  .text { padding: 56px 20px; }
+  .visual { height: 480px; }
+}

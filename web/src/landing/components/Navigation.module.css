@@ -1,0 +1,118 @@
+/* Navigation (U2c0fyMuW). Placed in layout "Main" as sticky top 0, z-index 5, width 100%.
+   Frame: Background fill, 1px bottom border (Border), padding 0 32px (Desktop/Tablet) / 0 16px (Phone), clip. */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 32px;
+  background-color: var(--c-bg);
+  overflow: clip;
+}
+.nav::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--c-border);
+  pointer-events: none;
+}
+.inner {
+  position: relative;
+  width: 100%;
+  max-width: 1280px;
+  height: 64px;
+  flex: none;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+}
+.logo svg { flex: none; }
+.links {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 32px;
+}
+.links a { white-space: pre; }
+.actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
+  flex: none;
+}
+.textAction { white-space: pre; }
+.menuButton {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text);
+  cursor: pointer;
+}
+.drawerClip {
+  display: none;
+  width: 100%;
+  overflow: hidden;
+}
+.drawer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 8px 0 24px;
+  width: 100%;
+}
+.drawerItem {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  padding: 12px 0;
+}
+.drawerItem::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--c-border);
+  pointer-events: none;
+}
+.drawerLink { flex: 1 0 0; }
+.drawerActions {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 0 0;
+  width: 100%;
+}
+.drawerButton.drawerButton { flex: 1 0 0; width: 1px; }
+
+@media (max-width: 809.98px) {
+  .nav { padding: 0 16px; }
+  .links,
+  .textAction,
+  .buttonAction.buttonAction { display: none; }
+  .menuButton { display: flex; }
+  .drawerClip { display: block; }
+}

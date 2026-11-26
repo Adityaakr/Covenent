@@ -1,0 +1,179 @@
+/* Footer (layout "Main"): footer tag, 1px top border, padding 0 32 / 0 24 / 0 16, clip. */
+.footer {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 32px;
+  overflow: clip;
+  background: var(--c-bg);
+}
+/* Framer draws borders inside the frame (no layout space); reproduced with overlays. */
+.footer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--c-border);
+  pointer-events: none;
+  z-index: 1;
+}
+/* Footer Inner: 1fr, max 1280, 1px left/right rails, clip. */
+.inner {
+  position: relative;
+  width: 100%;
+  max-width: 1280px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: clip;
+}
+.inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-left: 1px solid var(--c-border);
+  border-right: 1px solid var(--c-border);
+  pointer-events: none;
+  z-index: 1;
+}
+/* Footer Top: row, gap 48, padding 80 64 64. */
+.top {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 48px;
+  padding: 80px 64px 64px;
+}
+.brand {
+  flex: 1 0 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+}
+.logo {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+}
+.logo svg { flex: none; }
+.tagline {
+  width: 100%;
+  max-width: 320px;
+}
+/* Footer Status: 1px Border, padding 6 12, radius 999, gap 8; 7px Accent dot; Text/Small. */
+.status {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.status::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--c-border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.status p { white-space: pre; }
+.dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 7px;
+  background: var(--c-accent);
+}
+/* Footer Column: width 160, gap 14; title Text/Label; links Text/Body + Footer Link. */
+.column {
+  width: 160px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+.column > * { width: 100%; }
+.link { display: block; }
+/* Footer Wordmark Band: padding 0 48, clip. Big wordmark: Inter Display 600, -0.05em, line height 0.8em,
+   auto-fit to the band width, centred, gradient text fill (0deg: rgb(226,229,235) 0%,
+   rgba(244,245,247,0.4) 70%, transparent 100%). */
+.band {
+  width: 100%;
+  padding: 0 48px;
+  overflow: clip;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  container-type: inline-size;
+}
+.bigWordmark {
+  /* --k: advance width of the word in em at this tracking, so font-size fills the band's content width. */
+  --k: 3.9864;
+  width: 100%;
+  margin: 0;
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 32;
+  font-weight: 600;
+  font-style: normal;
+  letter-spacing: -0.05em;
+  line-height: 0.8em;
+  /* Framer auto-fit renders the text in an SVG whose viewBox height is the 0.8em line rounded up at a 16px base
+     (12.8 -> 13), so the band is 0.8125em tall with the line at the top. */
+  padding-bottom: 0.0125em;
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+  font-size: calc(100cqw / var(--k));
+}
+.bigWordmark > span {
+  color: transparent;
+  background-image: linear-gradient(0deg, rgb(226, 229, 235) 0%, rgba(244, 245, 247, 0.4) 70%, rgba(255, 255, 255, 0) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+/* Footer Bottom: 1px top border, padding 20 64, row space-between; copy Text/Small in Text Secondary. */
+.bottom {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 64px;
+  position: relative;
+}
+.bottom::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--c-border);
+  pointer-events: none;
+}
+
+@media (max-width: 1199.98px) {
+  .footer { padding: 0 24px; }
+  .top { gap: 32px; padding: 72px 48px 56px; }
+  .column { width: 120px; }
+  .bottom { padding: 20px 48px; }
+}
+@media (max-width: 809.98px) {
+  .footer { padding: 0 16px; }
+  .top { flex-direction: column; gap: 36px; padding: 56px 20px 40px; }
+  .brand { flex: none; width: 100%; }
+  .column { width: 100%; }
+  .band { padding: 0 16px; }
+  .bottom { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 6px; padding: 20px; }
+}

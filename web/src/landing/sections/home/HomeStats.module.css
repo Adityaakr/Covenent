@@ -1,0 +1,51 @@
+/* Framer "Stats" (s8Ki2GStV). Content has no padding; the cells carry it. */
+.content.content {
+  padding: 0;
+  gap: 0;
+}
+/* Desktop: horizontal row of four 1fr cells, left border on cells 2-4. */
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  width: 100%;
+}
+.stat {
+  flex: 1 0 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 48px 40px;
+}
+.stat > * { width: 100%; }
+.stat + .stat { border-left: 1px solid var(--c-border); }
+
+/* Tablet: 2 x 2 grid, padding 36 32. Cell 2 left, cell 3 top, cell 4 left + top. */
+@media (max-width: 1199.98px) {
+  .row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(50px, 1fr));
+    grid-auto-rows: auto;
+    align-items: stretch;
+  }
+  .stat { padding: 36px 32px; }
+  .stat + .stat { border-left: 0; }
+  .stat:nth-child(2) { border-left: 1px solid var(--c-border); }
+  .stat:nth-child(3) { border-top: 1px solid var(--c-border); }
+  .stat:nth-child(4) { border-left: 1px solid var(--c-border); border-top: 1px solid var(--c-border); }
+}
+
+/* Phone: vertical stack, padding 28 20, top border on cells 2-4. */
+@media (max-width: 809.98px) {
+  .row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .stat { width: 100%; flex: none; padding: 28px 20px; }
+  .stat:nth-child(2) { border-left: 0; }
+  .stat:nth-child(4) { border-left: 0; }
+  .stat + .stat { border-top: 1px solid var(--c-border); }
+}

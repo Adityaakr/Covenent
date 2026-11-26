@@ -1,0 +1,156 @@
+/* Plans Content (MKFwfeOJL): vertical, gap 20, padding 0 64 96 / 0 48 80 / 0 20 64.
+   Doubled class so it wins over the Section content padding whatever the CSS order. */
+.content.content {
+  padding: 0 64px 96px;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* Plans Grid (onPsR6Z5S): grid, 4 columns (min 220), gap 16, centred. Tablet 2 columns (min 200).
+   Phone: vertical stack, gap 12. */
+.grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+  justify-content: center;
+}
+
+/* Plan Card (xw5HmDWe9): Background fill, 1px Border, radius 18, padding 28 24, vertical gap 20, height 1fr. */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  height: 100%;
+  min-width: 0;
+  padding: 28px 24px;
+  background: var(--c-bg);
+  border-radius: 18px;
+}
+/* Framer draws the 1px Border inside the frame without moving content. */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--c-border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Plan Head: horizontal, centred, gap 8. Plan Name H4 (h4), 1fr. */
+.head {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.name {
+  flex: 1 0 0px;
+  min-width: 0;
+}
+/* Plan Badge: Accent fill, radius 999, padding 3 8, Small text in Background. Visible when Highlighted. */
+.badge {
+  flex: none;
+  display: flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--c-accent);
+  white-space: nowrap;
+}
+
+/* Plan Description: Body, 1fr. */
+.description {
+  width: 100%;
+}
+
+/* Plan Price Row: horizontal, wraps, align end, gap 4 8. Price H2, Unit Small in Text Secondary. */
+.priceRow {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px 8px;
+}
+.priceRow > * {
+  flex: none;
+}
+
+/* Plan Yearly (now Status): horizontal, gap 4, Small in Text Secondary. */
+.status {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 4px;
+}
+.status > * {
+  flex: none;
+}
+
+/* Plan Button: Button Primary, 44px, width 100%. */
+.card .button {
+  width: 100%;
+  flex: none;
+}
+
+/* Plan Features: 1px top Border, padding-top 18, vertical gap 10. */
+.features {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 18px;
+  box-shadow: inset 0 1px 0 0 var(--c-border); /* 1px top Border, inside the frame */
+}
+/* Plan Feature: horizontal, centred, gap 8. Check 14px Accent. Text Small, 1fr. */
+.feature {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.check {
+  flex: none;
+  color: var(--c-accent);
+}
+.featureText {
+  flex: 1 0 0px;
+  min-width: 0;
+}
+
+/* Plans Note: Small, Text Secondary, centred, 1fr. */
+.note {
+  width: 100%;
+  text-align: center;
+}
+
+@media (max-width: 1199.98px) {
+  .content.content {
+    padding: 0 48px 80px;
+  }
+  .grid {
+    grid-template-columns: repeat(2, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 809.98px) {
+  .content.content {
+    padding: 0 20px 64px;
+  }
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card {
+    width: 100%;
+    height: auto;
+  }
+}

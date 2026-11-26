@@ -1,0 +1,162 @@
+/* /use-cases (Framer /customers wBmMaVIkR). Values per docs/landing/spec/use-cases.md. */
+
+/* ---------- Customers Hero ---------- */
+.heroEyebrow { width: 100%; text-align: center; }
+.heroTitle { width: 100%; max-width: 900px; text-align: center; text-wrap: balance; }
+
+/* ---------- Featured Story ---------- */
+.featuredContent { padding: 0 64px 96px; gap: 56px; }
+.featuredCard {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 24px;
+  overflow: clip;
+  cursor: pointer;
+  position: relative;
+  /* Safari: keep the radius clip during transforms */
+  isolation: isolate;
+}
+.featuredCover {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 480px;
+  align-self: center;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+.featuredText {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 48px;
+}
+.featuredText > * { width: 100%; }
+.company { display: flex; flex-direction: row; align-items: center; gap: 8px; width: 100%; }
+.company > p { flex: 1 1 0; min-width: 0; }
+.company > .storyIndustry { flex: none; }
+.featuredMarkWrap { display: flex; flex: none; color: var(--c-text); }
+.featuredMarkWrap svg { width: 20px; height: 20px; }
+.result {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 10px;
+  width: 100%;
+  padding-top: 16px;
+  border-top: 1px solid var(--c-border);
+}
+.result > p { flex: 1 1 0; min-width: 0; }
+.resultValue { white-space: nowrap; }
+.read { display: inline-flex; align-items: center; gap: 6px; width: auto !important; color: var(--c-text); }
+
+/* ---------- Customer Stats ---------- */
+.statsContent { padding: 0; gap: 0; }
+.statsRow { display: flex; flex-direction: row; align-items: flex-start; width: 100%; }
+.stat {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 44px 40px;
+}
+.stat + .stat { border-left: 1px solid var(--c-border); }
+
+/* ---------- All Stories / Quote Wall heading group ---------- */
+.headingGroup { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; width: 100%; }
+.headingGroup > p { width: 100%; }
+.sectionHeading { width: 100%; max-width: 820px; }
+
+/* ---------- Stories Grid ---------- */
+.storiesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  gap: 20px;
+  align-items: center;
+  width: 100%;
+}
+.storyCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 12px 12px 24px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 18px;
+  cursor: pointer;
+  min-width: 0;
+  position: relative;
+}
+.storyCard:hover { z-index: 1; }
+.storyCover {
+  width: 100%;
+  height: 220px;
+  border-radius: 12px;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+.storyMeta { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; padding: 0 8px; }
+.storyMeta > * { width: 100%; }
+.storyIndustry { flex: none !important; white-space: nowrap; }
+.storyMarkWrap { display: flex; flex: none; color: var(--c-text); }
+.storyMarkWrap svg { width: 18px; height: 18px; }
+
+/* ---------- Quote Wall ---------- */
+.quotesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+  width: 100%;
+}
+.quoteCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 28px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 18px;
+  height: 100%;
+  min-width: 0;
+}
+.quoteCard > p { width: 100%; }
+.quoteAuthor { display: flex; flex-direction: column; gap: 2px; padding-top: 24px; width: 100%; }
+
+/* ---------- Tablet ---------- */
+@media (max-width: 1199.98px) {
+  .featuredContent { padding: 0 48px 80px; }
+  .featuredCard { flex-direction: column; }
+  .featuredCover { flex: none; width: 100%; height: 360px; }
+  .featuredText { flex: none; width: 100%; padding: 36px; }
+  .stat { padding: 32px 24px; }
+  .storiesGrid { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+  .quotesGrid { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+}
+
+/* ---------- Phone ---------- */
+@media (max-width: 809.98px) {
+  .featuredContent { padding: 0 20px 64px; }
+  .featuredCard { border-radius: 18px; }
+  .featuredCover { height: 240px; }
+  .featuredText { padding: 24px 20px; }
+  .statsRow { flex-direction: column; }
+  .stat { flex: none; width: 100%; padding: 24px 20px; }
+  .stat + .stat { border-left: 0; border-top: 1px solid var(--c-border); }
+  .storiesGrid { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+  .storiesGrid > * { width: 100%; }
+  .quotesGrid { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .quotesGrid > * { width: 100%; }
+  .quoteCard { height: auto; }
+}

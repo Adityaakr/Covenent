@@ -1,0 +1,166 @@
+/* ---------- Entry Header Content (Xkb9fBrOQ) ----------
+   gap 22 / 22 / 36, padding 96 64 48 / 96 48 96 / 64 20 64, align start. */
+.headerContent.headerContent {
+  align-items: flex-start;
+  text-align: left;
+  gap: 22px;
+  padding: 96px 64px 48px;
+}
+.back {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.metaRow {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+.version {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 3px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  background: var(--c-surface);
+}
+.tag {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 6px;
+  background: var(--c-accent);
+  flex: none;
+}
+.title { width: 100%; max-width: 900px; }
+.summary { width: 100%; max-width: 640px; }
+
+/* ---------- Entry Cover Section (rzV5FZ00g) ---------- */
+.coverSection {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 32px;
+  background: var(--c-bg);
+}
+.coverInner {
+  position: relative;
+  width: 100%;
+  max-width: 1280px;
+  display: flex;
+  flex-direction: column;
+}
+.coverInner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-left: 1px solid var(--c-border);
+  border-right: 1px solid var(--c-border);
+  pointer-events: none;
+  z-index: 2;
+}
+.coverContent {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px 24px;
+}
+.cover {
+  position: relative;
+  width: 100%;
+  height: 520px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--c-surface);
+}
+.cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--c-border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.coverImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---------- Entry Body Content (YFJ7vElww) ---------- */
+.bodyContent.bodyContent {
+  align-items: center;
+}
+/* Rich text: Inter 500 15px / 1.55em, -0.006em, Text Secondary; paragraph spacing Lead 20px, H3 40px
+   (Framer applies each block's own spacing as its top margin, except on the first block). */
+.rich {
+  width: 100%;
+  max-width: 680px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  line-height: 1.55em;
+  color: var(--c-text-2);
+}
+.rich > p:not(:first-child) { margin-top: 20px; }
+.rich > h2:not(:first-child) { margin-top: 40px; }
+
+/* Entry Subscribe: max 680, padding 20 24, radius 16, 1px Border, Surface fill, gap 16, row centred.
+   Phone: vertical, align start. */
+.subscribe {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 16px;
+  background: var(--c-surface);
+  cursor: pointer;
+}
+.subscribe::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--c-border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.subscribeIcon { flex: none; }
+.subscribeText {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.subscribeText > span { width: 100%; }
+
+@media (max-width: 1199.98px) {
+  .headerContent.headerContent { padding: 96px 48px 96px; }
+  .coverSection { padding: 0 24px; }
+  .cover { height: 400px; }
+}
+@media (max-width: 809.98px) {
+  .headerContent.headerContent { padding: 64px 20px 64px; gap: 36px; }
+  .coverSection { padding: 0 16px; }
+  .coverContent { padding: 0 12px 12px; }
+  .cover { height: 240px; border-radius: 14px; }
+  .subscribe { flex-direction: column; align-items: flex-start; }
+  .subscribeText { flex: none; width: 100%; }
+}

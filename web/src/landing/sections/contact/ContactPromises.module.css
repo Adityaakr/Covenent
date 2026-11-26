@@ -1,0 +1,39 @@
+/* Contact Promises Content (u3s37rN6T): no padding, gap 0. */
+.content.content { padding: 0; gap: 0; }
+/* Promises Row: horizontal, gap 0. Phone: vertical. */
+.row {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+/* Promise: 1fr, vertical gap 10, padding 40; 2 and 3 have a 1px left Border (Phone: 1px top). */
+.item {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 40px;
+}
+.item + .item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--c-border);
+}
+.icon { display: inline-flex; }
+.full { width: 100%; }
+@media (max-width: 1199.98px) {
+  .item { padding: 32px 24px; }
+}
+@media (max-width: 809.98px) {
+  .row { flex-direction: column; }
+  .item { flex: none; width: 100%; padding: 24px 20px; }
+  .item + .item::before { right: 0; bottom: auto; width: auto; height: 1px; }
+}

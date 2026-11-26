@@ -1,0 +1,145 @@
+/* Board Showcase Content: padding 0 24 24 24 (phone 0 12 12 12), gap 0. Doubled class beats the Section shell. */
+.content.content {
+  padding: 0 24px 24px 24px;
+  gap: 0;
+}
+
+/* Board Plate: image fill (cover), radius 24, padding 64 56, clip, stack vertical centred. */
+.plate {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 56px;
+  border-radius: 24px;
+  overflow: hidden;
+  isolation: isolate;
+}
+.plateImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: center;
+  border-radius: inherit;
+  z-index: -1;
+}
+
+/* Board Window: Background fill, radius 14, clip, max 1040, scroll lift y 32 scale 0.98. */
+.window {
+  position: relative;
+  width: 100%;
+  max-width: 1040px;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0px 40px 80px -24px rgba(21, 23, 28, 0.3), 0px 0px 0px 1px rgba(21, 23, 28, 0.06);
+}
+
+/* Board Bar: stack horizontal, centred, gap 10, padding 14 18, 1px bottom border. */
+.bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  box-shadow: inset 0 -1px 0 0 var(--c-border);
+}
+.barIcon {
+  flex: none;
+  color: var(--c-text);
+}
+.barTitle {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.barFilter {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* Board Columns: Surface fill, padding 16, gap 12, horizontal; columns 1fr, min 200. */
+.columns {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: var(--c-surface);
+}
+.column {
+  flex: 1 1 0;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+}
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 8px;
+}
+.text2 { background: var(--c-text-2); }
+.text { background: var(--c-text); }
+.accent { background: var(--c-accent); }
+.border { background: var(--c-border); }
+.headTitle {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Board Card: Background fill, 1px Border, radius 10, padding 12, gap 10. */
+.card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  position: relative;
+  background: var(--c-bg);
+  border-radius: 10px;
+}
+/* Framer draws borders inside the frame without taking layout space. */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--c-border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+@media (max-width: 1199.98px) {
+  .plate { padding: 40px 24px; }
+  /* Tablet: Board Columns become a 2 column grid (gap 12). */
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(50px, 1fr));
+  }
+  .column { min-width: 0; }
+}
+
+@media (max-width: 809.98px) {
+  .content.content { padding: 0 12px 12px 12px; gap: 0; }
+  .plate { padding: 20px 12px; border-radius: 18px; }
+  .columns {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+  .column { width: 100%; flex: none; }
+}
