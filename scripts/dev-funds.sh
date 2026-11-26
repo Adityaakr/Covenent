@@ -39,7 +39,13 @@ snd "$WBNB" 'transfer(address,uint256)' "$PAIR" "$(cast to-wei 1000)"
 snd "$PAIR" 'mint(address)' "$FAUCET"
 say "dUSDC $USDC, pool $PAIR (600,000 dUSDC / 1,000 BNB)"
 
+# Demo.s.sol rewrites local.json from its own struct, so these live in extra.local.json and are merged in (here and
+# after every demo scene, by scripts/dev-demo.sh).
+X="$C/deployments/extra.local.json"
+[ -f "$X" ] || echo '{}' >"$X"
 tmp="$(mktemp)"
 jq --arg u "$USDC" --arg p "$PAIR" --arg f "$FAUCET" \
   '.addresses.demoUsdc=$u | .addresses.demoUsdcPair=$p | .addresses.faucet=$f | .accounts.faucet={address:$f, anvilIndex:0}' \
-  "$J" >"$tmp" && mv "$tmp" "$J"
+  "$X" >"$tmp" && mv "$tmp" "$X"
+tmp="$(mktemp)"
+jq -s '.[0] * .[1]' "$J" "$X" >"$tmp" && mv "$tmp" "$J"

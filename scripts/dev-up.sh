@@ -123,6 +123,7 @@ say "building and exporting ABIs"
 "$ROOT/scripts/dev-abi.sh"
 
 say "deploying the Covenant stack"
+rm -f "$C/deployments/extra.local.json"   # test-funds addresses and .seeded belong to the previous chain
 (cd "$C" && DEV_RPC_URL="$RPC" forge script script/DevDeploy.s.sol:DevDeploy \
   --rpc-url "$RPC" --broadcast --slow -q >"$STATE/deploy.log" 2>&1) \
   || { cat "$STATE/deploy.log" >&2; exit 1; }

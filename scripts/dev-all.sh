@@ -108,7 +108,9 @@ WEB_PORT="${WEB_PORT:-8080}"
 for p in 8787 "$WEB_PORT"; do
   if lsof -nP -iTCP:"$p" -sTCP:LISTEN -t >/dev/null 2>&1; then
     owner="$(lsof -nP -iTCP:"$p" -sTCP:LISTEN -t | head -1)"
-    if ! grep -qx "$owner" "$RUN"/*.pid 2>/dev/null; then
+    # the listener is a child (node) of a process this script started in its own group: compare process groups
+    group="$(ps -o pgid= -p "$owner" 2>/dev/null | tr -d ' ')"
+    if ! grep -qx -e "$owner" -e "${group:-none}" "$RUN"/*.pid 2>/dev/null; then
       echo "port $p is taken by pid $owner (not this stack); stop it first, or set WEB_PORT for the web app" >&2
       exit 1
     fi

@@ -24,6 +24,15 @@ MODE="$(cat "$C/.anvil/mode" 2>/dev/null || jq -r .mode "$C/deployments/local.js
 
 say() { printf '\033[1m[demo]\033[0m %s\n' "$*"; }
 
+# Demo.s.sol rewrites deployments/local.json from its own struct on every scene, so anything the shell scripts add
+# (the test-funds addresses, .seeded) lives in deployments/extra.local.json and is merged back after each scene.
+EXTRA="$C/deployments/extra.local.json"
+merge_extra() {
+  [ -f "$EXTRA" ] || return 0
+  local t; t="$(mktemp)"
+  jq -s '.[0] * .[1]' "$C/deployments/local.json" "$EXTRA" >"$t" && mv "$t" "$C/deployments/local.json"
+}
+
 scene() {
   say "scene: $1"
   # Gas is estimated one block before it runs (the chain mines every second); a sell that crosses Flap's tax
@@ -36,6 +45,7 @@ scene() {
     echo "scene $1 failed (full log: $log)" >&2
     exit 1
   fi
+  merge_extra
   sed -n '/== Logs ==/,/^$/p' "$log" | sed '1d'
 }
 
@@ -70,8 +80,10 @@ advance() {
 # Record the covenant the scenes act on under .seeded.<stage> in deployments/local.json.
 record() {
   local tmp; tmp="$(mktemp)"
-  jq --arg s "$1" --arg n "${DEMO_NAME:-Covenant Agent}" '.seeded[$s] = (.demo + {name: $n})' \
-    "$C/deployments/local.json" >"$tmp" && mv "$tmp" "$C/deployments/local.json"
+  [ -f "$EXTRA" ] || echo '{}' >"$EXTRA"
+  jq --arg s "$1" --arg n "${DEMO_NAME:-Covenant Agent}" --slurpfile l "$C/deployments/local.json" \
+    '.seeded[$s] = ($l[0].demo + {name: $n})' "$EXTRA" >"$tmp" && mv "$tmp" "$EXTRA"
+  merge_extra
 }
 
 # Flap's anti-sniper window on the fork: trading opens about 10 minutes after launch.
