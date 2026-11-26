@@ -16,7 +16,8 @@ export function derive(v: CovenantView) {
   const salePrice = raise.salePrice;
   const bnbUsd = v.trust.bnbUsd || 0;
   const budget = tapPer30d(t.tapUsdPer30d, bnbUsd || null, v.treasury, t.tapCapBps);
-  const cap30 = tapCap30d(v.treasury, t.tapCapBps);
+  // the vault's own figure (free treasury, i.e. net of owed tap) when the chain gave one
+  const cap30 = v.tap.capPer30d ?? tapCap30d(v.treasury, t.tapCapBps);
   const tapPaused = v.state === "EXIT_ROUND" || v.state === "WIND_DOWN" || v.state === "FAILED" || v.state === "RAISING";
   const eta = v.state === "ACTIVE" ? exitEta(v.exit.streak, t.exitStreak, v.poolPrice, book) : null;
   const hbLeft = heartbeatLeft(v.lastHeartbeat, t.heartbeat, v.now);

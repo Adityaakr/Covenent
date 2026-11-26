@@ -10,12 +10,11 @@ import { useWallet } from "@/components/providers";
 import { agentOwner, checkTerms, createCovenantLive, createTargets, registerAgent, type FactoryKind } from "@/lib/chain/create";
 import { addressOf } from "@/lib/chain/deployment";
 import type { MineMessage } from "@/lib/chain/salt";
-import { BOUNDS, DEFAULT_TERMS, DEMO_TIMERS, ERC8004, FLAP } from "@/lib/covenant/defaults";
+import { BOUNDS, DEFAULT_TERMS, DEMO_TIMERS, FLAP } from "@/lib/covenant/defaults";
 import { floorAfterMonths, runwayMonths, settleRaise, split, startingFloorRatio, tapPer30d } from "@/lib/covenant/math";
 import { DAY } from "@/lib/covenant/time";
 import type { Address, Terms } from "@/lib/covenant/types";
 import { useSource } from "@/lib/data/hooks";
-import { mockCreate } from "@/lib/data/mock-store";
 import { bnb, bps, pct, price, tokens, usd } from "@/lib/format";
 
 type Mine = { state: "idle" | "mining" | "found"; tries: number; rate: number; salt?: `0x${string}`; address?: Address; ms?: number };
@@ -108,13 +107,7 @@ export default function CreatePage() {
   async function create() {
     setErr(null);
     const terms: Terms = { ...t, agentId: issuerKind === "agent" ? Number(agentId) : 0 };
-    if (src.mode !== "live") {
-      const id = mockCreate(terms, issuerKind === "agent"
-        ? { kind: "agent", teamWallet: t.teamWallet, agentId: Number(agentId), name: `Agent #${agentId}`, registry: ERC8004[97].identity as Address, outcomes: [] }
-        : { kind: "human", teamWallet: t.teamWallet, outcomes: [] }, mine.address);
-      router.push(`/app/c/${id}/raise`);
-      return;
-    }
+    if (src.mode !== "live") { setErr(`No chain to create on: ${src.reason}. Start the stack with scripts/dev-all.sh.`); return; }
     // Live: Portal.newLauncher(factory, abi.encode(Terms)), Terms encoded from the factory's own checkTerms input.
     const d = src.payload!.deployment!;
     const tg = createTargets(src.payload, factory);
@@ -274,10 +267,10 @@ export default function CreatePage() {
             <div className="note warn"><Icon name="alert" size={16} style={{ color: "var(--warn)" }} /><div>{problems.map((p) => <div key={p}>{p}</div>)}</div></div>
           ) : null}
           {err ? <Note tone="warn" icon="alert">{err}</Note> : null}
-          <button className="btn btn-primary btn-lg btn-block" disabled={problems.length > 0 || mine.state !== "found" || busy} onClick={() => void create()}>
+          <button className="btn btn-primary btn-lg btn-block" disabled={src.mode !== "live" || problems.length > 0 || mine.state !== "found" || busy} onClick={() => void create()}>
             {busy ? "Creating…" : mine.state !== "found" ? "Mine a salt to create" : "Create covenant"}
           </button>
-          <p className="tiny muted" style={{ margin: 0, textAlign: "center" }}>{src.mode === "live" ? "Sends the create transaction on the local chain." : "Demo data: creates the covenant on the mock layer."}</p>
+          <p className="tiny muted" style={{ margin: 0, textAlign: "center" }}>{src.mode === "live" ? "Sends the create transaction on the local chain." : `Offline: ${src.reason}.`}</p>
         </div>
       </div>
     </main>

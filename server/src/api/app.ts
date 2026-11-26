@@ -173,6 +173,19 @@ export function createApp(deps: AppDeps) {
     return c.json(body);
   });
 
+  // The simulator's real launches with their daily candles, for the web app's "try other terms" replay.
+  app.get('/api/simulator/sample', (c) => {
+    if (!existsSync(cfg.simulatorFile)) return c.json({ error: 'simulator has not run yet: pnpm sim' }, 404);
+    const body = JSON.parse(readFileSync(cfg.simulatorFile, 'utf8')) as SimulatorResult;
+    const tokens = body.tokens.filter((t) => t.candles && t.candles.length > 1);
+    if (!tokens.length) return c.json({ error: 'this snapshot has no candles: rerun pnpm sim' }, 404);
+    return c.json({
+      source: body.source,
+      generatedAt: body.generatedAt,
+      tokens: tokens.map((t) => ({ address: t.token, symbol: t.symbol ?? '?', name: t.symbol ?? t.token, launchedAt: t.createdAt ?? 0, candles: t.candles })),
+    });
+  });
+
   app.get('/api/cmc', (c) => c.json({ mode: cmc.hasKey ? 'pro' : 'keyless-public-api', routes: CMC_ROUTES.map(({ name, method, path, use }) => ({ name, method, path, use })) }));
   for (const route of CMC_ROUTES) {
     const handler = async (c: Context) => {

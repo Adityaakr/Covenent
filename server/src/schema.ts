@@ -267,6 +267,8 @@ export const SimToken = z.object({
   minPriceShareOfOpen: z.number(),
   lastPriceShareOfOpen: z.number(),
   triggers: z.record(z.string(), z.object({ day: z.number(), price: z.number(), floor: z.number() }).nullable()),
+  /** the daily candles the replay used (BNB per token), so the web app can rerun other terms on the same data */
+  candles: z.array(z.object({ t: z.number(), o: z.number(), h: z.number(), l: z.number(), c: z.number() })).optional(),
 });
 
 export const SimulatorResult = z.object({

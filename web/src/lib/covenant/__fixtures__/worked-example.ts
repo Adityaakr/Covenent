@@ -1,12 +1,13 @@
+/* Test fixture only: the design doc's worked example simulated under the five rules. The running app never imports it. */
 /*
  * The mock data layer: the doc's worked example and demo story, produced by sim.ts so every number follows the
  * rules. Screens render this until contracts/deployments/local.json exists and the local chain answers.
  */
-import { DEFAULT_TERMS, ERC8004 } from "./defaults";
-import { bookValue, buyerOutcome, redeemableSupply, settleRaise, split } from "./math";
-import { simulate, type SimConfig } from "./sim";
-import { DAY, HOUR, MINUTE } from "./time";
-import type { Address, CovenantView, Issuer } from "./types";
+import { DEFAULT_TERMS, ERC8004 } from "../defaults";
+import { bookValue, buyerOutcome, redeemableSupply, settleRaise, split } from "../math";
+import { simulate, type SimConfig } from "./simulate";
+import { DAY, HOUR, MINUTE } from "../time";
+import type { Address, CovenantView, Issuer } from "../types";
 
 /** Launch of the flagship covenant: 29 Jun 2026 12:00 UTC, so the exit streak fills on 26 Nov 2026. */
 export const LAUNCH = Date.UTC(2026, 5, 29, 12) / 1000;

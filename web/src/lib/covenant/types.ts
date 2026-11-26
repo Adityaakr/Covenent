@@ -158,6 +158,8 @@ export interface CovenantView {
     accrued: number; // BNB claimable now
     claimedThisPeriod: number;
     lastClaim: number | null;
+    /** The vault's own cap for 30 days (tapCapPer30d(): free treasury x cap bps), when read from the chain. */
+    capPer30d?: number;
   };
   tranches: Tranche[];
   exit: {

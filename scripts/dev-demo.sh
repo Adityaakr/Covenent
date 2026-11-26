@@ -23,10 +23,12 @@ say() { printf '\033[1m[demo]\033[0m %s\n' "$*"; }
 
 scene() {
   say "scene: $1"
+  # Gas is estimated one block before it runs (the chain mines every second); a sell that crosses Flap's tax
+  # liquidation threshold in between needs far more gas than estimated, so leave 3x headroom.
   local log="$C/.anvil/scene-$1.log"
   mkdir -p "$C/.anvil"
   if ! (cd "$C" && forge script script/Demo.s.sol:Demo --sig "run(string)" "$1" --rpc-url "$RPC" --broadcast \
-      --slow >"$log" 2>&1); then
+      --slow --gas-estimate-multiplier 300 >"$log" 2>&1); then
     tail -40 "$log" >&2
     echo "scene $1 failed (full log: $log)" >&2
     exit 1

@@ -1,8 +1,9 @@
 "use client";
 
 /*
- * One source switch for every screen. Live when contracts/deployments/local.json and the ABIs load and the chain
- * they name answers; otherwise the mock layer, with the reason shown in the app's status chip.
+ * One source for every screen: the contracts named by contracts/deployments/local.json, read from the chain they
+ * name. There is no stand-in data. When the deployment or the chain is not there, screens show an empty state and
+ * the app's status chip says why ("offline").
  */
 import { useQuery } from "@tanstack/react-query";
 import { createPublicClient, http, type PublicClient } from "viem";
@@ -11,10 +12,9 @@ import { abiFor, addressOf, hasFn, launchersOf, type DeploymentPayload } from "@
 import { readCovenant } from "@/lib/chain/reader";
 import type { Address, CovenantView } from "@/lib/covenant/types";
 import { useWallet } from "@/components/providers";
-import { useMock } from "./mock-store";
 
 export interface SourceStatus {
-  mode: "checking" | "live" | "mock";
+  mode: "checking" | "live" | "offline";
   reason: string;
   payload?: DeploymentPayload;
   client?: PublicClient;
@@ -44,24 +44,24 @@ async function probe(): Promise<SourceStatus> {
   try {
     payload = await (await fetch("/api/deployment", { cache: "no-store" })).json();
   } catch {
-    return { mode: "mock", reason: "Deployment loader unavailable" };
+    return { mode: "offline", reason: "Deployment loader unavailable" };
   }
   if (payload.status !== "ok" || !payload.deployment) {
-    return { mode: "mock", reason: payload.problems[0] ?? "No local deployment yet", payload };
+    return { mode: "offline", reason: payload.problems[0] ?? "No local deployment yet", payload };
   }
   const d = payload.deployment;
   const chain = d.chainId === anvil.id ? anvil : d.chainId === 97 ? bscTestnet : makeLocalChain({ id: d.chainId, rpcUrl: d.rpcUrl || LOCAL_RPC });
   const client = createPublicClient({ chain, transport: http(d.rpcUrl || LOCAL_RPC, { timeout: 4000, retryCount: 0 }) }) as PublicClient;
   try {
     const id = await client.getChainId();
-    if (id !== d.chainId) return { mode: "mock", reason: `RPC answers chain ${id}, deployment is for ${d.chainId}`, payload };
+    if (id !== d.chainId) return { mode: "offline", reason: `RPC answers chain ${id}, deployment is for ${d.chainId}`, payload };
     const launchers = await discover(client, payload);
-    if (launchers.length === 0) return { mode: "mock", reason: "Deployment names no launcher yet", payload };
+    if (launchers.length === 0) return { mode: "offline", reason: "Deployment names no launcher yet", payload };
     const code = await client.getCode({ address: launchers[0]! });
-    if (!code || code === "0x") return { mode: "mock", reason: "Launcher has no code: the local chain was reset", payload };
+    if (!code || code === "0x") return { mode: "offline", reason: "Launcher has no code: the local chain was reset", payload };
     return { mode: "live", reason: `${launchers.length} covenant${launchers.length > 1 ? "s" : ""} on chain ${id}`, payload, client, chainId: id, launchers };
   } catch {
-    return { mode: "mock", reason: `Local chain not reachable at ${d.rpcUrl || LOCAL_RPC}`, payload };
+    return { mode: "offline", reason: `Local chain not reachable at ${d.rpcUrl || LOCAL_RPC}`, payload };
   }
 }
 
@@ -93,21 +93,13 @@ export interface CovenantsResult { list: CovenantView[]; source: SourceStatus; l
 export function useCovenants(): CovenantsResult {
   const src = useSource();
   const { address } = useWallet();
-  const mock = useMock();
   const live = useLiveCovenants(src, address);
-  if (src.mode === "live") {
-    return { list: live.data ?? [], source: src, loading: live.isLoading, error: live.error ? (live.error as Error).message : undefined };
-  }
-  const order = ["lumen", "scout", "harbor", "moss", "fern"];
-  const extra = Object.keys(mock.views).filter((k) => !order.includes(k));
-  return { list: [...extra, ...order].map((id) => mock.views[id]!).filter(Boolean), source: src, loading: false };
+  if (src.mode !== "live") return { list: [], source: src, loading: src.mode === "checking" };
+  return { list: live.data ?? [], source: src, loading: live.isLoading, error: live.error ? (live.error as Error).message : undefined };
 }
 
 export function useCovenant(id: string): { view?: CovenantView; source: SourceStatus; loading: boolean; error?: string } {
   const r = useCovenants();
-  const view = r.list.find((v) => v.id.toLowerCase() === id.toLowerCase());
-  // A live deployment still lets the demo flagship open at /app/c/lumen for the stage script.
-  const mock = useMock();
-  if (!view && r.source.mode === "live" && mock.views[id]) return { view: mock.views[id], source: { ...r.source, mode: "mock", reason: "Demo covenant (mock data)" }, loading: false };
+  const view = r.list.find((v) => v.id.toLowerCase() === id.toLowerCase() || v.vault?.toLowerCase() === id.toLowerCase());
   return { view, source: r.source, loading: r.loading, error: r.error };
 }

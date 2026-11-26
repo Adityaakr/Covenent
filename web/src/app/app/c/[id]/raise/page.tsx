@@ -104,7 +104,7 @@ function Raise({ v, d }: { v: CovenantView; d: Derived }) {
             {open ? (
               <div className="row" style={{ gap: 8 }}>
                 <button className="btn btn-primary btn-lg" style={{ flex: 1 }} disabled={!(a > 0) || closed} onClick={() => void run("commit", a)}>Commit {a > 0 ? `${a} BNB` : ""}</button>
-                <button className="btn btn-ghost btn-lg" onClick={() => void run("finalize")} title={closed ? "Anyone can finalize after the deadline" : v.source === "mock" ? "Demo data: skips to the deadline" : "Available after the deadline"} disabled={!closed && v.source !== "mock"}>Finalize</button>
+                <button className="btn btn-ghost btn-lg" onClick={() => void run("finalize")} title={closed ? "Anyone can finalize after the deadline" : "Available after the deadline"} disabled={!closed}>Finalize</button>
               </div>
             ) : (
               <Link className="btn btn-primary btn-lg btn-block" href={`/app/c/${v.id}/settle`}>See the settlement<Icon name="arrow" size={16} /></Link>

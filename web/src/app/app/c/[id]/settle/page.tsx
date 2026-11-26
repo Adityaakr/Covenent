@@ -58,7 +58,7 @@ function Settle({ v, d }: { v: CovenantView; d: Derived }) {
 
       <div className="stack">
         <div className="card">
-          <div className="card-head"><h3 className="d4">Your settlement</h3>{pos ? <span className="tiny muted">{v.source === "mock" ? "Demo buyer" : "Connected wallet"}</span> : null}</div>
+          <div className="card-head"><h3 className="d4">Your settlement</h3>{pos ? <span className="tiny muted">Connected wallet</span> : null}</div>
           <div className="card-body stack">
             {!pos || pos.committed === 0 ? <p className="small muted" style={{ margin: 0 }}>Connect the wallet you committed from to see your tokens and refund.</p> : (
               <>

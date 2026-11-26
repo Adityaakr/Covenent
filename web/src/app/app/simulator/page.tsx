@@ -7,7 +7,7 @@ import { Note, Segmented, Skeleton } from "@/components/app/ui";
 import { API_BASE, sample, simulator, type SimulatorResult } from "@/lib/api/server";
 import { floorAfterMonths, startingFloorRatio } from "@/lib/covenant/math";
 import { DAY, date } from "@/lib/covenant/time";
-import { replay, syntheticSample, type TokenReplay } from "@/lib/sim/replay";
+import { replay, type TokenReplay } from "@/lib/sim/replay";
 import { bps, pct } from "@/lib/format";
 
 const SPLITS = [
@@ -18,7 +18,7 @@ const SPLITS = [
 ];
 
 export default function SimulatorPage() {
-  const q = useQuery({ queryKey: ["sim-sample"], queryFn: () => sample(() => syntheticSample(50)), staleTime: 5 * 60_000 });
+  const q = useQuery({ queryKey: ["sim-sample"], queryFn: () => sample(), retry: 1, staleTime: 5 * 60_000 });
   const real = useQuery({ queryKey: ["sim-real"], queryFn: simulator, staleTime: 5 * 60_000 });
   const [splitKey, setSplit] = useState("6000-1500");
   const [cap, setCap] = useState(400);
@@ -44,12 +44,14 @@ export default function SimulatorPage() {
               <div className="stat"><p className="k">Redeemable at that point</p><div className="v">{v.medianRedeemableShareOfRaise === null ? "–" : pct(v.medianRedeemableShareOfRaise, 0)}</div><div className="s">Of the raise, median, still in the vault</div></div>
               <div className="stat"><p className="k">Data</p><div className="v" style={{ fontSize: 16 }}>{r.computedFromRealData ? "Real BNB Chain launches" : "Not real data"}</div><div className="s">{r.source.candles.split(" ")[0]} daily candles</div></div>
             </div>
-          ); })() : q.isLoading || !result ? <Skeleton h={110} /> : (
+          ); })() : real.isError && q.isError ? (
+            <Note tone="warn" icon="alert"><b>No simulator data.</b> The Covenant server at <span className="mono">{API_BASE}</span> did not answer and the app has no snapshot to read. Start the stack with <span className="mono">scripts/dev-all.sh</span>, or run <span className="mono">pnpm --dir server sim</span>. Nothing is shown in its place.</Note>
+          ) : q.isLoading || !result ? <Skeleton h={110} /> : (
             <div className="stats glass" style={{ ["--n" as string]: 4 }}>
               <div className="stat"><p className="k">Would have opened an exit</p><div className="v" style={{ fontSize: 34 }}>{pct(result.share, 0)}</div><div className="s">{result.triggered} of {result.sampled} launches</div></div>
               <div className="stat"><p className="k">Median time to trigger</p><div className="v">{result.medianDays === null ? "–" : `${result.medianDays.toFixed(0)} days`}</div><div className="s">From the first candle</div></div>
               <div className="stat"><p className="k">Redeemable at that point</p><div className="v">{result.medianRedeemable === null ? "–" : pct(result.medianRedeemable, 0)}</div><div className="s">Of the raise, median, still in the vault</div></div>
-              <div className="stat"><p className="k">Data</p><div className="v" style={{ fontSize: 16 }}>{q.data!.source === "server" ? "CoinMarketCap DEX" : "Synthetic sample"}</div><div className="s">{result.sampled} tokens · up to {result.daysCovered.toFixed(0)} days</div></div>
+              <div className="stat"><p className="k">Data</p><div className="v" style={{ fontSize: 16 }}>Server candles</div><div className="s">{result.sampled} tokens · up to {result.daysCovered.toFixed(0)} days</div></div>
             </div>
           )}
         </div>
@@ -58,12 +60,12 @@ export default function SimulatorPage() {
       {real.data ? <RealResult r={real.data.result} from={real.data.from} /> : null}
       {real.data ? (
         <div className="row wrap between" style={{ marginTop: 8 }}>
-          <div><h2 className="d3">Try other terms</h2><p className="small muted" style={{ margin: "4px 0 0" }}>The same method, rerun in your browser on {q.data?.source === "server" ? "the server's candles" : "a synthetic sample of launch curves"}. Use it to see how terms move the result, not to quote a number.</p></div>
+          <div><h2 className="d3">Try other terms</h2><p className="small muted" style={{ margin: "4px 0 0" }}>The same method, rerun in your browser on the same launches&apos; daily candles from the server. Use it to see how terms move the result; the headline above is the server&apos;s run.</p></div>
         </div>
       ) : null}
 
-      {q.data?.source === "mock" && !real.data ? (
-        <Note tone="warn" icon="alert"><b>Synthetic sample.</b> The Covenant server at <span className="mono">{API_BASE}</span> did not answer ({q.data.error}), so this run uses 50 generated launch curves to show the method. Do not quote this number: the real one comes from CoinMarketCap&apos;s new-launch list and daily candles once the server runs.</Note>
+      {q.isError && real.data ? (
+        <Note tone="warn" icon="alert">The server did not return candles for the replay ({(q.error as Error).message}), so the table below is empty. Rerun <span className="mono">pnpm --dir server sim</span> to store them.</Note>
       ) : null}
 
       <div className="card card-pad">

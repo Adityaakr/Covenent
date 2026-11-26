@@ -22,7 +22,7 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
   const [newTap, setNewTap] = useState(String(Math.round(v.terms.tapUsdPer30d * 0.6)));
   const [rev, setRev] = useState("0.25");
   const [confirmWind, setConfirmWind] = useState(false);
-  const isTeam = v.source === "mock" || (w.address && w.address.toLowerCase() === v.terms.teamWallet.toLowerCase());
+  const isTeam = Boolean(w.address && w.address.toLowerCase() === v.terms.teamWallet.toLowerCase());
   const ended = v.state === "WIND_DOWN" || v.state === "FAILED" || v.state === "RAISING";
   const hbUsed = Math.max(0, v.now - v.lastHeartbeat);
 
@@ -33,7 +33,7 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
           <p className="eyebrow">{agent ? `ERC-8004 agent #${v.issuer.agentId}` : "Team wallet"}</p>
           <h1 className="d2">{agent ? "Agent console." : "Team console."} <span className="soft">{agent ? "A budget it is held to." : "What the team can and cannot do."}</span></h1>
         </div>
-        {!isTeam ? <span className="chip chip-warn">Read only: connect the team wallet to act</span> : v.source === "mock" ? <span className="chip">Demo data: actions run on the mock vault</span> : <span className="chip chip-good">Team wallet connected</span>}
+        {!isTeam ? <span className="chip chip-warn">Read only: connect the team wallet to act</span> : <span className="chip chip-good">Team wallet connected</span>}
       </div>
 
       <div className="stats" style={{ ["--n" as string]: 4 }}>

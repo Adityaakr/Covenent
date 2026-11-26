@@ -1,8 +1,7 @@
 "use client";
 
 /*
- * Every user action on a covenant, one hook. On mock data it runs the mock store (same formulas as the vault); on a
- * live deployment it sends the transaction with the loaded ABI through wagmi, waits for the receipt and refreshes
+ * Every user action on a covenant, one hook. It sends the transaction with the loaded ABI through wagmi, waits for the receipt and refreshes
  * the reads. Progress goes to the toast stack (components/app/toasts.tsx).
  */
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,7 +16,6 @@ import { bookValue, redeemQuote, redeemableSupply } from "@/lib/covenant/math";
 import type { Address, CovenantView, Hash } from "@/lib/covenant/types";
 import { useWallet } from "@/components/providers";
 import { useSource } from "./hooks";
-import { mockAct } from "./mock-store";
 
 export type ActionName =
   | "commit" | "finalize" | "claimTokens" | "claimRefund" | "poke" | "redeem"
@@ -60,19 +58,6 @@ export function useActions(view?: CovenantView) {
   async function run(action: ActionName, arg?: number): Promise<boolean> {
     if (!view) return false;
     const title = ACTION_LABEL[action];
-    if (view.source === "mock") {
-      const id = pushToast({ title, status: "pending", mock: true });
-      await new Promise((r) => setTimeout(r, 650));
-      try {
-        const hash = mockAct(view.id, action, arg);
-        patchToast(id, { status: "done", hash, detail: "Mock transaction on demo data" });
-        return true;
-      } catch (e) {
-        patchToast(id, { status: "error", detail: (e as Error).message });
-        return false;
-      }
-    }
-
     if (!wallet.address) { wallet.connect(); return false; }
     const payload = src.payload;
     if (!payload?.deployment) return false;

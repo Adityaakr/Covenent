@@ -92,32 +92,3 @@ export function replay(sample: SampleToken[], t: ReplayTerms): ReplaySummary {
     daysCovered,
   };
 }
-
-/** A deterministic synthetic sample with meme-launch shapes, used only when the server is unreachable. */
-export function syntheticSample(n = 50, end = Date.UTC(2026, 10, 25) / 1000): SampleToken[] {
-  let s = 20261126;
-  const r = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 0x1_0000_0000);
-  const syll = ["ba", "zo", "ki", "lu", "mo", "ra", "pe", "fi", "do", "nu", "xa", "te"];
-  const out: SampleToken[] = [];
-  for (let i = 0; i < n; i++) {
-    const days = 20 + Math.floor(r() * 70);
-    const launchedAt = end - days * DAY;
-    const kind = r();
-    const sym = (syll[Math.floor(r() * 12)]! + syll[Math.floor(r() * 12)]!).toUpperCase();
-    let p = 1e-6 * (0.3 + r() * 3);
-    const candles: Candle[] = [];
-    const peak = 1 + r() * 6;
-    for (let d = 0; d <= days; d++) {
-      const x = d / days;
-      let drift: number;
-      if (kind < 0.62) drift = d < 3 ? Math.log(peak) / 3 : -0.09 - r() * 0.08; // pump then bleed
-      else if (kind < 0.82) drift = d < 10 ? 0.04 : -0.03 * x; // slow fade
-      else drift = 0.01 - 0.004 * Math.sin(d / 5); // holds
-      const o = p;
-      p = Math.max(1e-12, p * Math.exp(drift + (r() - 0.5) * 0.22));
-      candles.push({ t: launchedAt + d * DAY, o, h: Math.max(o, p) * (1 + r() * 0.08), l: Math.min(o, p) * (1 - r() * 0.08), c: p });
-    }
-    out.push({ address: `0x${(i + 1).toString(16).padStart(4, "0")}${"0".repeat(32)}7777`, symbol: sym, name: `${sym} (synthetic)`, launchedAt, candles });
-  }
-  return out;
-}

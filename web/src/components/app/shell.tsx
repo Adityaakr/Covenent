@@ -117,7 +117,7 @@ export function SourceChip() {
   const tone = s.mode === "live" ? "chip-good" : s.mode === "checking" ? "" : "chip-warn";
   return (
     <div className="card" style={{ padding: 10, display: "grid", gap: 6, boxShadow: "none" }}>
-      <span className={`chip ${tone}`} style={{ justifySelf: "start" }}><span className="dot" />{s.mode === "live" ? "Live contracts" : s.mode === "checking" ? "Checking" : "Demo data"}</span>
+      <span className={`chip ${tone}`} style={{ justifySelf: "start" }}><span className="dot" />{s.mode === "live" ? "Live contracts" : s.mode === "checking" ? "Checking" : "Offline"}</span>
       <span className="tiny muted" style={{ overflowWrap: "anywhere" }}>{s.reason}</span>
     </div>
   );

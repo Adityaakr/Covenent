@@ -20,7 +20,7 @@ export function CovenantPage({ children, header = true }: { children: (v: Covena
     return (
       <main className="page page-narrow">
         <Empty title="No covenant at this address">
-          {source.mode === "live" ? "The local deployment does not list it." : "It is not in the demo data."} <Link className="ink" href="/app" style={{ textDecoration: "underline" }}>See all covenants</Link>
+          {source.mode === "live" ? "The local deployment does not list it." : `No chain to read: ${source.reason}.`} <Link className="ink" href="/app" style={{ textDecoration: "underline" }}>See all covenants</Link>
         </Empty>
       </main>
     );

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { redeemQuote } from "./math";
-import { flagshipMarkers, flagshipScene, LAUNCH, otherCovenants, viewBook } from "./mock";
-import { DAY } from "./time";
+import { redeemQuote } from "../math";
+import { flagshipMarkers, flagshipScene, LAUNCH, otherCovenants, viewBook } from "./worked-example";
+import { DAY } from "../time";
 
 describe("the mock demo story follows the doc", () => {
   it("raises 1,400 BNB against a 500 BNB cap", () => {

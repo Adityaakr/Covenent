@@ -46,7 +46,7 @@ export default function CovenantsPage() {
       </div>
 
       {loading ? <Skeleton h={320} /> : list.length === 0 ? (
-        <div className="card card-pad small muted">The local deployment lists no covenant yet. {source.reason}</div>
+        <div className="card card-pad small muted">{source.mode === "live" ? "The local deployment lists no covenant yet." : `No chain to read: ${source.reason}.`} Start the stack with <span className="mono">scripts/dev-all.sh</span>; it deploys the contracts and seeds covenants at every stage with real transactions.</div>
       ) : (
         <>
         <div className="only-narrow" style={{ gap: 12 }}>
@@ -113,9 +113,6 @@ export default function CovenantsPage() {
         </div>
         </>
       )}
-      {source.mode !== "live" ? (
-        <p className="tiny muted" style={{ margin: 0 }}>Showing the demo data set (docs/DESIGN.md worked example, simulated hour by hour under the five rules). {source.reason}.</p>
-      ) : null}
     </main>
   );
 }

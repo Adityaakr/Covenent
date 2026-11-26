@@ -51,6 +51,7 @@ export async function runSimulation(source: MarketSource, opts: SimOptions): Pro
         minPriceShareOfOpen: Math.min(...candles.map((k) => k.l)) / open,
         lastPriceShareOfOpen: prices[prices.length - 1]! / open,
         triggers,
+        candles: candles.map(({ t, o, h, l, c }) => ({ t, o, h, l, c })),
       });
       log(`${i + 1}/${pools.length} ${p.symbol}: ${candles.length}d, decay trigger ${triggers.decay ? `day ${triggers.decay.day}` : 'none'}`);
     } catch (e) {
