@@ -11,7 +11,7 @@ import {CovenantProfiles} from "src/launcher/CovenantProfiles.sol";
 import {CovenantLauncher} from "src/launcher/CovenantLauncher.sol";
 import {CovenantVault} from "src/vault/CovenantVault.sol";
 import {CovenantVaultFactory} from "src/vault/CovenantVaultFactory.sol";
-import {CovenantOracle} from "src/oracle/CovenantOracle.sol";
+import {CovenantOracle, IAggregatorV3} from "src/oracle/CovenantOracle.sol";
 import {CovenantLens} from "src/lens/CovenantLens.sol";
 import {CovenantLiteVault} from "src/openfour/CovenantLiteVault.sol";
 import {ForwardVault} from "src/vendor/openfour/taxvault/vaults/ForwardVault.sol";
@@ -64,6 +64,7 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         address identity;
         address reputation;
         address forwardVaultImpl; // 0 when unknown on this chain
+        address atlasPushBnbUsd; // Atlas BNB/USD push feed, 0 where none exists (BNB Chain mainnet has none yet)
     }
 
     function _env() internal pure virtual returns (ForkEnv memory);
@@ -458,6 +459,57 @@ abstract contract CovenantForkBase is Test, StackBuilder {
         assertEq(address(lite).balance, 9.4 ether);
     }
 
+    /// @dev Atlas's real BNB/USD push feed read through CovenantOracle: a poke with no pull report takes the feed's
+    ///      latest round (it keeps only that one, so freshness is its updatedAt), the observation is strict while
+    ///      the round is fresh and the pool deep, and once the round is older than the max age the rate drops out
+    ///      while the exit observation still counts (exit fix 3).
+    function test_fork_atlasPushFeed_pricesTheTapAndTheStrictGate() public {
+        if (E.atlasPushBnbUsd == address(0)) vm.skip(true);
+        IAggregatorV3 feed = IAggregatorV3(E.atlasPushBnbUsd);
+        (, int256 answer,, uint256 updatedAt,) = feed.latestRoundData();
+        uint8 dec = feed.decimals();
+        assertGt(answer, 0, "the feed answers");
+        assertLe(block.timestamp - updatedAt, 1 hours, "the feed is live at the fork block");
+        uint256 px = dec <= 18 ? uint256(answer) * 10 ** (18 - dec) : uint256(answer) / 10 ** (dec - 18);
+        assertGt(px, 50 ether, "BNB/USD above $50");
+        assertLt(px, 5_000 ether, "BNB/USD below $5,000");
+
+        CovenantOracle push = new CovenantOracle(DEV_BNB_USD_FEED, vm.addr(atlasKey), E.atlasPushBnbUsd, 1 hours);
+        Pair memory demo = _deployPair(address(this), net, address(push), CovenantProfiles.demo(), "demo-push");
+        vm.startPrank(admin);
+        portal.setLauncherFactoryMultiplier(address(demo.launcherFactory), 10_000, true);
+        portal.setVaultFactoryMultiplier(address(demo.vaultFactory), 10_000, true);
+        vm.stopPrank();
+
+        Terms memory t = CovenantProfiles.demoTerms("Covenant Push", "CVPF", _mineSalt(BSC_PORTAL, BSC_TOKEN_IMPL, "push-feed"), team);
+        uint256 fee = portal.SALT_LOCK_FEE();
+        vm.prank(team);
+        CovenantLauncher l = CovenantLauncher(payable(portal.newLauncher{value: fee}(address(demo.launcherFactory), abi.encode(t))));
+        vm.prank(alice);
+        l.contribute{value: 300 ether}();
+        vm.warp(l.saleDeadline());
+        vm.prank(keeper);
+        l.finalize();
+        assertEq(uint8(l.state()), uint8(State.ACTIVE));
+        CovenantVault v = CovenantVault(payable(l.vault()));
+
+        // A plain poke (no pull report attached): the oracle reads the push feed.
+        vm.prank(keeper);
+        push.poke(address(v));
+        assertTrue(v.lastAtlas(), "fresh push round");
+        assertTrue(v.lastStrict(), "strict: fresh rate and a deep pool");
+        assertEq(v.lastBnbUsd(), px, "the dollar rate is the feed's latest round");
+        assertEq(v.usdSalePrice(), v.salePriceBnb() * px / 1e18, "the first strict poke fixes the dollar sale price");
+
+        // Past the max age with no new round on the fork: no rate, nothing strict, the exit observation still counts.
+        vm.warp(updatedAt + 1 hours + 1);
+        vm.prank(keeper);
+        push.poke(address(v));
+        assertFalse(v.lastAtlas(), "stale round refused by updatedAt");
+        assertFalse(v.lastStrict());
+        assertTrue(v.lastTrusted(), "the exit rule needs no Atlas");
+    }
+
     function _assertDescriptionFolded(Vm.Log[] memory logs, address launcher) internal view {
         bytes32 topic = keccak256("FlapNewLauncherCreated(address,address,address,string)");
         for (uint256 i; i < logs.length; ++i) {
@@ -496,5 +548,6 @@ contract CovenantBSCTestnetForkTest is CovenantForkBase {
         e.router = 0xc9D63ddCB9549578057EAB6A83a543DdFEE2b8c3;
         e.identity = BSC_TESTNET_IDENTITY;
         e.reputation = BSC_TESTNET_REPUTATION;
+        e.atlasPushBnbUsd = 0x3957d289ee9C38272377786787ea34F9dd29788D; // Atlas BNB/USD push feed, verified 2026-11-26
     }
 }

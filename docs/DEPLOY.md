@@ -30,9 +30,20 @@ chain.
 
 ## Before you start
 
-1. **Atlas credentials.** The BNB/USD feed id for pull mode (`ATLAS_BNB_USD_FEED_ID`, a `bytes4`) comes from Atlas
-   onboarding, together with the keeper's API key. Confirm the signer address for the target chain. If Atlas offers
-   an open-read push feed, pass it as `ATLAS_PUSH_FEED` (Chainlink-compatible `latestRoundData`).
+1. **Atlas.** Two sources, chosen per poke. A poke with a signed pull report appended uses it (the feed id
+   `ATLAS_BNB_USD_FEED_ID`, a `bytes4`, and the keeper's API key come from Atlas onboarding; confirm the signer for
+   the chain). A poke without one reads the oracle's push feed, `ATLAS_PUSH_FEED` (Chainlink-compatible
+   `latestRoundData`). The feed keeps only its latest round, so the oracle checks that round's `updatedAt` against
+   `ATLAS_PUSH_MAX_AGE` (default 1 hour).
+   - **BNB testnet has Atlas push feeds** (`contracts/config/atlas-97.json`, verified 2026-11-26): BNB/USD
+     `0x3957d289ee9C38272377786787ea34F9dd29788D`, BTC/USD `0x83B2F2c20df36F166cF5b3f017204cbB7BABcAD0`, ETH/USD
+     `0x35369dEcD8c662954B3D24acc2A862C708A34fD2`, 18 decimals, open read. On chain 97 `Deploy.s.sol` uses the
+     BNB/USD feed by default and the feed id becomes optional: with no Atlas API key the keeper pokes without a
+     report and the push feed prices the tap and the strict gate; once a pull key exists, pull reports take over on
+     the pokes that carry them (pass the feed id at deployment for that, it is fixed then). The server reads the
+     same feed for display on chain 97 and never uses its local test signer there.
+   - **BNB Chain mainnet** has no Atlas push feed yet (none of those addresses has code on 56): pull mode needs the
+     feed id and the API key.
 2. **Flap's creation floor.** The production profile refuses terms whose minimum raise seeds less than 10 BNB
    (`CovenantProfiles.production().minPoolQuote`). Check this against `PortalLaunchLens.graduationFloorV2` for a
    15% pool share and adjust the profile before deploying if Flap's floor is higher; a launch under the floor
@@ -48,16 +59,20 @@ All commands run from `contracts/`.
 ```bash
 cp .env.example .env            # then fill in the values below; .env is git-ignored
 # DEPLOYER_PRIVATE_KEY=0x...
-# ATLAS_BNB_USD_FEED_ID=0x........
+# ATLAS_BNB_USD_FEED_ID=0x........   (required on mainnet; optional on testnet, where the push feed is the default)
 # ATLAS_SIGNER=0x59eD4701224fD9e2a85Ef2946c2ab828C1dDC600
-# ATLAS_PUSH_FEED=            (optional)
+# ATLAS_PUSH_FEED=                   (default on 97: 0x3957d289ee9C38272377786787ea34F9dd29788D; none on 56)
+# ATLAS_PUSH_MAX_AGE=3600            (seconds, checked against the round's updatedAt)
 # DEPLOY_DEMO_FACTORY=true    (testnet; leave false on mainnet)
 # LITE_AUTHOR=0x...           (wallet that receives OpenFour's 6% template royalty)
 set -a && . ./.env && set +a
 ```
 
 1. **Test.** `forge build && forge test` (unit, invariant), then
-   `forge test --match-path "test/fork/*"` with `BSC_RPC_URL` set: the full journey against the live Portal.
+   `forge test --match-path "test/fork/*"` with `BSC_RPC_URL` set: the full journey against the live Portal. With
+   `BSC_TESTNET_RPC_URL` set, `test_fork_atlasPushFeed_pricesTheTapAndTheStrictGate` reads the real testnet BNB/USD
+   push feed through `CovenantOracle`: a poke with no report is strict while the round is fresh, and past the max age
+   the rate drops out while the exit observation still counts.
 2. **Dry run** (simulation only, nothing is sent):
    ```bash
    forge script script/Deploy.s.sol:Deploy --rpc-url "$BSC_TESTNET_RPC_URL"
@@ -101,7 +116,7 @@ set -a && . ./.env && set +a
 ## Operating notes
 
 - **Keeper.** Calls `CovenantOracle.poke(vault)` about hourly with a signed Atlas report appended (the Atlas pull
-  SDK builds the calldata). A poke without a report still counts for the exit streak; only strict pokes (fresh
+  SDK builds the calldata); with no API key on testnet it pokes plainly and the oracle reads the push feed. A poke without a report still counts for the exit streak; only strict pokes (fresh
   Atlas rate and a pool at least half its seed) price the dollar tap and move unlock counters. One poke adds at
   most 6 hours to any counter. `finalize()` needs a gas limit of at least 15M (the launch guard); wallets that
   estimate gas pick this up automatically.

@@ -11,6 +11,7 @@ import {
   type IssuerInfo,
   type LedgerEvent,
 } from '../schema.js';
+import { readPushBnbUsd } from '../atlas/report.js';
 import { EventIndex, lastBnbUsd, ledgerTotals } from './events.js';
 import { exitEta, toNum, WAD } from './math.js';
 
@@ -227,7 +228,17 @@ export class CovenantService {
     const book = big(r.bookValue);
     const state = stateName(r.state);
     const events = this.events({ ...ref, launcher: launcher ?? undefined });
-    const bnbUsd = lastBnbUsd(events);
+    // The Atlas push feed when the chain has one (BNB testnet), else the rate the last strict observation carried.
+    let bnbUsd = lastBnbUsd(events);
+    let bnbUsdSource: 'push-feed' | 'observation' | null = bnbUsd === null ? null : 'observation';
+    if (this.cfg.atlas.pushFeed) {
+      try {
+        bnbUsd = (await readPushBnbUsd(this.client, this.cfg.atlas.pushFeed)).bnbUsd;
+        bnbUsdSource = 'push-feed';
+      } catch {
+        /* feed unreadable: keep the observed rate */
+      }
+    }
     const treasuryBnb = toNum(treasury)!;
     const premium = book && poolPrice !== null && book > 0n ? (Number(poolPrice) / Number(book) - 1) * 100 : null;
     const salePrice = big(r.salePriceBnb);
@@ -296,6 +307,7 @@ export class CovenantService {
       poolPriceBnb: toNum(poolPrice),
       premiumToBookPct: premium,
       bnbUsd,
+      bnbUsdSource,
       agentId: str(big(r.agentId)),
       chainId: this.cfg.chainId,
       blockNumber: now.blockNumber.toString(),

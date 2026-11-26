@@ -3,7 +3,7 @@ import path from 'node:path';
 import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { getAddress, isAddress, parseEther, type Address } from 'viem';
-import { fetchBnbUsdReport } from '../atlas/report.js';
+import { fetchBnbUsdReport, NoPullReport } from '../atlas/report.js';
 import type { ServerConfig } from '../config.js';
 import { downside } from '../covenant/downside.js';
 import { CovenantService } from '../covenant/read.js';
@@ -155,7 +155,14 @@ export function createApp(deps: AppDeps) {
   const pokeReport = async (c: Context) => {
     const v = c.req.query('vault');
     if (v && !isAddress(v)) throw new HttpError(400, 'vault must be a 0x address');
-    const rep = await fetchBnbUsdReport(cfg.atlas, svc.client);
+    let rep;
+    try {
+      rep = await fetchBnbUsdReport(cfg.atlas, svc.client);
+    } catch (e) {
+      // No pull report to attach (BNB testnet without an Atlas key): a plain poke reads the oracle's push feed.
+      if (e instanceof NoPullReport) return c.json({ error: e.message, mode: 'push-feed', pushFeed: cfg.atlas.pushFeed ?? null }, 409);
+      throw e;
+    }
     const body: PokeReport = {
       mode: rep.mode,
       feedId: rep.feedId,

@@ -147,6 +147,8 @@ export interface ServerConfig {
     bnbUsdFeedId: string;
     localSignerKey: Hex;
     localBnbUsd: string;
+    pushFeed?: Address;
+    localSignerAllowed: boolean;
   };
   cmc: { apiKey?: string; baseUrl: string };
   anthropic: { apiKey?: string; model: string };
@@ -182,6 +184,13 @@ function parseCovenantEnv(v: string | undefined): CovenantRef[] {
 function firstLocalBlock(d: Deployments | null): number {
   if (!d?.deployedAtBlock) return 0;
   return (d as { mode?: string }).mode === 'fork' ? d.deployedAtBlock + 1 : d.deployedAtBlock;
+}
+
+/** Atlas BNB/USD push feed on BNB testnet, verified 2026-11-26 (contracts/config/atlas-97.json). */
+export const TESTNET_ATLAS_PUSH_BNB_USD = getAddress('0x3957d289ee9C38272377786787ea34F9dd29788D');
+
+function chainIdFor(d: Deployments | null): number {
+  return Number(env('CHAIN_ID') ?? d?.chainId ?? 31337);
 }
 
 export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
@@ -228,6 +237,10 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
       bnbUsdFeedId: env('ATLAS_BNB_USD_FEED_ID') ?? String(deployments?.demo?.atlasBnbUsdFeedId ?? '1'),
       localSignerKey: (env('ATLAS_LOCAL_SIGNER_KEY') as Hex | undefined) ?? LOCAL_TEST_SIGNER_KEY,
       localBnbUsd: env('ATLAS_LOCAL_BNB_USD') ?? '600',
+      // BNB testnet has an Atlas BNB/USD push feed (contracts/config/atlas-97.json); there the oracle reads it and
+      // the local test signer, which no real oracle accepts, is never used.
+      pushFeed: addrEnv('ATLAS_PUSH_FEED') ?? (chainIdFor(deployments) === 97 ? TESTNET_ATLAS_PUSH_BNB_USD : undefined),
+      localSignerAllowed: chainIdFor(deployments) !== 97,
     },
     cmc: { apiKey: env('CMC_API_KEY'), baseUrl: env('CMC_BASE_URL') ?? 'https://pro-api.coinmarketcap.com' },
     anthropic: { apiKey: env('ANTHROPIC_API_KEY'), model: env('ANTHROPIC_MODEL') ?? 'claude-opus-5-5' },

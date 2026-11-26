@@ -38,6 +38,8 @@ export const CovenantSummary = z.object({
   /** (pool price / book value - 1) * 100. Negative = trading below book. */
   premiumToBookPct: z.number().nullable(),
   bnbUsd: z.number().nullable(),
+  /** where bnbUsd came from: the Atlas push feed (BNB testnet) or the last strict observation */
+  bnbUsdSource: z.enum(['push-feed', 'observation']).nullable().optional(),
   agentId: z.string().nullable(),
 });
 export type CovenantSummary = z.infer<typeof CovenantSummary>;

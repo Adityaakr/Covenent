@@ -139,6 +139,32 @@ export interface ReportSourceConfig {
   bnbUsdFeedId: string;
   localSignerKey: Hex;
   localBnbUsd: string;
+  /** Atlas BNB/USD push feed (Chainlink-compatible). The oracle reads it on any poke without a pull report. */
+  pushFeed?: Address;
+  /** false where the oracle cannot accept the local test signer (BNB testnet: the push feed is the source). */
+  localSignerAllowed?: boolean;
+}
+
+/** Thrown when there is no pull report to attach: the poke goes plain and the oracle reads its push feed. */
+export class NoPullReport extends Error {}
+
+const AGGREGATOR_ABI = [
+  { type: 'function', name: 'latestRoundData', stateMutability: 'view', inputs: [], outputs: [
+    { type: 'uint80' }, { type: 'int256' }, { type: 'uint256' }, { type: 'uint256' }, { type: 'uint80' },
+  ] },
+  { type: 'function', name: 'decimals', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint8' }] },
+] as const;
+
+/**
+ * BNB/USD from an Atlas push feed. The feed keeps only its latest round, so freshness is that round's updatedAt
+ * (the oracle refuses a round older than its max age the same way).
+ */
+export async function readPushBnbUsd(client: PublicClient, feed: Address): Promise<{ bnbUsd: number; updatedAt: number }> {
+  const [[, answer, , updatedAt], decimals] = await Promise.all([
+    client.readContract({ address: feed, abi: AGGREGATOR_ABI, functionName: 'latestRoundData' }),
+    client.readContract({ address: feed, abi: AGGREGATOR_ABI, functionName: 'decimals' }),
+  ]);
+  return { bnbUsd: Number(answer) / 10 ** decimals, updatedAt: Number(updatedAt) };
 }
 
 /**
@@ -169,6 +195,13 @@ export async function fetchBnbUsdReport(cfg: ReportSourceConfig, client?: Public
       signer: parsed.signer,
       note: 'Signed by Atlas (pull mode), fetched with @atlas-oracle/pull-oracle-consumer-sdk.',
     };
+  }
+  if (cfg.localSignerAllowed === false) {
+    throw new NoPullReport(
+      cfg.pushFeed
+        ? `no ATLAS_API_KEY: poke without a report; the oracle reads the Atlas push feed ${cfg.pushFeed}`
+        : 'no ATLAS_API_KEY and no push feed: poke without a report (the exit rule still counts)',
+    );
   }
   let ts = Math.floor(Date.now() / 1000);
   if (client) {

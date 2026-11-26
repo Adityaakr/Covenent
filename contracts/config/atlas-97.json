@@ -1,0 +1,12 @@
+{
+  "chainId": 97,
+  "network": "BNB Smart Chain testnet",
+  "source": "Atlas push feeds supplied by the owner; verified by firstmate on 2026-11-26 (description 'SingleFeed BNB/USD', 18 decimals, latestRoundData answered 559.60, updated within the minute, open to a plain eth_call). The feeds keep only the latest round: freshness is updatedAt.",
+  "pushFeeds": {
+    "BNB/USD": "0x3957d289ee9C38272377786787ea34F9dd29788D",
+    "BTC/USD": "0x83B2F2c20df36F166cF5b3f017204cbB7BABcAD0",
+    "ETH/USD": "0x35369dEcD8c662954B3D24acc2A862C708A34fD2"
+  },
+  "decimals": 18,
+  "notOnMainnet": "None of these addresses has code on BNB Chain mainnet (56)."
+}
