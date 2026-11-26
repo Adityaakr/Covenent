@@ -11,12 +11,23 @@ function Ph({ d, size, className }: { d: string; size: number; className?: strin
   );
 }
 
+/* Arrow Right / Arrow Left as the live template renders them: Framer's Phosphor vectors stroke the arrow head as a
+   closed triangle (path "M 0 0 L 6.75 6.75 L 0 13.5 Z" at translate(13.5 5.25)) plus a 9.75px shaft, 24 viewBox,
+   stroke 1.5, round caps and joins. Read from the published site's SVG symbols. */
+function Arrow({ d, size, className }: { d: string; size: number; className?: string }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d={d} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconArrowRight({ size = 14, className }: P) {
-  return <Ph size={size} className={className} d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z" />;
+  return <Arrow size={size} className={className} d="M3.75 12H13.5M13.5 5.25L20.25 12L13.5 18.75Z" />;
 }
 
 export function IconArrowLeft({ size = 14, className }: P) {
-  return <Ph size={size} className={className} d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z" />;
+  return <Arrow size={size} className={className} d="M20.25 12H10.5M10.5 5.25L3.75 12L10.5 18.75Z" />;
 }
 
 export function IconBell({ size = 20, className }: P) {

@@ -60,20 +60,25 @@ export function Mark({ kind, size = 18, className }: { kind: MarkKind; size?: nu
   );
 }
 
-/* Phosphor (regular) strokes for the template's Arrow Right / Arrow Left / Quotes icons, 256 viewBox.
+/* Arrow Right / Arrow Left as the live template renders them: Framer's Phosphor vectors stroke the arrow head as a
+   closed triangle (path "M 0 0 L 6.75 6.75 L 0 13.5 Z" at translate(13.5 5.25)) plus a 9.75px shaft, 24 viewBox,
+   stroke 1.5, round caps and joins. Read from the published site's SVG symbols. */
+const ARROW_RIGHT = "M3.75 12H13.5M13.5 5.25L20.25 12L13.5 18.75Z";
+const ARROW_LEFT = "M20.25 12H10.5M10.5 5.25L3.75 12L10.5 18.75Z";
+/* Phosphor (regular) strokes for the template's Quotes icon, 256 viewBox.
    strokeWidth is given in 24px units (1.5 like the instances) and scaled to the 256 box. */
 const k = 256 / 24;
 export function ArrowRight({ size = 14, className }: { size?: number; className?: string }) {
   return (
-    <svg className={className} width={size} height={size} viewBox="0 0 256 256" aria-hidden="true" style={{ flex: "none" }}>
-      <path d="M40 128h176M144 56l72 72-72 72" fill="none" stroke="currentColor" strokeWidth={1.5 * k} strokeLinecap="round" strokeLinejoin="round" />
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ flex: "none" }}>
+      <path d={ARROW_RIGHT} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 export function ArrowLeft({ size = 14, className }: { size?: number; className?: string }) {
   return (
-    <svg className={className} width={size} height={size} viewBox="0 0 256 256" aria-hidden="true" style={{ flex: "none" }}>
-      <path d="M216 128H40M112 56l-72 72 72 72" fill="none" stroke="currentColor" strokeWidth={1.5 * k} strokeLinecap="round" strokeLinejoin="round" />
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ flex: "none" }}>
+      <path d={ARROW_LEFT} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

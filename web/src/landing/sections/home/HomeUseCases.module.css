@@ -39,7 +39,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 18px;
-  padding: 12px 12px 24px;
+  /* Framer padding 12 12 24 with the 1px border drawn inside it (no layout space): 1px less here. */
+  padding: 11px 11px 23px;
   border: 1px solid var(--c-border);
   border-radius: 18px;
   background: var(--c-bg);

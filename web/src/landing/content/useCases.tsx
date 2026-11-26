@@ -35,11 +35,11 @@ export const useCases: UseCase[] = [
         p: "An agent cannot be sued, can be hijacked and can simply stop. The vault that binds a human team binds an AI agent the same way, and an agent needs it more.",
       },
       {
-        p: "If the agent's key leaks, the attacker reaches the accrued tap, at most 4% of the treasury a month. The treasury stays in the vault.",
+        p: "If the agent’s key leaks, the attacker reaches the accrued tap, at most 4% of the treasury a month. The treasury stays in the vault.",
       },
       { h2: "What the agent does" },
       {
-        p: "Every few minutes it reads the vault's status. It claims its tap when enough has accrued, which also counts as a heartbeat, and sends a heartbeat when it has not.",
+        p: "Every few minutes it reads the vault’s status. It claims its tap when enough has accrued, which also counts as a heartbeat, and sends a heartbeat when it has not.",
       },
       {
         p: "When the price comes close to book value it can lower its own tap, a pay cut that protects the floor. Revenue it earns goes to the vault and raises book value for every holder. At the end of each period an LLM writes the report and the agent posts it.",
@@ -132,7 +132,7 @@ export const useCases: UseCase[] = [
       },
       { h2: "Tools any assistant can call" },
       {
-        p: "The Covenant MCP server lists covenants with their book value and pool price, returns the full terms, and reports what a position redeems for at book today. Writes return an unsigned transaction, so the user's own wallet signs.",
+        p: "The Covenant MCP server lists covenants with their book value and pool price, returns the full terms, and reports what a position redeems for at book today. Writes return an unsigned transaction, so the user’s own wallet signs.",
       },
       {
         p: "When a round opens, the agent can exit by itself. It never controls the money rules.",
@@ -150,7 +150,7 @@ export const useCases: UseCase[] = [
     result: "45 days",
     resultLabel: "of team silence before anyone can open the treasury",
     quote:
-      "As a holder, I want to leave at a fair value when the market has given up, without waiting for anyone's approval.",
+      "As a holder, I want to leave at a fair value when the market has given up, without waiting for anyone’s approval.",
     quoteAuthor: "Job to be done",
     quoteRole: "Holder",
     cover: "/landing/usecases/cover-5.jpg",
@@ -185,16 +185,16 @@ export const useCases: UseCase[] = [
     mark: <Mark kind="tree" />,
     featured: false,
     body: [
-      { h2: "The founder's tax, in a vault" },
+      { h2: "The founder’s tax, in a vault" },
       {
-        p: "With CovenantLiteVault, the founder's share of trading tax lands in the vault instead of the founder's wallet. The founder can withdraw at most a set share of the balance per period, and each withdrawal is a heartbeat.",
+        p: "With CovenantLiteVault, the founder’s share of trading tax lands in the vault instead of the founder’s wallet. The founder can withdraw at most a set share of the balance per period, and each withdrawal is a heartbeat.",
       },
       {
         p: "If the founder is silent past the heartbeat window, or winds down, the balance becomes redeemable. Holders burn tokens for a pro rata share.",
       },
       { h2: "How it plugs in" },
       {
-        p: "The template uses OpenFour's Unverified Royalty path. Four.meme's create page builds the form from the template's schema: tap share, tap period, heartbeat and redeem fee. Template and init params cannot be changed after create.",
+        p: "The template uses OpenFour’s Unverified Royalty path. Four.meme’s create page builds the form from the template’s schema: tap share, tap period, heartbeat and redeem fee. Template and init params cannot be changed after create.",
       },
     ],
   },

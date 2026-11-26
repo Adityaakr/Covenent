@@ -34,14 +34,29 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* The app's body sets Inter features (cv11, ss01) and -0.006em tracking; the template uses neither. */
+  font-feature-settings: normal;
+  letter-spacing: normal;
+  /* The app's InterVariable (Inter 4) sizes optically, so 18px+ text sets ~2% narrower than the template's Inter 3,
+     which has no opsz axis. Pin the text optical size; headings use static Inter Display (opsz ignored). */
+  font-variation-settings: "opsz" 14;
+  /* Light-only template: never pick up the app's dark scheme (form controls, scrollbars). */
+  color-scheme: light;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   overflow-x: clip;
 }
+/* The app's theme script can put data-theme="dark" on <html>, which turns html's background and colour scheme dark.
+   (0,2,1) beats the app's :root[data-theme="dark"] (0,2,0), so the landing stays light in both system themes. */
+html:root:has(.landing-root) {
+  background: var(--c-bg);
+  color-scheme: light;
+}
 body:has(> .landing-root),
 body:has(.landing-root) {
   background: var(--c-bg);
+  color: var(--c-text);
 }
 /* Reset rules use :where() so they carry element-level specificity and any class overrides them. */
 :where(.landing-root) *,
@@ -93,8 +108,11 @@ body:has(.landing-root) {
   padding: 0;
   cursor: pointer;
 }
-:where(.landing-root) ::selection {
+.landing-root ::selection {
   background: rgba(43, 89, 255, 0.18);
+}
+.landing-root :focus-visible {
+  outline-color: var(--c-accent);
 }
 
 /* ---------- Text styles ---------- */
@@ -108,6 +126,7 @@ body:has(.landing-root) {
 .t-small {
   font-family: var(--font-ui);
   font-style: normal;
+  font-variation-settings: "opsz" 14;
   margin: 0;
 }
 .t-h1 {
