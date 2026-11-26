@@ -11,10 +11,14 @@ scripts/dev-all.sh               # chain + deploy + demo story + a live covenant
 ```
 
 One command starts anvil (a BNB Chain fork with chain id 56 when a BNB RPC that serves older state answers, else the
-offline mock stack on 31337; `--fork` / `--mock` force one), deploys every contract, seeds the demo story (a covenant
-that ends abandoned and wound down) and a second covenant left ACTIVE, then starts the server API on `:8787`, the keeper
-(pokes every 20 s with the local Atlas test signer), the issuer agent on the live covenant and the web app on
-http://localhost:8080 (`WEB_PORT` moves it; 8081-8083 and 8085 are also Privy origins; `--prod` serves a build).
+offline mock stack on 31337; `--fork` / `--mock` force one; a block every second), deploys every contract, deploys the
+local test funds (Demo USDC and a dUSDC/WBNB pool on the local PancakeSwap), and seeds a covenant at every stage by real
+transactions: abandoned by its agent, wound down by its team, ACTIVE with tax and tap, an exit round open, and a raise
+under way (recorded under `.seeded` in `contracts/deployments/local.json`). It then starts the server API on `:8787`,
+the keeper (pokes every 20 s with the local Atlas test signer), an issuer agent on each live covenant and the web app
+on http://localhost:8080 (`WEB_PORT` moves it; 8081-8083 and 8085 are also Privy origins; `--prod` serves a build).
+Every screen reads the chain or the server; there is no stand-in data. `/app/faucet` sends a connected wallet test
+BNB and Demo USDC (dev chain only) and swaps dUSDC to BNB on the local pool.
 
 - `scripts/dev-all.sh status` shows what runs and where the logs are (`.dev/`); `stop` stops everything.
 - `scripts/dev-all.sh stop-issuer` kills the issuer agent, the stage moment: after the heartbeat window anyone can
@@ -76,4 +80,4 @@ pnpm dev:3000                # explicit alternative on :3000: no Privy there, br
 pnpm test && pnpm typecheck && pnpm lint && pnpm build
 ```
 
-The app reads `contracts/deployments/local.json` and `contracts/abi/*.json` on every request (`/api/deployment`). When they load and the chain answers, screens read the contracts live (through `CovenantLens` when the deployment names it). Otherwise they show the mock layer: the design doc's worked example, simulated hour by hour under the five rules. The status chip in the sidebar says which one you are looking at. Market data, the signed Atlas report for the poke button, and the simulator result come from the server at `NEXT_PUBLIC_COVENANT_API` (default `http://localhost:8787`). The server must allow the app's origin: set `CORS_ORIGINS=http://localhost:8080` in `server/.env`.
+The app reads `contracts/deployments/local.json` and `contracts/abi/*.json` on every request (`/api/deployment`). Screens read the contracts live (through `CovenantLens` when the deployment names it), on the chain id and RPC that file names. There is no stand-in data: when the deployment or the chain is missing, screens show an empty state and the sidebar's status chip says "Offline" and why. Market data, the signed Atlas report for the poke button, and the simulator result come from the server at `NEXT_PUBLIC_COVENANT_API` (default `http://localhost:8787`). The server must allow the app's origin: set `CORS_ORIGINS=http://localhost:8080` in `server/.env`.

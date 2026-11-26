@@ -92,6 +92,8 @@ Every tick, for each covenant: resolve any pending tx by receipt, decide whether
 | `GET /api/covenants/:vault/tx/:action` | `UnsignedTx` for `commit?amount=`, `claim-refund`, `claim-tokens`, `redeem?amount=&from=`, `declare-abandoned`, `claim-tap`, `heartbeat`, `lower-tap?usd=` |
 | `GET /api/poke-report?vault=` (alias `/poke-report`) | `PokeReport`: signed report + ready `poke(vault)` tx for the web's poke button |
 | `GET /api/simulator` | `SimulatorResult` |
+| `GET /api/simulator/sample` | the simulator's launches with their daily candles (BNB per token), for the web's "try other terms" replay |
+| `GET /api/faucet` / `POST /api/faucet {address}` | local test funds: whether the faucet is on, then 10 test BNB from anvil #0 plus 10,000 Demo USDC (dUSDC) minted to the address. Refused (403) on any RPC that is not a loopback node, whatever the chain id; needs `FAUCET_PRIVATE_KEY` (dev-all sets anvil #0); 30 s per address |
 | `GET /api/cmc` and `/api/cmc/{pair-quote,token-liquidity,liquidity-change,candles,transactions}`, `POST /api/cmc/new-list` | CoinMarketCap DEX proxies from the doc; key stays server-side; `x-covenant-cmc-mode: pro \| keyless-public-api` |
 | `GET /reports/:vault/:period` | issuer period report (markdown) whose hash is on-chain |
 | `GET /agents/:owner/registration.json` | ERC-8004 registration file |
@@ -100,7 +102,7 @@ Wei amounts are integer strings; per-token prices are BNB per token × 1e18; `*B
 
 ## Simulator
 
-`pnpm sim` samples BNB Chain launches, pulls daily candles priced in BNB, and replays the default terms: floor at 60% of the opening price, falling 4% per 30 days (the tap cap binding), exit after 3 days below. It reports three variants: the original reset rule, the **decay** fix and the **72-hour average** fix; the headline uses `decay` (`--headline-rule`). Output: `data/simulator/latest.json`, served at `/api/simulator`.
+`pnpm sim` samples BNB Chain launches, pulls daily candles priced in BNB, and replays the default terms: floor at 60% of the opening price, falling 4% per 30 days (the tap cap binding), exit after 3 days below. It reports three variants: the original reset rule, the **decay** fix and the **72-hour average** fix; the headline uses `decay` (`--headline-rule`). Output: `data/simulator/latest.json` (with each launch's candles), served at `/api/simulator` and `/api/simulator/sample`. With `CMC_API_KEY`, candles come from CoinMarketCap (`/v1/k-line/candles`, `platform=bsc`, token address, `unit=native`); `POST /v1/dex/new/list` is plan-gated on the owner's key (403, error 1006), so the sample then comes from GeckoTerminal's listings, one entry per token.
 
 - With `CMC_API_KEY`: CoinMarketCap `POST /v1/dex/new/list` and `GET /v1/k-line/candles`. **This mapping has not run in this build** (no key was available); if it returns nothing usable the job falls back to GeckoTerminal and says so.
 - Without: **GeckoTerminal** (the stated fallback; the keyless CMC route answered with an anonymous-access limit). The sample is WBNB-quoted pools from GeckoTerminal's activity-ranked listings, created 14–180 days ago, so it is biased toward survivors and the trigger share is conservative. The output says this in `source.notes` and names the sample in the headline.
