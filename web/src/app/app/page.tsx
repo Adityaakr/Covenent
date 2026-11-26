@@ -7,10 +7,9 @@ import { Sparkline } from "@/components/app/chart";
 import { Icon } from "@/components/app/icons";
 import { ConnectChain } from "@/components/app/live";
 import { IntentPicker } from "@/components/app/onboarding";
-import { BnbCoin, withBnb } from "@/components/app/bnb";
+import { BnbChain, BnbCoin } from "@/components/app/bnb";
 import { seedHue } from "@/components/app/bot";
 import { ThinkingMark } from "@/components/app/mark";
-import { chainName } from "@/lib/chain/chains";
 import { duration } from "@/lib/covenant/time";
 import { reopenOnboarding, useIntents, useOnboarded, type Intent } from "@/components/app/prefs";
 import { Empty, SecHead, Skeleton, StateBadge, Ticker, TokenAvatar, cx, seedOf } from "@/components/app/ui";
@@ -74,7 +73,7 @@ export default function DiscoverPage() {
           <div style={{ display: "grid", maxWidth: 640 }}>
             <span className="eyebrow"><ThinkingMark size={15} label="Covenant" />The operating stack for autonomous ventures</span>
             <h1 className="home-hello">{greeting(hour)}</h1>
-            <p className="t-s muted w5">{online && source.chainId ? <>Every covenant on {withBnb(chainName(source.chainId))}, read from its vault, and whether its rules are holding.</> : "Every covenant, read from its vault, and whether its rules are holding."}</p>
+            <p className="t-s muted w5">Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts. 24/7 on <BnbChain />.</p>
           </div>
           <div className="row" style={{ gap: 8 }}>
             <button className="btn btn-ghost" onClick={reopenOnboarding}><Icon name="sparkle" size={15} />Personalise</button>

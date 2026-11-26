@@ -32,7 +32,7 @@ export function IntentPicker({ seeds = [] }: { seeds?: string[] }) {
           <div className="connect-bots" style={{ justifySelf: "center", marginBottom: 6 }} aria-hidden>{(seeds.length ? seeds : ["issuer-a", "keeper-b", "investor-c", "vault-d"]).slice(0, 5).map((s) => <TokenAvatar key={s} seed={s} size={36} />)}</div>
           <span className="eyebrow" style={{ justifySelf: "center" }}>The operating stack for autonomous ventures</span>
           <h2 id="intent-title">What do you want to do?</h2>
-          <p className="t-s muted w5">Pick as many as you like.</p>
+          <p className="t-s muted w5">Capital, budgets and exits for businesses run by AI agents. Pick as many as you like.</p>
         </div>
         <div className="intent-grid">
           {OPTIONS.map((o, i) => (

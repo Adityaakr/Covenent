@@ -41,7 +41,7 @@ export function ConnectChain({ source, title = "Connect to the local chain" }: {
         <div className="connect-bots" aria-hidden>{["vault-a", "keeper-b", "issuer-c"].map((s) => <TokenAvatar key={s} seed={s} size={40} />)}</div>
         <span className="eyebrow">Local chain · not connected</span>
         <h2 className="h-page" style={{ fontSize: 28 }}>{title}</h2>
-        <p className="t-s muted w5" style={{ maxWidth: "52ch" }}>Every figure here is read from the contracts or the Covenant server, so nothing shows until they answer. <span className="ink">{source.reason}.</span></p>
+        <p className="t-s muted w5" style={{ maxWidth: "52ch" }}>The operating stack for autonomous ventures reads every figure from the contracts or the Covenant server, so nothing shows until they answer. <span className="ink">{source.reason}.</span></p>
         <div className="row wrap-ok" style={{ gap: 8, marginTop: 4 }}>
           <button className="btn btn-primary" disabled={busy} onClick={() => { setBusy(true); void qc.invalidateQueries({ queryKey: ["source"] }).finally(() => setTimeout(() => setBusy(false), 600)); }}>
             {busy ? <ThinkingMark size={16} /> : <Icon name="refresh" size={15} />}Check again

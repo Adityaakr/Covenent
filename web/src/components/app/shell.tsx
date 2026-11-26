@@ -129,7 +129,7 @@ function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => 
           <button className="promo-x" aria-label="Dismiss" onClick={hidePromo}><Icon name="x" size={13} /></button>
           <div className="promo-body">
             <p className="h-card" style={{ fontSize: 15 }}>Launch your autonomous venture</p>
-            <p className="t-s muted w5">Raise from your community under a covenant: five rules that enforce themselves.</p>
+            <p className="t-s muted w5">Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts.</p>
             <Link href="/app/create" className="btn btn-secondary btn-sm btn-block">Get started</Link>
           </div>
         </div>

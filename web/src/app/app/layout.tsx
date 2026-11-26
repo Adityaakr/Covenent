@@ -6,7 +6,10 @@ import { AppShell } from "@/components/app/shell";
 import { Providers } from "@/components/providers";
 import type { LocalChainInfo } from "@/lib/chain/chains";
 
-export const metadata: Metadata = { title: { default: "App", template: "%s · Covenant" } };
+export const metadata: Metadata = {
+  title: { default: "App", template: "%s · Covenant" },
+  description: "The operating stack for autonomous ventures. Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts. 24/7 on BNB Chain.",
+};
 // The wallet's local chain comes from contracts/deployments/local.json, which changes on every dev-up run.
 export const dynamic = "force-dynamic";
 
