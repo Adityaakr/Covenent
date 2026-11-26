@@ -29,14 +29,10 @@ async function discover(client: PublicClient, payload: DeploymentPayload): Promi
   const found = new Set(launchersOf(d).map((a) => a.toLowerCase()));
   const out: Address[] = [...launchersOf(d)];
   const F = abiFor(payload.abis, "CovenantLauncherFactory", "LauncherFactory");
-  for (const key of ["launcherFactory", "covenantLauncherFactory", "demoLauncherFactory"]) {
-    const f = addressOf(d, key);
-    if (!f || !hasFn(F, "allLaunchers")) continue;
-    try {
-      const all = (await client.readContract({ address: f, abi: F!, functionName: "allLaunchers" })) as Address[];
-      for (const a of all) if (!found.has(a.toLowerCase())) { found.add(a.toLowerCase()); out.push(a); }
-    } catch { /* factory not deployed at this address */ }
-  }
+  // every factory at once (the transport batches them), not one round trip after another
+  const factories = ["launcherFactory", "covenantLauncherFactory", "demoLauncherFactory"].map((k) => addressOf(d, k)).filter((f): f is Address => Boolean(f) && hasFn(F, "allLaunchers"));
+  const lists = await Promise.all(factories.map((f) => client.readContract({ address: f, abi: F!, functionName: "allLaunchers" }).then((x) => x as Address[], () => [] as Address[])));
+  for (const all of lists) for (const a of all) if (!found.has(a.toLowerCase())) { found.add(a.toLowerCase()); out.push(a); }
   return out;
 }
 
@@ -61,9 +57,8 @@ async function probe(): Promise<SourceStatus> {
     : http(d.rpcUrl || LOCAL_RPC, { timeout: 4000, retryCount: 0 });
   const client = createPublicClient({ chain, transport }) as PublicClient;
   try {
-    const id = await client.getChainId();
+    const [id, launchers] = await Promise.all([client.getChainId(), discover(client, payload)]);
     if (id !== d.chainId) return { mode: "offline", reason: `RPC answers chain ${id}, deployment is for ${d.chainId}`, payload };
-    const launchers = await discover(client, payload);
     if (launchers.length === 0) {
       // A real deployment with no covenant yet (BNB testnet before the first create) is live and empty.
       const factory = addressOf(d, "demoLauncherFactory") ?? addressOf(d, "launcherFactory");
@@ -91,10 +86,9 @@ function useLiveCovenants(src: SourceStatus, account?: Address) {
     refetchInterval: 6_000,
     queryFn: async () => {
       const launchers = src.launchers ?? launchersOf(src.payload!.deployment!);
-      // only addresses that answer as covenant launchers (their terms() reads): never a view filled from defaults
-      const L = abiFor(src.payload!.abis, "CovenantLauncher", "Launcher");
-      const real = await Promise.all(launchers.map((l) => src.client!.readContract({ address: l, abi: L!, functionName: "terms" }).then(() => true, () => false)));
-      const views = await Promise.all(launchers.filter((_, i) => real[i]).map((l) => readCovenant({ client: src.client!, payload: src.payload!, account }, l)));
+      // one read per launcher: readCovenant throws for an address that does not answer as a covenant launcher
+      const settled = await Promise.allSettled(launchers.map((l) => readCovenant({ client: src.client!, payload: src.payload!, account }, l)));
+      const views = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
       // An agent's record spans its covenants: show every outcome written for the same ERC-8004 id on each sheet.
       return views.map((v) => {
         if (!v.issuer.agentId) return v;

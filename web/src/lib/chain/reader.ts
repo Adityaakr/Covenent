@@ -82,17 +82,22 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   const L = abiFor(payload.abis, "CovenantLauncher", "Launcher");
   const V = abiFor(payload.abis, "CovenantVault", "Vault");
   const O = abiFor(payload.abis, "CovenantOracle", "Oracle");
-  const block = await client.getBlock();
-  const now = Number(block.timestamp);
-
-  const [termsRaw, lStateRaw, committedRaw, deadlineRaw, tokenRaw, vaultRaw] = await Promise.all([
+  // Three waves of reads, each one batched request: the launcher, then everything that needs its answers, then the
+  // block timestamps of the events. A public RPC answers each in a few hundred ms, so the sheet is up in about a second.
+  const [block, termsRaw, lStateRaw, committedRaw, deadlineRaw, tokenRaw, vaultRaw, launcherPoolRaw, contributorsRaw] = await Promise.all([
+    client.getBlock(),
     call(ctx, launcher, L, pickFn(L, "terms", "getTerms")),
     call(ctx, launcher, L, "state"),
     call(ctx, launcher, L, pickFn(L, "committed", "totalCommitted")),
     call(ctx, launcher, L, pickFn(L, "saleDeadline", "deadline", "saleEnd", "endsAt")),
     call<Address>(ctx, launcher, L, "token"),
     call<Address>(ctx, launcher, L, "vault"),
+    call<Address>(ctx, launcher, L, "pool"),
+    call(ctx, launcher, L, pickFn(L, "contributorCount", "contributors")),
   ]);
+  const now = Number(block.timestamp);
+  // only addresses that answer as covenant launchers become covenants, never a view filled from defaults
+  if (termsRaw === undefined) throw new Error(`${launcher} does not answer as a covenant launcher`);
   const terms = termsFrom(termsRaw);
   const zero = (a?: Address) => !a || /^0x0{40}$/i.test(a);
   const vault = zero(vaultRaw) ? undefined : vaultRaw;
@@ -104,7 +109,27 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   const committed = eth(committedRaw);
   const r = settleRaise(committed, terms.minRaise, terms.cap, sp);
 
-  // Vault side
+  // Vault side (wave B starts here: nothing below waits for anything above but the launcher's answers)
+  const launcherPool = zero(launcherPoolRaw) ? undefined : launcherPoolRaw;
+  const reservesP = launcherPool && token
+    ? Promise.all([call<readonly bigint[]>(ctx, launcherPool, PAIR, "getReserves"), call<Address>(ctx, launcherPool, PAIR, "token0")])
+    : Promise.resolve(null);
+  const treasuryP = vault ? client.getBalance({ address: vault }) : Promise.resolve(0n);
+  const tokenBalsP = Promise.all([call(ctx, token, ERC20, "balanceOf", [DEAD]), account ? call(ctx, token, ERC20, "balanceOf", [account]) : undefined]);
+  const tapCapP = vault ? call<bigint>(ctx, vault, V, "tapCapPer30d") : Promise.resolve(undefined);
+  const trancheP = Promise.all(terms.trancheBps.map((_, k) => call(ctx, vault, V, "trancheProgress", [BigInt(k)])));
+  const positionP = account ? Promise.all([
+    call(ctx, launcher, L, pickFn(L, "contributions", "contributionOf", "committedOf"), [account]),
+    call(ctx, launcher, L, "acceptedOf", [account]),
+    call(ctx, launcher, L, "allocationOf", [account]),
+    call<boolean>(ctx, vault, V, "tokensClaimed", [account]),
+    call<boolean>(ctx, launcher, L, "refunded", [account]),
+  ]) : Promise.resolve(null);
+  const fromBlockEarly = BigInt(d.startBlock ?? 0);
+  const logsP = Promise.all([
+    L ? client.getContractEvents({ address: launcher, abi: L, fromBlock: fromBlockEarly }) : [],
+    vault && V ? client.getContractEvents({ address: vault, abi: V, fromBlock: fromBlockEarly }) : [],
+  ]).catch(() => null);
   const [vStateRaw, bookRaw, rRaw, streakRaw, tapRaw, hbRaw, owedRaw, lockedRaw, roundEndRaw, cooldownEndRaw, pairRaw] = await Promise.all([
     call(ctx, vault, V, "state"),
     call(ctx, vault, V, "bookValue"),
@@ -122,9 +147,9 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     const s = num(vStateRaw);
     state = (s < STATES.length && STATES[s] && s >= 2 ? STATES[s] : VAULT_ONLY[s]) ?? state;
   }
-  const treasury = vault ? eth(await client.getBalance({ address: vault })) : 0;
-  const pair = zero(pairRaw) ? addressOf(d, "pair", "pool") : pairRaw;
-  const [deadRaw, balRaw] = await Promise.all([call(ctx, token, ERC20, "balanceOf", [DEAD]), account ? call(ctx, token, ERC20, "balanceOf", [account]) : undefined]);
+  const [treasuryRaw, [deadRaw, balRaw], earlyReserves, tapCapRaw, trancheRaw, positionRaw, logsEarly] = await Promise.all([treasuryP, tokenBalsP, reservesP, tapCapP, trancheP, positionP, logsP]);
+  const treasury = vault ? eth(treasuryRaw) : 0;
+  const pair = zero(pairRaw) ? launcherPool ?? addressOf(d, "pair", "pool") : pairRaw;
   const deadTokens = eth(deadRaw);
   const lockedTeam = lockedRaw !== undefined ? eth(lockedRaw) : sp.E;
   const owedTeam = eth(owedRaw);
@@ -133,7 +158,8 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   // Pool price from reserves
   let poolPrice = 0, poolBnb = 0;
   if (pair && token) {
-    const [res, t0] = await Promise.all([call<readonly bigint[]>(ctx, pair, PAIR, "getReserves"), call<Address>(ctx, pair, PAIR, "token0")]);
+    const sameAsLauncher = launcherPool && pair.toLowerCase() === launcherPool.toLowerCase();
+    const [res, t0] = sameAsLauncher && earlyReserves ? earlyReserves : await Promise.all([call<readonly bigint[]>(ctx, pair, PAIR, "getReserves"), call<Address>(ctx, pair, PAIR, "token0")]);
     if (res && t0) {
       const tokIs0 = t0.toLowerCase() === token.toLowerCase();
       const tokRes = eth(tokIs0 ? res[0] : res[1]);
@@ -142,25 +168,19 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     }
   }
 
-  const tranches: Tranche[] = await Promise.all(terms.trancheBps.map(async (bps, k) => {
-    const p = await call(ctx, vault, V, "trancheProgress", [BigInt(k)]);
+  const tranches: Tranche[] = terms.trancheBps.map((bps, k) => {
+    const p = trancheRaw[k];
     // real vault: (amount, multiple x100, progress seconds, unlocked, targetUsd); older shape: (progress, unlocked)
     const tuple = Array.isArray(p) ? p : null;
     const full = tuple !== null && tuple.length >= 4;
     const progress = tuple ? num(full ? tuple[2] : tuple[0]) : num(p);
     return { bps, multiple: terms.trancheMultiple[k] ?? 0, progress, unlocked: tuple ? Boolean(full ? tuple[3] : tuple[1]) : false };
-  }));
+  });
 
   // Position
   let position: CovenantView["position"];
   if (account) {
-    const [c, acc, alloc, claimedRaw, refundedRaw] = await Promise.all([
-      call(ctx, launcher, L, pickFn(L, "contributions", "contributionOf", "committedOf"), [account]),
-      call(ctx, launcher, L, "acceptedOf", [account]),
-      call(ctx, launcher, L, "allocationOf", [account]),
-      call<boolean>(ctx, vault, V, "tokensClaimed", [account]),
-      call<boolean>(ctx, launcher, L, "refunded", [account]),
-    ]);
+    const [c, acc, alloc, claimedRaw, refundedRaw] = positionRaw ?? [];
     const cBnb = eth(c);
     const accBnb = acc !== undefined ? eth(acc) : r.failed ? 0 : (cBnb * r.Q) / Math.max(committed, 1e-18);
     position = { committed: cBnb, accepted: accBnb, refund: Math.max(0, cBnb - accBnb), allocation: alloc !== undefined ? eth(alloc) : 0, tokensClaimed: claimedRaw === true, refundClaimed: refundedRaw === true, balance: eth(balRaw) };
@@ -173,14 +193,13 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   const deposited = new Set<string>();
   // ERC-8004 outcomes this vault wrote to the agent's reputation record (OutcomeRecorded mirrors giveFeedback)
   const outcomes: CovenantView["issuer"]["outcomes"] = [];
-  const fromBlock = BigInt(d.startBlock ?? 0);
   const tsCache = new Map<bigint, number>();
   const ts = async (bn: bigint) => { if (!tsCache.has(bn)) tsCache.set(bn, Number((await client.getBlock({ blockNumber: bn })).timestamp)); return tsCache.get(bn)!; };
   try {
-    const logs = await Promise.all([
-      L ? client.getContractEvents({ address: launcher, abi: L, fromBlock }) : [],
-      vault && V ? client.getContractEvents({ address: vault, abi: V, fromBlock }) : [],
-    ]);
+    if (!logsEarly) throw new Error("log query failed");
+    const logs = logsEarly;
+    // every block's timestamp at once (one batched request), not one round trip per event
+    await Promise.all([...new Set(logs.flat().map((x) => (x as unknown as { blockNumber: bigint }).blockNumber))].map(ts));
     for (const log of logs.flat()) {
       const l = log as unknown as { eventName: string; args: Record<string, unknown>; blockNumber: bigint; transactionHash: Hash };
       const at = await ts(l.blockNumber);
@@ -227,7 +246,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     state,
     terms,
     issuer: { kind: terms.agentId > 0 ? "agent" : "human", teamWallet: terms.teamWallet, agentId: terms.agentId || undefined, outcomes },
-    raise: { committed, contributors: num(await call(ctx, launcher, L, pickFn(L, "contributorCount", "contributors"))), deadline: num(deadlineRaw), finalized: state !== "RAISING" },
+    raise: { committed, contributors: num(contributorsRaw), deadline: num(deadlineRaw), finalized: state !== "RAISING" },
     treasury,
     owedTeam,
     deadTokens,
@@ -235,7 +254,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     poolPrice: lastObs?.price || poolPrice,
     poolBnb,
     poolSeedBnb: r.qPool,
-    tap: { accrued: eth(tapRaw), capPer30d: vault ? await call<bigint>(ctx, vault, V, "tapCapPer30d").then((x) => (x === undefined ? undefined : eth(x))) : undefined, claimedThisPeriod: ledger.filter((x) => x.kind === "tap" && x.at > now - 30 * 86400).reduce((s, x) => s - x.amount, 0), lastClaim: ledger.filter((x) => x.kind === "tap").at(-1)?.at ?? null },
+    tap: { accrued: eth(tapRaw), capPer30d: vault && tapCapRaw !== undefined ? eth(tapCapRaw) : undefined, claimedThisPeriod: ledger.filter((x) => x.kind === "tap" && x.at > now - 30 * 86400).reduce((s, x) => s - x.amount, 0), lastClaim: ledger.filter((x) => x.kind === "tap").at(-1)?.at ?? null },
     tranches,
     exit: { streak: num(streakRaw), roundEndsAt: roundEndRaw !== undefined && num(roundEndRaw) > 0 ? num(roundEndRaw) : null, cooldownEndsAt: cooldownEndRaw !== undefined && num(cooldownEndRaw) > 0 ? num(cooldownEndRaw) : null },
     lastHeartbeat,
@@ -275,7 +294,11 @@ async function applyLens(ctx: ReadContext, v: CovenantView): Promise<CovenantVie
   const d = ctx.payload.deployment!;
   const LENS = abiFor(ctx.payload.abis, "CovenantLens", "Lens");
   const at = addressOf(d, "lens", "covenantLens");
-  const st = await call<Record<string, unknown>>(ctx, at, LENS, "status", [v.launcher]);
+  // status and issuer in one batched request (the vault is already known from the direct reads)
+  const [st, issEarly] = await Promise.all([
+    call<Record<string, unknown>>(ctx, at, LENS, "status", [v.launcher]),
+    v.vault ? call<Record<string, unknown>>(ctx, at, LENS, "issuer", [v.vault]) : Promise.resolve(undefined),
+  ]);
   if (!st) return v;
   const s = (k: string) => st[k];
   const state = STATES[num(s("state"))] ?? v.state;
@@ -314,7 +337,7 @@ async function applyLens(ctx: ReadContext, v: CovenantView): Promise<CovenantVie
     },
   };
   // Issuer: ERC-8004 identity and the outcomes this vault has written
-  const iss = out.vault ? await call<Record<string, unknown>>(ctx, at, LENS, "issuer", [out.vault]) : undefined;
+  const iss = out.vault ? (out.vault === v.vault ? issEarly : await call<Record<string, unknown>>(ctx, at, LENS, "issuer", [out.vault])) : undefined;
   if (iss && num(iss.agentId) > 0) {
     out.issuer = {
       ...out.issuer, kind: "agent", agentId: num(iss.agentId), teamWallet: iss.teamWallet as Address,
