@@ -2,6 +2,8 @@ import { encodeFunctionData, formatEther, getAddress, maxUint256, type Abi, type
 import { erc20Abi } from '../abi/index.js';
 import { pokeCalldata, type AtlasReport } from '../atlas/report.js';
 import type { UnsignedTx } from '../schema.js';
+import { hasFunction } from '../abi/index.js';
+import { FINALIZE_GAS } from './gas.js';
 import type { CovenantService } from './read.js';
 
 /**
@@ -20,6 +22,7 @@ export class TxBuilder {
     from?: Address | null;
     description: string;
     data?: Hex;
+    gas?: bigint;
     prerequisites?: UnsignedTx['prerequisites'];
   }): UnsignedTx {
     return {
@@ -30,6 +33,7 @@ export class TxBuilder {
       from: p.from ?? null,
       functionName: p.functionName,
       description: p.description,
+      ...(p.gas ? { gas: p.gas.toString() } : {}),
       prerequisites: p.prerequisites ?? [],
     };
   }
@@ -54,6 +58,18 @@ export class TxBuilder {
   async claimRefund(vaultOrLauncher: { vault?: string; launcher?: string }): Promise<UnsignedTx> {
     const launcher = vaultOrLauncher.launcher ? getAddress(vaultOrLauncher.launcher) : await this.launcherOf(vaultOrLauncher.vault!);
     return this.tx({ to: launcher, abi: this.svc.abis.launcher, functionName: 'claimRefund', description: 'Claim the refundable part of your commitment.' });
+  }
+
+  /** finalize() on the launcher, with the gas limit the launch needs (gas.ts). Anyone may send it after the deadline. */
+  async finalize(vaultOrLauncher: { vault?: string; launcher?: string }): Promise<UnsignedTx> {
+    const launcher = vaultOrLauncher.launcher ? getAddress(vaultOrLauncher.launcher) : await this.launcherOf(vaultOrLauncher.vault!);
+    return this.tx({
+      to: launcher,
+      abi: this.svc.abis.launcher,
+      functionName: 'finalize',
+      gas: FINALIZE_GAS,
+      description: `Close the raise after its deadline: launch the token and fund the vault, or mark the raise failed below its minimum. Send with gas ${FINALIZE_GAS} (the launch refuses less than 15M).`,
+    });
   }
 
   claimTokens(vault: string): UnsignedTx {
@@ -115,6 +131,39 @@ export class TxBuilder {
       abi: this.svc.abis.vault,
       functionName: 'declareAbandoned',
       description: 'The team or agent has been silent past its heartbeat window: end the tap, burn locked team tokens, open the treasury to holders with no fee.',
+    });
+  }
+
+  /** releaseTeam(): move unlocked team tranches to the team wallet. Anyone may send it. */
+  releaseTeam(vault: string): UnsignedTx {
+    return this.tx({ to: vault as Address, abi: this.svc.abis.vault, functionName: 'releaseTeam', description: 'Release team tokens whose performance tranche has unlocked to the team wallet.' });
+  }
+
+  /** depositRevenue(tag) when the vault has it, else a plain BNB transfer: either raises book value for every holder. */
+  depositRevenue(vault: string, amountWei: bigint, tag: Hex, from: Address | null): UnsignedTx {
+    const v = getAddress(vault);
+    if (!hasFunction(this.svc.abis.vault, 'depositRevenue')) {
+      return { ...this.tx({ to: v, abi: this.svc.abis.vault, functionName: 'transfer', data: '0x', value: amountWei, from, description: '' }), functionName: '(plain BNB transfer)', description: `Send ${formatEther(amountWei)} BNB of revenue to the vault. It raises book value for every holder.` };
+    }
+    return this.tx({
+      to: v,
+      abi: this.svc.abis.vault,
+      functionName: 'depositRevenue',
+      args: [tag],
+      value: amountWei,
+      from,
+      description: `Deposit ${formatEther(amountWei)} BNB of revenue into the vault. It raises book value for every holder; from the team wallet it also counts as a heartbeat.`,
+    });
+  }
+
+  /** windDown(): the team closes the covenant for good. */
+  async windDown(vault: string): Promise<UnsignedTx> {
+    return this.tx({
+      to: vault as Address,
+      abi: this.svc.abis.vault,
+      functionName: 'windDown',
+      from: await this.team(vault),
+      description: 'IRREVERSIBLE: close the covenant. The tap stops for good, locked team tokens burn and every holder can redeem at book with no fee, forever. Accrued tap stays claimable.',
     });
   }
 

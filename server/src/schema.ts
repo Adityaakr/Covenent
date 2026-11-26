@@ -194,12 +194,40 @@ const UnsignedTxBase = z.object({
   from: Address.nullable(),
   functionName: z.string(),
   description: z.string(),
+  /** gas limit to send with, decimal; set only when an estimate is not enough (finalize needs 15M+ before the launch) */
+  gas: Wei.optional(),
 });
 export const UnsignedTx = UnsignedTxBase.extend({
   /** steps the signer needs first, e.g. a token approval before redeem */
   prerequisites: z.array(UnsignedTxBase),
 });
 export type UnsignedTx = z.infer<typeof UnsignedTx>;
+
+/** eth_call of an unsigned transaction at the latest block, before anyone signs it. */
+export const Simulation = z.object({
+  /** true: the call succeeds now from `from`; false: it would revert (see error); null: not simulated */
+  ok: z.boolean().nullable(),
+  from: Address.nullable(),
+  blockNumber: z.string().nullable(),
+  /** eth_estimateGas, decimal; null when the call reverts or was not simulated */
+  gasEstimate: Wei.nullable(),
+  /** decoded custom error name (e.g. SaleClosed, NotRedeemable), when the revert carried one */
+  error: z.string().nullable(),
+  /** decoded error arguments, as strings */
+  errorArgs: z.array(z.string()),
+  /** what the result means and what to do next */
+  note: z.string(),
+});
+export type Simulation = z.infer<typeof Simulation>;
+
+/** What every Covenant MCP write tool returns. Nothing is signed or sent. */
+export const PreparedTx = z.object({
+  unsignedTransaction: UnsignedTx,
+  simulation: Simulation,
+  howToSend: z.string(),
+  note: z.string().optional(),
+});
+export type PreparedTx = z.infer<typeof PreparedTx>;
 
 export const PokeReport = z.object({
   mode: z.enum(['atlas', 'local-test-signer']),

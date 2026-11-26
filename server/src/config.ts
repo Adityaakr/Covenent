@@ -19,6 +19,8 @@ export interface Deployments {
   startBlock?: number;
   /** written by contracts' DevDeploy: first block of the stack (on a fork, reading logs below it hits the upstream RPC) */
   deployedAtBlock?: number;
+  /** local.json: `mock` or `fork`; a lifted flat record: `testnet` (chain 97) or `flat-record` */
+  mode?: string;
   addresses: Record<string, unknown>;
   demo?: Record<string, unknown>;
 }
@@ -43,18 +45,52 @@ function env(name: string): string | undefined {
   return v === undefined || v.trim() === '' ? undefined : v.trim();
 }
 
+/** contracts/deployments/<file> */
+export const deploymentFile = (name: string) => path.join(REPO_ROOT, 'contracts', 'deployments', name);
+
+/**
+ * Which deployment record to read: COVENANT_DEPLOYMENTS when set, else COVENANT_NETWORK (`testnet` reads the
+ * committed BNB testnet record 97.json, `local` the dev chain's local.json), else local.json.
+ */
 export function deploymentsPath(): string {
-  return env('COVENANT_DEPLOYMENTS') ?? path.join(REPO_ROOT, 'contracts', 'deployments', 'local.json');
+  const explicit = env('COVENANT_DEPLOYMENTS');
+  if (explicit) return explicit;
+  const network = env('COVENANT_NETWORK')?.toLowerCase();
+  if (network === 'testnet' || network === '97' || network === 'bsc-testnet') return deploymentFile('97.json');
+  return deploymentFile('local.json');
 }
 
 export function abiDir(): string {
   return env('COVENANT_ABI_DIR') ?? path.join(REPO_ROOT, 'contracts', 'abi');
 }
 
+/** Public BNB testnet RPC used when a record names none (the web app's first choice too). */
+export const TESTNET_PUBLIC_RPC = 'https://bsc-testnet-rpc.publicnode.com';
+/** First block of the 26 Nov 2026 BNB testnet deployment (contracts/deployments/97.json; scripts/testnet-up.sh). */
+export const TESTNET_START_BLOCK = 144_956_048;
+
+/**
+ * The app reads `{chainId, rpcUrl, addresses{...}}`. Deploy.s.sol writes a flat record (`{chainId, oracle, lens,
+ * ...}`, contracts/deployments/97.json); lift its address fields into `addresses` so the committed testnet record
+ * works as is, with the public RPC and the deployment block filled in for chain 97.
+ */
+export function normalizeDeployments(raw: Record<string, unknown>): Deployments {
+  if (raw.addresses && typeof raw.addresses === 'object') return raw as unknown as Deployments;
+  const chainId = Number(raw.chainId ?? 0);
+  const addresses = Object.fromEntries(Object.entries(raw).filter(([, v]) => typeof v === 'string' && isAddress(v)));
+  return {
+    chainId,
+    rpcUrl: typeof raw.rpcUrl === 'string' ? raw.rpcUrl : chainId === 97 ? TESTNET_PUBLIC_RPC : 'http://127.0.0.1:8545',
+    ...(chainId === 97 ? { startBlock: TESTNET_START_BLOCK } : {}),
+    mode: chainId === 97 ? 'testnet' : 'flat-record',
+    addresses,
+    demo: {},
+  } as Deployments;
+}
+
 export function loadDeployments(file = deploymentsPath()): Deployments | null {
   if (!existsSync(file)) return null;
-  const raw = JSON.parse(readFileSync(file, 'utf8')) as Deployments;
-  return raw;
+  return normalizeDeployments(JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>);
 }
 
 const SKIP_KEY = /factory|implementation|impl$|beacon|registry|portal|router|guardian|template/i;

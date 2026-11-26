@@ -14,8 +14,42 @@ import {
 import { readPushBnbUsd } from '../atlas/report.js';
 import { EventIndex, lastBnbUsd, ledgerTotals } from './events.js';
 import { exitEta, toNum, WAD } from './math.js';
+import { sanitizeText } from '../safety.js';
 
 const LAUNCHER_STATES = ['RAISING', 'FAILED', 'LAUNCHED'] as const;
+
+/** A covenant found from any of its addresses. `vault` is null while the raise has not launched. */
+export interface ResolvedCovenant {
+  vault: Address | null;
+  launcher: Address | null;
+  token: Address | null;
+  pair: Address | null;
+  matchedAs: 'vault' | 'launcher' | 'token' | 'pool';
+}
+
+export type RaiseSummary = NonNullable<CovenantSheet['launcherInfo']> & { launcher: Address; factory: Address; description: string | null };
+
+export interface Position {
+  wallet: Address;
+  bnbBalanceWei: string;
+  tokenBalanceWei: string | null;
+  contributedWei: string | null;
+  acceptedWei: string | null;
+  allocationTokensWei: string | null;
+  claimableTokensWei: string | null;
+  tokensClaimed: boolean | null;
+  refundableWei: string | null;
+  refunded: boolean | null;
+  isTeamWallet: boolean | null;
+}
+
+function matchedAs(r: CovenantRef, a: Address): ResolvedCovenant['matchedAs'] {
+  const k = a.toLowerCase();
+  if (r.vault.toLowerCase() === k) return 'vault';
+  if (r.launcher?.toLowerCase() === k) return 'launcher';
+  if (r.token?.toLowerCase() === k) return 'token';
+  return 'pool';
+}
 
 export function stateName(v: unknown): CovenantState {
   if (typeof v === 'number' || typeof v === 'bigint') return STATE_ORDER[Number(v)] ?? 'UNKNOWN';
@@ -468,6 +502,113 @@ export class CovenantService {
       }
     }
     return info;
+  }
+
+  /** One view, or null when the ABI lacks it or the call reverts. */
+  async tryRead<T = unknown>(address: Address, abi: Abi, fn: string, args: unknown[] = []): Promise<T | null> {
+    if (!hasFunction(abi, fn)) return null;
+    try {
+      return (await this.client.readContract({ address, abi, functionName: fn, args })) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  private findRef(a: Address): CovenantRef | undefined {
+    const k = a.toLowerCase();
+    return [...this.refs.values()].find((r) =>
+      [r.vault, r.launcher, r.token, r.pair].some((x) => x !== undefined && x.toLowerCase() === k),
+    );
+  }
+
+  /**
+   * Any Covenant address (vault, token, launcher or pool) to its covenant. A launcher still raising has no vault yet:
+   * it comes back with `vault: null`, which the raise tools (commit, finalize, claim_refund) accept.
+   */
+  async resolve(input: string): Promise<ResolvedCovenant> {
+    if (!isAddress(input)) throw new Error(`not a 0x address: ${JSON.stringify(String(input).slice(0, 60))}`);
+    const a = getAddress(input);
+    let hit = this.findRef(a);
+    if (!hit) {
+      await this.discover().catch(() => undefined);
+      hit = this.findRef(a);
+    }
+    if (hit) return { vault: hit.vault, launcher: hit.launcher ?? null, token: hit.token ?? null, pair: hit.pair ?? null, matchedAs: matchedAs(hit, a) };
+    // not discovered: ask the address itself what it is
+    const vaultOfLauncher = await this.tryRead<Address>(a, this.abis.launcher, 'vault');
+    const launcherState = await this.tryRead<number | bigint>(a, this.abis.launcher, 'state');
+    const saleDeadline = await this.tryRead(a, this.abis.launcher, hasFunction(this.abis.launcher, 'saleDeadline') ? 'saleDeadline' : 'deadline');
+    if (launcherState !== null && saleDeadline !== null) {
+      const vault = vaultOfLauncher && vaultOfLauncher !== zeroAddress ? getAddress(vaultOfLauncher) : null;
+      if (vault) this.addCovenant({ vault, launcher: a });
+      const token = await this.tryRead<Address>(a, this.abis.launcher, 'token');
+      return { vault, launcher: a, token: token && token !== zeroAddress ? getAddress(token) : null, pair: null, matchedAs: 'launcher' };
+    }
+    const launcherOfVault = await this.tryRead<Address>(a, this.abis.vault, 'launcher');
+    const team = await this.tryRead<Address>(a, this.abis.vault, 'teamWallet');
+    if (launcherOfVault !== null && team !== null) {
+      const launcher = launcherOfVault !== zeroAddress ? getAddress(launcherOfVault) : null;
+      this.addCovenant({ vault: a, launcher: launcher ?? undefined });
+      return { vault: a, launcher, token: null, pair: null, matchedAs: 'vault' };
+    }
+    throw new Error(
+      `${a} is not a Covenant vault, token, launcher or pool on chain ${this.cfg.chainId} (checked the deployment's launcher factories and the address itself)`,
+    );
+  }
+
+  /** Launchers from the deployment's factories that have not launched: open raises, and failed ones with refunds. */
+  async raises(): Promise<RaiseSummary[]> {
+    const factoryAbi = [
+      { type: 'function', name: 'allLaunchers', stateMutability: 'view', inputs: [], outputs: [{ type: 'address[]' }] },
+    ] as const;
+    const out: RaiseSummary[] = [];
+    for (const f of this.cfg.launcherFactories ?? []) {
+      const launchers = await this.client.readContract({ address: f, abi: factoryAbi, functionName: 'allLaunchers' }).catch(() => [] as readonly Address[]);
+      for (const l of launchers) {
+        const vault = await this.tryRead<Address>(l, this.abis.launcher, 'vault');
+        if (vault && vault !== zeroAddress) continue;
+        const info = (await this.launcherInfo(getAddress(l)))!;
+        const description = await this.tryRead<string>(l, this.abis.launcher, 'description');
+        out.push({ launcher: getAddress(l), factory: getAddress(f), ...info, description: sanitizeText(description, 280) });
+      }
+    }
+    return out;
+  }
+
+  /** A wallet's place in one covenant: tokens held, sale allocation left to claim, commitment and refund. */
+  async position(target: ResolvedCovenant, wallet: Address): Promise<Position> {
+    const L = this.abis.launcher;
+    const V = this.abis.vault;
+    const l = target.launcher;
+    const v = target.vault;
+    const token = target.token ?? (v ? await this.tryRead<Address>(v, V, hasFunction(V, 'taxToken') ? 'taxToken' : 'token') : null);
+    const [bnb, balance, contributed, acceptedOf, allocation, refundOf, refunded, claimable, claimed, team] = await Promise.all([
+      this.client.getBalance({ address: wallet }),
+      token && token !== zeroAddress ? this.tokenBalance(token, wallet).catch(() => null) : Promise.resolve(null),
+      l ? this.tryRead<bigint>(l, L, 'contributions', [wallet]) : null,
+      l ? this.tryRead<bigint>(l, L, 'acceptedOf', [wallet]) : null,
+      l ? this.tryRead<bigint>(l, L, 'allocationOf', [wallet]) : null,
+      l ? this.tryRead<bigint>(l, L, 'refundOf', [wallet]) : null,
+      l ? this.tryRead<boolean>(l, L, 'refunded', [wallet]) : null,
+      v ? this.tryRead<bigint>(v, V, 'claimableTokens', [wallet]) : null,
+      v ? this.tryRead<boolean>(v, V, 'tokensClaimed', [wallet]) : null,
+      v ? this.tryRead<Address>(v, V, 'teamWallet') : null,
+    ]);
+    // the mock launcher has no refundOf: contributions - acceptedOf, unless already refunded
+    const refundable = refundOf ?? (contributed !== null && acceptedOf !== null && refunded !== true ? contributed - acceptedOf : null);
+    return {
+      wallet,
+      bnbBalanceWei: bnb.toString(),
+      tokenBalanceWei: str(balance),
+      contributedWei: str(contributed),
+      acceptedWei: str(acceptedOf),
+      allocationTokensWei: str(allocation),
+      claimableTokensWei: str(claimable ?? (claimed === true ? 0n : null)),
+      tokensClaimed: claimed,
+      refundableWei: str(refundable),
+      refunded,
+      isTeamWallet: team ? getAddress(team) === wallet : null,
+    };
   }
 
   async tokenBalance(token: Address, holder: Address): Promise<bigint> {

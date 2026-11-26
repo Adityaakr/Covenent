@@ -9,6 +9,7 @@ import { downside } from '../covenant/downside.js';
 import { CovenantService } from '../covenant/read.js';
 import { TxBuilder } from '../covenant/tx.js';
 import { readAlerts } from '../keeper/alerts.js';
+import { assertValueWithinCap, RateLimiter, redactUrl } from '../safety.js';
 import type { CovenantSheet, Health, PokeReport, SimulatorResult } from '../schema.js';
 import { CMC_ROUTES, CmcClient } from './cmc.js';
 import { Faucet, FaucetError } from './faucet.js';
@@ -73,6 +74,18 @@ export function createApp(deps: AppDeps) {
     return value;
   };
 
+  // Routes that build transactions or fetch signed reports: per-IP limits (API_TX_RATE_PER_MIN, default 60/min).
+  const txLimiter = new RateLimiter(Number(process.env.API_TX_RATE_PER_MIN ?? 60));
+  const limitTx = async (c: Context, next: () => Promise<void>) => {
+    const r = txLimiter.take(clientIp(c) ?? 'unknown');
+    c.header('x-ratelimit-remaining', String(r.remaining));
+    if (!r.ok) {
+      c.header('retry-after', String(r.retryAfterSeconds));
+      return c.json({ error: `rate limited: retry in ${r.retryAfterSeconds} s` }, 429);
+    }
+    await next();
+  };
+
   const faucet = new Faucet(cfg, svc.client);
   const fourmeme = new FourMeme(cfg, svc.client);
   const app = new Hono();
@@ -93,7 +106,7 @@ export function createApp(deps: AppDeps) {
     const body: Health = {
       ok: block !== null,
       chainId: cfg.chainId,
-      rpcUrl: cfg.rpcUrl,
+      rpcUrl: redactUrl(cfg.rpcUrl),
       blockNumber: block,
       deploymentsLoaded: cfg.deployments !== null,
       abiSource: svc.abis.published.length ? svc.abis.published : ['fallback (docs/DESIGN.md)'],
@@ -128,6 +141,9 @@ export function createApp(deps: AppDeps) {
   });
 
   /** Unsigned transactions for the web (or any wallet). Nothing is signed server-side. */
+  app.use('/api/covenants/:vault/tx/*', limitTx);
+  app.use('/api/poke-report', limitTx);
+  app.use('/poke-report', limitTx);
   app.get('/api/covenants/:vault/tx/:action', async (c) => {
     const vault = vaultParam(c);
     const action = c.req.param('action');
@@ -137,10 +153,19 @@ export function createApp(deps: AppDeps) {
       case 'commit': {
         const amount = bigintQuery(c, 'amount', { ether: true });
         if (!amount) throw new HttpError(400, 'amount (wei or decimal BNB) required');
+        try {
+          assertValueWithinCap(cfg.chainId, amount);
+        } catch (e) {
+          throw new HttpError(400, (e as Error).message);
+        }
         return c.json(await txb.commit({ vault }, amount));
       }
       case 'claim-refund':
         return c.json(await txb.claimRefund({ vault }));
+      case 'finalize':
+        return c.json(await txb.finalize({ vault }));
+      case 'release-team':
+        return c.json(txb.releaseTeam(vault));
       case 'claim-tokens':
         return c.json(txb.claimTokens(vault));
       case 'redeem': {
