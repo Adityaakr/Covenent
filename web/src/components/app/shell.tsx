@@ -147,7 +147,7 @@ function Crumbs() {
   const path = usePathname();
   const { list } = useCovenants();
   const parts = path.split("/").filter(Boolean).slice(1);
-  const top: Record<string, string> = { create: "Create a covenant", simulator: "Launch simulator", demo: "Demo script", portfolio: "Portfolio", covenants: "Covenants", faucet: "Get test funds" };
+  const top: Record<string, string> = { lite: "Four.meme covenant", create: "Create a covenant", simulator: "Launch simulator", demo: "Demo script", portfolio: "Portfolio", covenants: "Covenants", faucet: "Get test funds" };
   if (parts[0] === "c") {
     const v = list.find((x) => x.id.toLowerCase() === (parts[1] ?? "").toLowerCase());
     const sub = parts[2] ? { raise: "Raise", settle: "Settlement", redeem: "Redeem", team: v?.issuer.kind === "agent" ? "Agent console" : "Team console" }[parts[2]] ?? null : null;

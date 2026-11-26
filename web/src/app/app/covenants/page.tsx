@@ -14,6 +14,7 @@ import type { CovenantState, CovenantView } from "@/lib/covenant/types";
 import { useCovenants } from "@/lib/data/hooks";
 import { bnb, price, signedPct } from "@/lib/format";
 import { BnbCoin } from "@/components/app/bnb";
+import { LiteList } from "@/components/app/lite";
 
 type Filter = "all" | "raising" | "active" | "under" | "exit" | "closed";
 const MATCH: Record<Filter, (s: CovenantState) => boolean> = {
@@ -107,6 +108,7 @@ function Covenants() {
           </div>
         </>
       )}
+      {online ? <LiteList /> : null}
     </main>
   );
 }

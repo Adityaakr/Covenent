@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "wagmi";
-import { FourLite } from "@/components/app/four-lite";
+import { FourmemeCreate } from "@/components/app/lite";
 import { Icon, type IconName } from "@/components/app/icons";
 import { BnbUnit, Meter, Note, Segmented, TokenAvatar, cx } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
@@ -19,8 +19,6 @@ import { useSource } from "@/lib/data/hooks";
 import { bnb, bps, multiple, pct, price, tokens, usd } from "@/lib/format";
 import { ThinkingMark } from "@/components/app/mark";
 
-const subscribeHash = (cb: () => void) => { window.addEventListener("hashchange", cb); return () => window.removeEventListener("hashchange", cb); };
-
 type Mine = { state: "idle" | "mining" | "found"; tries: number; rate: number; salt?: `0x${string}`; address?: Address; ms?: number };
 
 const STEPS: { title: string; sub: string; icon: IconName }[] = [
@@ -32,6 +30,10 @@ const STEPS: { title: string; sub: string; icon: IconName }[] = [
 ];
 
 export default function CreatePage() {
+  return <Suspense fallback={<main className="page" />}><CovenantCreate /></Suspense>;
+}
+
+function CovenantCreate() {
   const router = useRouter();
   const src = useSource();
   const wallet = useWallet();
@@ -69,11 +71,9 @@ export default function CreatePage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const worker = useRef<Worker | null>(null);
-  // The venue: Flap (default) or Four.meme; /app/create#four opens the Four.meme path directly.
-  const hashFour = useSyncExternalStore(subscribeHash, () => window.location.hash === "#four", () => false);
-  const [venuePick, setVenuePick] = useState<"flap" | "four" | null>(null);
-  const venue = venuePick ?? (hashFour ? "four" : "flap");
-  const setVenue = (v: "flap" | "four") => { setVenuePick(v); try { history.replaceState(null, "", v === "four" ? "#four" : window.location.pathname); } catch { /* no history */ } };
+  // The venue: Flap (default) or Four.meme; /app/create?venue=fourmeme opens the Four.meme path (Covenant Lite).
+  const venue = useSearchParams().get("venue") === "fourmeme" ? "four" : "flap";
+  const setVenue = (v: "flap" | "four") => router.replace(v === "four" ? "/app/create?venue=fourmeme" : "/app/create", { scroll: false });
   const [step, setStep] = useState(0);
   const [tried, setTried] = useState<number[]>([]);
   const set = <K extends keyof Terms>(k: K, val: Terms[K]) => setT((x) => ({ ...x, [k]: val }));
@@ -182,7 +182,7 @@ export default function CreatePage() {
         <div className="stack-sm" style={{ display: "grid" }}>
           <span className="eyebrow">Create a covenant</span>
           <h1 className="h-page">Write the covenant</h1>
-          <p className="lede">Nothing can be edited later except lowering the tap.</p>
+          <p className="lede">{venue === "four" ? "On Four.meme, the founder\u2019s share of trading tax goes to a vault with a budget cap and an abandonment switch." : "Nothing can be edited later except lowering the tap."}</p>
         </div>
         {venue === "flap" ? <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}><span className="dot" />{src.mode === "live" ? "Creates on the local chain" : src.mode === "checking" ? "Checking the local chain" : "Offline: connect to create"}</span> : null}
       </div>
@@ -192,7 +192,7 @@ export default function CreatePage() {
         <button type="button" aria-pressed={venue === "four"} onClick={() => setVenue("four")}><span className="icon-tile"><Icon name="coins" size={17} /></span><span><b className="t-s ink" style={{ display: "block" }}>Four.meme tax token</b><span className="t-xs muted w5">Covenant Lite: a budget cap and the abandonment switch on the founder&apos;s tax</span></span><span className="radio" /></button>
       </div>
 
-      {venue === "four" ? <FourLite /> : (
+      {venue === "four" ? <FourmemeCreate /> : (
         <>
       <nav className="steps" aria-label="Steps">
         {STEPS.map((s, k) => (
