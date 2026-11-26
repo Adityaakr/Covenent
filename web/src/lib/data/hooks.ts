@@ -7,7 +7,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { createPublicClient, http, type PublicClient } from "viem";
-import { anvil, bscTestnet, LOCAL_RPC, makeLocalChain } from "@/lib/chain/chains";
+import { anvil, bscTestnet, chainName, LOCAL_RPC, makeLocalChain } from "@/lib/chain/chains";
 import { abiFor, addressOf, hasFn, launchersOf, type DeploymentPayload } from "@/lib/chain/deployment";
 import { readCovenant } from "@/lib/chain/reader";
 import type { Address, CovenantView } from "@/lib/covenant/types";
@@ -64,16 +64,16 @@ async function probe(): Promise<SourceStatus> {
       return { mode: "offline", reason: "Deployment names no launcher yet", payload };
     }
     const code = await client.getCode({ address: launchers[0]! });
-    if (!code || code === "0x") return { mode: "offline", reason: "Launcher has no code: the local chain was reset", payload };
+    if (!code || code === "0x") return { mode: "offline", reason: `Launcher has no code on ${chainName(d.chainId)}${d.chainId === 31337 || d.mode === "fork" ? ": the local chain was reset" : ""}`, payload };
     return { mode: "live", reason: `${launchers.length} covenant${launchers.length > 1 ? "s" : ""} on chain ${id}`, payload, client, chainId: id, launchers };
   } catch {
-    return { mode: "offline", reason: `Local chain not reachable at ${d.rpcUrl || LOCAL_RPC}`, payload };
+    return { mode: "offline", reason: `${chainName(d.chainId)} not reachable at ${d.rpcUrl || LOCAL_RPC}`, payload };
   }
 }
 
 export function useSource(): SourceStatus {
   const q = useQuery({ queryKey: ["source"], queryFn: probe, refetchInterval: 15_000, staleTime: 10_000 });
-  return q.data ?? { mode: "checking", reason: "Checking for a local deployment" };
+  return q.data ?? { mode: "checking", reason: "Checking for the deployment" };
 }
 
 function useLiveCovenants(src: SourceStatus, account?: Address) {

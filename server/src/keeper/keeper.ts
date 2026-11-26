@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { BaseError, ContractFunctionRevertedError, decodeErrorResult, encodeFunctionData, type Abi, getAddress, type Address, type Hex, type PublicClient, type WalletClient } from 'viem';
-import { hasFunction, taxTokenAbi } from '../abi/index.js';
+import { erc20Abi, hasFunction, taxTokenAbi } from '../abi/index.js';
 import { fetchBnbUsdReport, pokeCalldata, type AtlasReport } from '../atlas/report.js';
 import { assertSigningAllowed, walletClient } from '../chain.js';
 import type { CovenantRef, ServerConfig } from '../config.js';
@@ -199,7 +199,31 @@ export class Keeper {
     }
   }
 
-  /** Trading tax sits in the token's tax processor until someone calls dispatch(). */
+  /**
+   * BNB the processor holds beyond the balances it keeps for itself, i.e. what dispatch() would send on. null when the
+   * processor's views or the quote token are unknown (then dispatch anyway, as before).
+   */
+  async dispatchableTax(processor: Address): Promise<bigint | null> {
+    if (!this.cfg.wbnb) return null;
+    try {
+      const read = (functionName: 'feeQuoteBalance' | 'marketQuoteBalance' | 'lpQuoteBalance' | 'pendingDividendQuoteTokenBalance') =>
+        this.client.readContract({ address: processor, abi: taxTokenAbi, functionName }) as Promise<bigint>;
+      const [wbnb, native, fee, market, lp, dividend] = await Promise.all([
+        this.client.readContract({ address: this.cfg.wbnb, abi: erc20Abi, functionName: 'balanceOf', args: [processor] }) as Promise<bigint>,
+        this.client.getBalance({ address: processor }),
+        read('feeQuoteBalance'), read('marketQuoteBalance'), read('lpQuoteBalance'), read('pendingDividendQuoteTokenBalance'),
+      ]);
+      return dispatchableQuote({ wbnb, native, reserved: [fee, market, lp, dividend] });
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Trading tax collects in the token as tokens. Flap's processor swaps it to BNB on a sell only once it is worth
+   * enough (on BNB testnet about 0.714 BNB, $500 at the Portal's internal $700/BNB), and dispatch() then sends the
+   * vault its share. Dispatching before that moves nothing and only costs gas, so the keeper waits for BNB to be there.
+   */
   async dispatchTax(ref: CovenantRef, token: Address | null, now: number): Promise<Hex | null> {
     if (!this.cfg.keeper.dispatchTax || !token) return null;
     const r = this.rec(ref.vault);
@@ -211,6 +235,8 @@ export class Keeper {
     } catch {
       return null; // not a Flap tax token (or no processor view): nothing to dispatch
     }
+    const pending = await this.dispatchableTax(processor);
+    if (pending === 0n) return null; // tax not liquidated yet: nothing would move
     try {
       const tx = await this.send(ref.vault, 'dispatch', processor, encodeFunctionData({ abi: taxTokenAbi, functionName: 'dispatch' }), now);
       this.log(`dispatched tax for ${ref.vault} tx ${tx}`);
@@ -286,4 +312,11 @@ export class Keeper {
       release();
     };
   }
+}
+
+/** BNB (native plus wrapped) a Flap tax processor holds beyond its own reserved balances; never below zero. */
+export function dispatchableQuote(b: { wbnb: bigint; native: bigint; reserved: bigint[] }): bigint {
+  const held = b.wbnb + b.native;
+  const kept = b.reserved.reduce((a, x) => a + x, 0n);
+  return held > kept ? held - kept : 0n;
 }

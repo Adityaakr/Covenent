@@ -103,7 +103,7 @@ export default function DemoPage() {
           </div>
         ) : null}
       </section>
-      <p className="t-xs muted w5">Every scene reads a real covenant on the local chain that is in that stage now: the contracts&apos; demo factory runs the same rules with short timers (exit streak 3 minutes, round 5 minutes, heartbeat 10 minutes). Use ← and → to step.</p>
+      <p className="t-xs muted w5">Every scene reads a real covenant on the configured chain that is in that stage now: the contracts&apos; demo factory runs the same rules with short timers (exit streak 3 minutes, round 5 minutes, heartbeat 10 minutes). Use ← and → to step.</p>
     </div>
   );
 }

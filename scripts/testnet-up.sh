@@ -5,6 +5,8 @@
 #                                    the web app on http://localhost:8080, all on chain 97 and contracts/deployments/97.json
 #   scripts/testnet-up.sh --prod     serve a production build of the web app
 #   scripts/testnet-up.sh issuer     (re)start only the issuer agent, e.g. after its first covenant was created
+#   scripts/testnet-up.sh stop-issuer   stop the issuer agent: nothing sends heartbeats any more, and once the covenant's
+#                                    heartbeat window passes the keeper declares it abandoned (holders redeem at book)
 #   scripts/testnet-up.sh status     what is running, with log paths
 #   scripts/testnet-up.sh stop       stop every process
 #
@@ -152,6 +154,7 @@ start_issuer() {
 case "${1:-}" in
   stop) stop_all; exit 0 ;;
   status) status; exit 0 ;;
+  stop-issuer) stop_one issuer; exit 0 ;;
   issuer) [ -f "$KEYS" ] || write_keys; write_deploy; server_env; start_issuer; status; exit 0 ;;
 esac
 
@@ -159,7 +162,7 @@ PROD=0
 for arg in "$@"; do
   case "$arg" in
     --prod) PROD=1 ;;
-    -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done

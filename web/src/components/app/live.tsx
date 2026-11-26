@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { chainName, faucetFor, networkKind, stackCommand } from "@/lib/chain/chains";
 import { useSource, type SourceStatus } from "@/lib/data/hooks";
 import { Icon } from "./icons";
 import { TokenAvatar } from "./ui";
@@ -30,16 +31,21 @@ export function CopyCode({ text, wrap }: { text: string; wrap?: boolean }) {
   );
 }
 
-/** The state every live screen shows until the local chain answers. */
-export function ConnectChain({ source, title = "Connect to the local chain" }: { source: SourceStatus; title?: string }) {
+/** The state every live screen shows until the configured chain answers (a local node, BNB testnet or BNB Chain). */
+export function ConnectChain({ source, title }: { source: SourceStatus; title?: string }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
-  if (source.mode === "checking") return <p className="loading-line"><ThinkingMark size={16} />Looking for the local chain…</p>;
+  const id = source.payload?.deployment?.chainId;
+  const kind = networkKind(id);
+  const name = id !== undefined && kind !== "local" ? chainName(id) : "the local chain";
+  const fc = faucetFor(id);
+  title ??= `Connect to ${name}`;
+  if (source.mode === "checking") return <p className="loading-line"><ThinkingMark size={16} />Looking for {name}…</p>;
   return (
     <section className="connect rise" aria-label={title}>
       <div className="connect-l">
         <div className="connect-bots" aria-hidden>{["vault-a", "keeper-b", "issuer-c"].map((s) => <TokenAvatar key={s} seed={s} size={40} />)}</div>
-        <span className="eyebrow">Local chain · not connected</span>
+        <span className="eyebrow">{kind === "local" ? "Local chain" : name} · not connected</span>
         <h2 className="h-page" style={{ fontSize: 28 }}>{title}</h2>
         <p className="t-s muted w5" style={{ maxWidth: "52ch" }}>The operating stack for autonomous ventures reads every figure from the contracts or the Covenant server, so nothing shows until they answer. <span className="ink">{source.reason}.</span></p>
         <div className="row wrap-ok" style={{ gap: 8, marginTop: 4 }}>
@@ -50,9 +56,9 @@ export function ConnectChain({ source, title = "Connect to the local chain" }: {
         </div>
       </div>
       <ol className="connect-steps">
-        <li className="cstep"><span className="n">1</span><div><b>Start the stack</b><span>Chain, contracts, a live covenant, the API, keeper and issuer agent.</span><br /><CopyCode text="scripts/dev-all.sh" /></div></li>
-        <li className="cstep"><span className="n">2</span><div><b>The app finds the deployment</b><span>It reads contracts/deployments/local.json on every request; this page updates by itself.</span></div></li>
-        <li className="cstep"><span className="n">3</span><div><b>Get test funds and connect</b><span>Mint test BNB on the local chain, then pick a wallet or a local test account.</span><br /><Link className="tlink" href="/app/settings/funds" style={{ marginTop: 6 }}>Get test funds<Icon name="chevronRight" size={14} /></Link></div></li>
+        <li className="cstep"><span className="n">1</span><div><b>Start the stack</b><span>{kind === "local" ? "Chain, contracts, a live covenant, the API, keeper and issuer agent." : `The API, keeper and issuer agent against the contracts on ${name}.`}</span><br /><CopyCode text={stackCommand(id)} /></div></li>
+        <li className="cstep"><span className="n">2</span><div><b>The app finds the deployment</b><span>It reads the deployment record on every request{kind === "testnet" ? " (contracts/deployments/97.json)" : kind === "local" ? " (contracts/deployments/local.json)" : ""}; this page updates by itself.</span></div></li>
+        <li className="cstep"><span className="n">3</span><div><b>{fc ? "Get test BNB and connect" : "Connect a wallet"}</b><span>{kind === "local" ? "Mint test BNB on the local chain, then pick a wallet or a local test account." : kind === "testnet" ? "Take test BNB from BNB Chain's faucet, then connect with email or a wallet." : "Connect with email or a wallet."}</span>{fc ? <><br />{fc.external ? <a className="tlink" href={fc.href} target="_blank" rel="noreferrer" style={{ marginTop: 6 }}>{fc.label}<Icon name="chevronRight" size={14} /></a> : <Link className="tlink" href={fc.href} style={{ marginTop: 6 }}>{fc.label}<Icon name="chevronRight" size={14} /></Link>}</> : null}</div></li>
       </ol>
     </section>
   );

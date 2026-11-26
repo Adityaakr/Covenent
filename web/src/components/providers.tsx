@@ -13,10 +13,12 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyn
 import { http, type Address } from "viem";
 import { WagmiProvider, createConfig, useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected, mock } from "wagmi/connectors";
-import { ANVIL_ACCOUNTS, anvil, bscTestnet, configureLocalChain, type LocalChainInfo } from "@/lib/chain/chains";
+import { ANVIL_ACCOUNTS, ANVIL_ROLES, anvil, bscTestnet, configureLocalChain, localAccountsAllowed, type LocalChainInfo } from "@/lib/chain/chains";
 
 const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
-const DEV_WALLET = process.env.NEXT_PUBLIC_DEV_WALLET === "1";
+const DEV_WALLET_FLAG = process.env.NEXT_PUBLIC_DEV_WALLET === "1";
+/** anvil's public accounts only on a chain running on this machine, never on BNB testnet or BNB Chain. */
+const devWallet = () => DEV_WALLET_FLAG && localAccountsAllowed();
 const FORCED = process.env.NEXT_PUBLIC_WALLET_MODE;
 /** Origins the Privy app allows (its dashboard setting). Elsewhere Privy's iframe is blocked, so browser wallets lead. */
 const PRIVY_ORIGINS = (process.env.NEXT_PUBLIC_PRIVY_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -26,12 +28,19 @@ export function privyOriginAllowed(): boolean {
 
 export type WalletMode = "privy" | "browser";
 
+/**
+ * Privy whenever an app id is set and this origin is on its allow list, so Connect opens Privy's modal directly.
+ * A saved "browser" choice (the local anvil test accounts) counts only with NEXT_PUBLIC_DEV_WALLET=1, off by default;
+ * a Settings screen sets it through useWalletSettings().
+ */
 function readMode(): WalletMode {
   if (!APP_ID || FORCED === "injected") return "browser";
-  try {
-    const saved = localStorage.getItem("wallet-mode");
-    if (saved === "browser" || saved === "privy") return saved;
-  } catch { /* storage blocked: fall through */ }
+  if (DEV_WALLET_FLAG) {
+    try {
+      const saved = localStorage.getItem("wallet-mode");
+      if (saved === "browser" || saved === "privy") return saved;
+    } catch { /* storage blocked: fall through */ }
+  }
   return privyOriginAllowed() ? "privy" : "browser";
 }
 
@@ -45,6 +54,8 @@ export interface WalletUi {
   connect: () => void;
   connectLocal: (index: number) => void;
   disconnect: () => void;
+  /** Privy: log out and open the login again with another account or wallet. */
+  switchAccount?: () => void;
   setMode: (m: WalletMode) => void;
   devWallet: boolean;
 }
@@ -75,7 +86,7 @@ function BrowserBridge({ children }: { children: ReactNode }) {
   // account is remembered here and connected again once on mount.
   const tried = useRef(false);
   useEffect(() => {
-    if (tried.current || !DEV_WALLET || status !== "disconnected") return;
+    if (tried.current || !devWallet() || status !== "disconnected") return;
     tried.current = true;
     let saved: string | null = null;
     try { saved = localStorage.getItem(LOCAL_KEY); } catch { /* storage blocked */ }
@@ -93,7 +104,7 @@ function BrowserBridge({ children }: { children: ReactNode }) {
     connectLocal: (i) => { const c = connectors.find((x) => x.id === `local-${i}`); if (c) { remember(i); connect({ connector: c, chainId: anvil.id }); } },
     disconnect: () => { remember(null); disconnect(); },
     setMode,
-    devWallet: DEV_WALLET,
+    devWallet: devWallet(),
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -111,14 +122,15 @@ function PrivyBridge({ children }: { children: ReactNode }) {
     connect: () => login(),
     connectLocal: () => setMode("browser"),
     disconnect: () => { void logout(); },
+    switchAccount: () => { void logout().then(() => login()); },
     setMode,
-    devWallet: DEV_WALLET,
+    devWallet: devWallet(),
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 function localConnectors() {
-  if (!DEV_WALLET) return [];
+  if (!devWallet()) return [];
   return ANVIL_ACCOUNTS.map((a, i) =>
     (config: Parameters<ReturnType<typeof mock>>[0]) => {
       const c = mock({ accounts: [a], features: { reconnect: true } })(config);
@@ -128,9 +140,9 @@ function localConnectors() {
 
 const subscribeNoop = () => () => {};
 
-/** The local chain first; BSC testnet too unless the local chain already is 97. */
+/** The configured chain first (its own RPC); BNB testnet too on a local stack, so a wallet can still switch to it. */
 function chainsFor() {
-  return (anvil.id === bscTestnet.id ? [anvil] : [anvil, bscTestnet]) as unknown as readonly [typeof anvil, ...(typeof anvil)[]];
+  return (anvil.id === bscTestnet.id || !localAccountsAllowed() ? [anvil] : [anvil, bscTestnet]) as unknown as readonly [typeof anvil, ...(typeof anvil)[]];
 }
 
 export function Providers({ children, localChain }: { children: ReactNode; localChain?: LocalChainInfo | null }) {
@@ -158,8 +170,13 @@ export function Providers({ children, localChain }: { children: ReactNode; local
     <PrivyProvider
       appId={APP_ID}
       config={{
-        appearance: { theme, accentColor: "#2b5cff", showWalletLoginFirst: true, landingHeader: "Connect to Covenant" },
-        loginMethods: ["wallet", "email"],
+        // One popup: email (an embedded wallet is created for it) and external wallets: the ones the browser has,
+        // MetaMask, Coinbase, Binance, OKX, Rainbow, and any other through WalletConnect.
+        appearance: {
+          theme, accentColor: "#2b5cff", showWalletLoginFirst: true, landingHeader: "Connect to Covenant",
+          walletList: ["detected_ethereum_wallets", "metamask", "coinbase_wallet", "binance", "okx_wallet", "rainbow", "wallet_connect"],
+        },
+        loginMethods: ["email", "wallet"],
         embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
         defaultChain: anvil,
         supportedChains: [...chainsFor()],
@@ -172,4 +189,21 @@ export function Providers({ children, localChain }: { children: ReactNode; local
       </QueryClientProvider>
     </PrivyProvider>
   );
+}
+
+/**
+ * For a Settings screen: the wallet stack in use and, with NEXT_PUBLIC_DEV_WALLET=1 on a chain on this machine, the
+ * anvil test accounts. setMode("browser") then connectLocal(i) connects one; setMode("privy") goes back to Privy.
+ * The header's Connect never shows these: it opens Privy (or the browser's wallet) directly.
+ */
+export function useWalletSettings() {
+  const w = useWallet();
+  return {
+    mode: w.mode,
+    setMode: w.setMode,
+    privyAvailable: w.privyAvailable,
+    localAccountsAvailable: DEV_WALLET_FLAG && localAccountsAllowed(),
+    localAccounts: DEV_WALLET_FLAG && localAccountsAllowed() ? ANVIL_ACCOUNTS.map((address, index) => ({ index, address, role: ANVIL_ROLES[index] ?? "" })) : [],
+    connectLocal: w.connectLocal,
+  };
 }

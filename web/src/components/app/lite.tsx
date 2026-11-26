@@ -14,6 +14,7 @@ import { addressOf } from "@/lib/chain/deployment";
 import { useSource } from "@/lib/data/hooks";
 import { duration, span } from "@/lib/covenant/time";
 import { short, tokens } from "@/lib/format";
+import { chainName, networkKind } from "@/lib/chain/chains";
 import { BnbCoin } from "./bnb";
 import { ConfirmAction } from "./confirm";
 import { Icon, type IconName } from "./icons";
@@ -251,9 +252,9 @@ export function FourmemeCreate() {
         </div>
 
         <div className="card">
-          <div className="card-head ruled"><div><h2 className="h-card">Launch it on the local chain</h2><p className="t-xs muted w5">A stand-in for Four.meme&apos;s token creation, which needs Four.meme&apos;s backend.</p></div></div>
+          <div className="card-head ruled"><div><h2 className="h-card">{src.chainId && networkKind(src.chainId) !== "local" ? "Launch it on Four.meme" : "Launch it on the local chain"}</h2><p className="t-xs muted w5">A stand-in for Four.meme&apos;s token creation, which needs Four.meme&apos;s backend.</p></div></div>
           <div className="card-body ruled stack">
-            {src.mode !== "live" ? <ConnectChain source={src} /> : !launcher ? <Note icon="info">No local launcher here: OpenFour&apos;s ForwardVault runs only on BNB Chain, so this needs the fork (<span className="mono">scripts/dev-all.sh --fork</span>).</Note> : (
+            {src.mode !== "live" ? <ConnectChain source={src} /> : !launcher ? <Note icon="info">{src.chainId && networkKind(src.chainId) !== "local" ? <>No stand-in launcher on {chainName(src.chainId)}: Four.meme tokens are created on Four.meme&apos;s own site, and OpenFour&apos;s ForwardVault is deployed on BNB Chain only. The template address on the right is real.</> : <>No local launcher here: OpenFour&apos;s ForwardVault runs only on BNB Chain, so this needs the fork (<span className="mono">scripts/dev-all.sh --fork</span>).</>}</Note> : (
               <>
                 <p className="t-s muted w5">One transaction deploys a tax token, clones the live ForwardVault onto the Lite template with the bytes on the right, and seeds a PancakeSwap pool.</p>
                 <div className="grid2">

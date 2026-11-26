@@ -9,6 +9,8 @@ import { Icon, type IconName } from "@/components/app/icons";
 import { BnbUnit, Meter, Note, Segmented, TokenAvatar, cx } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
 import { agentOwner, checkTerms, createCovenantLive, createTargets, registerAgent, type FactoryKind } from "@/lib/chain/create";
+import { chainName, networkKind, stackCommand } from "@/lib/chain/chains";
+import { withBnb } from "@/components/app/bnb";
 import { addressOf } from "@/lib/chain/deployment";
 import type { MineMessage } from "@/lib/chain/salt";
 import { BOUNDS, DEFAULT_TERMS, DEMO_TIMERS, FLAP } from "@/lib/covenant/defaults";
@@ -184,7 +186,7 @@ function CovenantCreate() {
           <h1 className="h-page">Write the covenant</h1>
           <p className="lede">{venue === "four" ? "On Four.meme, the founder\u2019s share of trading tax goes to a vault with a budget cap and an abandonment switch." : "Nothing can be edited later except lowering the tap."}</p>
         </div>
-        {venue === "flap" ? <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}>{src.mode === "live" ? "Creates on the local chain" : src.mode === "checking" ? "Checking the local chain" : "Offline: connect to create"}</span> : null}
+        {venue === "flap" ? <span className={cx("srcpill", src.mode === "live" ? "live" : "mock")} style={{ height: 30 }} title={src.reason}>{src.mode === "live" ? <>Creates on {src.chainId && networkKind(src.chainId) !== "local" ? withBnb(chainName(src.chainId)) : "the local chain"}</> : src.mode === "checking" ? "Checking the chain" : "Offline: connect to create"}</span> : null}
       </div>
 
       <div className="choice venue" role="group" aria-label="Where to launch">
@@ -319,7 +321,7 @@ function CovenantCreate() {
                   <button className="btn btn-secondary" onClick={startMining} disabled={mine.state === "mining"}><Icon name="sparkle" size={15} />{mine.state === "found" ? "Mine again" : mine.state === "mining" ? <><ThinkingMark size={15} />Mining…</> : "Mine a 7777 salt"}</button>
                 </div>
                 {problems.length ? <Problems list={problems} /> : null}
-                {src.mode !== "live" ? <Note tone="warn" icon="alert"><b>Not connected to the local chain.</b> {src.reason}. Start the stack with <span className="mono">scripts/dev-all.sh</span>; creating sends the transaction there.</Note> : null}
+                {src.mode !== "live" ? <Note tone="warn" icon="alert"><b>Not connected to {src.payload?.deployment && networkKind(src.payload.deployment.chainId) !== "local" ? chainName(src.payload.deployment.chainId) : "the local chain"}.</b> {src.reason}. Start the stack with <span className="mono">{stackCommand(src.payload?.deployment?.chainId)}</span>; creating sends the transaction there.</Note> : null}
                 {err ? <Note tone="warn">{err}</Note> : null}
               </>
             )}
