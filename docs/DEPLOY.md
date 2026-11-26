@@ -35,8 +35,12 @@ It writes `contracts/deployments/97.local.json` (the record in the `{chainId, rp
 the web read, git-ignored) and starts the server API, the keeper (push-feed pokes, no Atlas key), the issuer agent
 (once a covenant of its wallet exists) and the web app, all on chain 97. The keeper and issuer keys go to
 `.dev/testnet/keys.env` (mode 600, git-ignored); `TESTNET_SECRETS_FROM=<server .env>` adds the CMC and Anthropic keys.
-`COVENANT_ALLOW_PUBLIC_NETWORK=1` is set in this mode only. There is no faucet and no seeded data: the app shows what
-is on chain 97, and "Get test funds" becomes a link to BNB Chain's testnet faucet.
+`COVENANT_ALLOW_PUBLIC_NETWORK=1` is set in this mode only. There is no seeded data: the app shows what is on chain 97.
+Test BNB: with `TESTNET_FAUCET_PRIVATE_KEY` in the wallets file (or appended to `keys.env`), Settings, Test funds sends
+a 0.003 tBNB drip (`TESTNET_FAUCET_BNB`) from that wallet, once per wallet and once per IP every 24 hours, at most
+0.03 tBNB a day (`TESTNET_FAUCET_DAILY_BNB`), refusing a wallet that already holds 0.01 tBNB; the ledger is
+`.dev/testnet/server-data/faucet-97.json`. When the faucet wallet runs low it points to BNB Chain's public faucets.
+Covenants are BNB-denominated, so there is no Demo USDC on testnet.
 
 ### End-to-end run on BNB testnet (26 Nov 2026)
 
