@@ -5,14 +5,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useSwitchChain } from "wagmi";
 import { useWallet } from "@/components/providers";
-import { anvil, chainName, explorerTx, faucetFor } from "@/lib/chain/chains";
+import { anvil, chainName, explorerAddress, explorerTx, faucetFor } from "@/lib/chain/chains";
 import { useCovenants, useSource } from "@/lib/data/hooks";
 import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
 import { Icon, Mark, type IconName } from "./icons";
 import { hidePromo, reopenOnboarding, setCollapsed, useCollapsed, usePromoHidden } from "./prefs";
 import { Portal, Skeleton, TokenAvatar, cx, seedOf } from "./ui";
-import { withBnb } from "@/components/app/bnb";
+import { BnbCoin, withBnb } from "@/components/app/bnb";
+import { UsdcCoin } from "./usdc";
+import { fmtBnbBalance, fmtUsdBalance, useWalletBalances } from "@/lib/data/wallet-balances";
 import { ThinkingMark } from "./mark";
 import { GetStarted } from "./funds";
 import { SETTINGS } from "./settings-nav";
@@ -248,9 +250,49 @@ function useDismiss(open: boolean, close: () => void) {
   return ref;
 }
 
+/** The wallet's live balances inside the header button: "[coin] 0.10 | [coin] 1,000". Desktop only; nothing until
+ *  the chain answers (a short skeleton), and no dUSDC slot where the deployment has no Demo USDC. */
+function ButtonBalances({ b }: { b: ReturnType<typeof useWalletBalances> }) {
+  if (!b.live) return null;
+  const showUsdc = b.usdc.deployed !== false;
+  return (
+    <span className="wb-bal hide-sm">
+      {b.bnb.value !== undefined
+        ? <span className="wb-amt num" aria-label={`${fmtBnbBalance(b.bnb.value)} BNB`}><BnbCoin size={15} title="BNB" />{fmtBnbBalance(b.bnb.value)}</span>
+        : b.bnb.loading ? <Skeleton h={12} w={44} r={6} /> : null}
+      {showUsdc ? (b.usdc.value !== undefined
+        ? <span className="wb-amt num" aria-label={`${fmtUsdBalance(b.usdc.value)} Demo USDC`}><UsdcCoin size={15} />{fmtUsdBalance(b.usdc.value, true)}</span>
+        : b.usdc.loading ? <Skeleton h={12} w={44} r={6} /> : null) : null}
+    </span>
+  );
+}
+
+/** Balance rows in the wallet menu: a coin, the token's name, and the amount, or why there is none. */
+function MenuBalances({ b, chainId }: { b: ReturnType<typeof useWalletBalances>; chainId?: number }) {
+  if (!b.live) return <div className="wb-rows"><p className="t-xs muted w5" style={{ padding: "2px 10px 6px" }}>Balances show once the app is reading a live chain.</p></div>;
+  const net = chainId ? chainName(chainId) : "";
+  return (
+    <div className="wb-rows">
+      <div className="wb-row">
+        <BnbCoin size={28} />
+        <div className="wb-name"><b>BNB</b><span>{net}</span></div>
+        <div className="wb-val num">{b.bnb.value !== undefined ? fmtBnbBalance(b.bnb.value) : b.bnb.loading ? <Skeleton h={14} w={56} r={6} /> : "–"}</div>
+      </div>
+      {b.usdc.deployed !== false ? (
+        <div className="wb-row">
+          <UsdcCoin size={28} />
+          <div className="wb-name"><b>Demo USDC</b><span>Test token · dUSDC</span></div>
+          <div className="wb-val num">{b.usdc.value !== undefined ? fmtUsdBalance(b.usdc.value) : b.usdc.loading ? <Skeleton h={14} w={56} r={6} /> : "–"}</div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function WalletMenu() {
   const w = useWallet();
   const src = useSource();
+  const bal = useWalletBalances();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
@@ -259,7 +301,7 @@ function WalletMenu() {
     <div ref={ref} style={{ position: "relative" }}>
       {w.address ? (
         <button className="walletbtn" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
-          <TokenAvatar seed={w.address} size={26} /><span className="lab mono">{short(w.address, 6, 4)}</span><Icon name="chevronDown" size={14} style={{ color: "var(--muted)" }} />
+          <TokenAvatar seed={w.address} size={26} /><ButtonBalances b={bal} /><span className="lab mono">{short(w.address, 6, 4)}</span><Icon name="chevronDown" size={14} style={{ color: "var(--muted)" }} />
         </button>
       ) : (
         // Straight to Privy (email and wallets in one popup); without Privy, straight to the browser's wallet.
@@ -276,15 +318,20 @@ function WalletMenu() {
                   <div className="t-xs muted w5">Connected with {w.label ?? "a wallet"}{w.chainId ? ` · ${chainName(w.chainId)}` : ""}</div>
                 </div>
               </div>
+              <MenuBalances b={bal} chainId={src.chainId} />
               <div className="pop-sep" />
               <button className="pop-item" role="menuitem" onClick={() => { void navigator.clipboard?.writeText(w.address!); setCopied(true); setTimeout(() => setCopied(false), 1200); }}><Icon name={copied ? "check" : "copy"} size={16} />{copied ? "Copied" : "Copy address"}</button>
               <Link className="pop-item" role="menuitem" href="/app/portfolio" onClick={() => setOpen(false)}><Icon name="pie" size={16} />Portfolio</Link>
+              {(() => {
+                const scan = explorerAddress(src.chainId ?? w.chainId ?? 0, w.address!);
+                return scan ? <a className="pop-item" role="menuitem" href={scan} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}><Icon name="ext" size={16} />View on BscScan</a> : null;
+              })()}
               {(() => {
                 const fc = faucetFor(src.chainId);
                 if (!fc) return null;
                 return fc.external
                   ? <a className="pop-item" role="menuitem" href={fc.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}><Icon name="drop" size={16} />{fc.label}</a>
-                  : <Link className="pop-item" role="menuitem" href={fc.href} onClick={() => setOpen(false)}><Icon name="drop" size={16} />{fc.label}</Link>;
+                  : <Link className="pop-item" role="menuitem" href={fc.href} onClick={() => setOpen(false)}><Icon name="drop" size={16} />Get test funds</Link>;
               })()}
               <Link className="pop-item" role="menuitem" href="/app/settings" onClick={() => setOpen(false)}><Icon name="sliders" size={16} />Settings</Link>
               {w.switchAccount ? <button className="pop-item" role="menuitem" onClick={() => { w.switchAccount!(); setOpen(false); }}><Icon name="users" size={16} />Switch account</button> : null}

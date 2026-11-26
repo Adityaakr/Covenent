@@ -660,6 +660,15 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 .connectbtn:focus-visible, .walletbtn:focus-visible, .netpill:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-bg); }
 .srcpill .bnbmark { margin-right: 0; }
 .walletbtn .avatar { width: 26px; height: 26px; }
+/* Live balances in the wallet button (desktop) and the rows in its menu. */
+.wb-bal { display: inline-flex; align-items: center; gap: 10px; padding-right: 10px; margin-right: 1px; box-shadow: inset -1px 0 0 var(--line-strong); }
+.wb-amt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; }
+.wb-rows { display: grid; gap: 2px; padding: 2px 0 4px; }
+.wb-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 7px 10px; border-radius: 10px; }
+.wb-name { min-width: 0; display: grid; gap: 1px; }
+.wb-name b { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.wb-name span { font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-val { font-family: var(--font-display-stack); font-size: 15px; font-weight: 500; letter-spacing: -0.01em; color: var(--ink); text-align: right; }
 .modal-wrap { position: fixed; inset: 0; z-index: 95; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overscroll-behavior: contain; padding: 12vh 16px 16px; background: var(--overlay); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: fadein var(--t) var(--ease) both; }
 .cmdk { flex: none; width: min(620px, 100%); border-radius: 18px; background: var(--card); border: 1px solid var(--line-strong); box-shadow: var(--shadow-lg); overflow: hidden; animation: pop var(--t) var(--ease) both; }
 .cmdk-in { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 56px; border-bottom: 1px solid var(--line); color: var(--faint); }

@@ -151,7 +151,7 @@ export function useSwap(status?: FaucetStatus) {
     } as Parameters<typeof writeContract>[1]);
     const rc = await waitForTransactionReceipt(config, { hash, chainId });
     if (rc.status !== "success") throw new Error("swap reverted");
-    await qc.invalidateQueries({ queryKey: ["balances"] });
+    await Promise.all([qc.invalidateQueries({ queryKey: ["balances"] }), qc.invalidateQueries({ queryKey: ["native-balance"] }), qc.invalidateQueries({ queryKey: ["usdc"] })]);
     return hash;
   }
 

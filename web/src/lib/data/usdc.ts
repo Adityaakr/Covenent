@@ -94,7 +94,7 @@ export function useUsdcWrite() {
       const rc = await waitForTransactionReceipt(config, { hash, chainId: src.chainId });
       if (rc.status !== "success") throw new Error("The transaction reverted");
       setState({ busy: false, hash });
-      await Promise.all([qc.invalidateQueries({ queryKey: ["usdc"] }), qc.invalidateQueries({ queryKey: ["usdc-revenue"] })]);
+      await Promise.all([qc.invalidateQueries({ queryKey: ["usdc"] }), qc.invalidateQueries({ queryKey: ["usdc-revenue"] }), qc.invalidateQueries({ queryKey: ["native-balance"] })]);
       return true;
     } catch (e) {
       const m = (e as { shortMessage?: string })?.shortMessage ?? (e as Error).message;
