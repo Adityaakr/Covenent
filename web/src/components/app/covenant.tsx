@@ -44,6 +44,7 @@ function PrimaryActions({ v, d, size = "lg" }: { v: CovenantView; d: Derived; si
   const pair = v.pair ? explorerAddress(v.chainId, v.pair) : null;
   if (expiredUnfunded(v)) return <Link className={`${b} btn-secondary`} href="/app/covenants">All covenants</Link>;
   if (v.state === "RAISING") return <><Link className={`${b} btn-primary`} href={`${base}/raise`}>{raiseClosed(v) ? "Finalize the raise" : <><Icon name="plus" size={15} />Commit BNB</>}</Link><Link className={`${b} btn-secondary hide-xs`} href="/app/settings/simulator">Run the simulator</Link></>;
+  if (v.state === "FAILED" && v.raise.committed <= 0) return <Link className={`${b} btn-secondary`} href="/app/covenants">All covenants</Link>;
   if (v.state === "FAILED") return <Link className={`${b} btn-primary`} href={`${base}/settle`}>Claim refund<Icon name="arrow" size={15} /></Link>;
   const open = v.state === "EXIT_ROUND" || v.state === "WIND_DOWN";
   // Refunds and sale tokens are pull payments: nothing arrives unless the contributor claims, so say so up front.
@@ -154,9 +155,11 @@ export function StatusStrip({ v, d }: { v: CovenantView; d: Derived }) {
     action = expiredUnfunded(v) ? null : <Link className="btn btn-primary btn-sm" href={`${base}/raise`}>{raiseClosed(v) ? "Finalize the raise" : "Commit BNB"}</Link>;
   } else if (v.state === "FAILED") {
     tone = "neutral"; icon = "info";
-    title = "The raise missed its minimum";
-    sub = "Nothing launched. Every commitment refunds in full.";
-    action = <Link className="btn btn-primary btn-sm" href={`${base}/settle`}>Claim refund</Link>;
+    // finalized with nothing committed: nobody is owed anything, so no refund to claim
+    const empty = v.raise.committed <= 0;
+    title = empty ? "Closed, never funded" : "The raise missed its minimum";
+    sub = empty ? "The sale closed with nothing committed and was finalized: nothing launched and nobody is owed a refund." : "Nothing launched. Every commitment refunds in full.";
+    action = empty ? null : <Link className="btn btn-primary btn-sm" href={`${base}/settle`}>Claim refund</Link>;
   } else if (v.state === "WIND_DOWN") {
     const abandoned = v.issuer.outcomes.some((o) => o.outcome === "abandoned" && (o.vault ? o.vault.toLowerCase() === v.vault?.toLowerCase() : o.covenant === t.symbol));
     const ev = v.events.find((e) => /abandon|wound|winddown/i.test(e.name));
@@ -586,7 +589,7 @@ export function nextEvent(v: CovenantView, d: Derived): { text: string; tone: "a
   if (v.state === "RAISING" && v.raise.deadline <= v.now && v.events.some((e) => e.name === "LaunchRefused")) return { text: "Flap refused the launch · anyone can retry finalize; after the retry window it refunds", tone: "warn" };
   if (expiredUnfunded(v)) return { text: "Expired, never funded · nothing to launch or refund", tone: "" };
   if (v.state === "RAISING") return v.raise.deadline <= v.now ? { text: `Sale closed · anyone can finalize · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`, tone: "accent" } : { text: `Closes in ${duration(v.raise.deadline - v.now)} · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`, tone: "accent" };
-  if (v.state === "FAILED") return { text: "Refunds open", tone: "" };
+  if (v.state === "FAILED") return { text: v.raise.committed > 0 ? "Refunds open" : "Closed, never funded · nothing to refund", tone: "" };
   if (v.state === "EXIT_ROUND") return { text: `Exit round ends in ${duration(v.exit.roundEndsAt! - v.now)}`, tone: "warn" };
   if (v.state === "WIND_DOWN") return { text: "Redemption open, no fee", tone: "bad" };
   if (d.hbLeft <= 0) return { text: "Abandonment due: the keeper opens it", tone: "warn" };
