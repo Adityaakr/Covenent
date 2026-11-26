@@ -14,6 +14,7 @@ fs_permissions = [
     { access = "read-write", path = "./deployments" },
     { access = "read-write", path = "./abi" },
     { access = "read", path = "./out" },
+    { access = "read-write", path = "./cache" },
 ]
 gas_reports = ["CovenantLauncherFactory", "CovenantLauncher", "CovenantVaultFactory", "CovenantVault", "CovenantOracle", "CovenantLiteVault", "CovenantLens"]
 
