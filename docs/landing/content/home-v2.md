@@ -73,6 +73,10 @@ no book-value exit) and that Flap Pool Launch carries all five rules.
 
 ## Why we built it (prior art)
 
-A founder note beside the heading "We didn't invent the idea. We made it hold without a vote.", then four cards in
-the hairline grid: the DAICO, ownership coins (MetaDAO), bonding-curve launchpads, locks and vesting. Each says what it
-gets right, where it leaves holders and what we took, with its sources.
+Heading "We didn't invent the idea." / "We made it hold without a vote." (two lines at 1200px). Under a hairline,
+"A note from the team": the founder note, signed by the Covenant team, whose words settle from faint to full as it
+scrolls through (shown at full strength with reduced motion). Then the lineage: four cards in the hairline frame (the
+DAICO, ownership coins (MetaDAO), bonding-curve launchpads, locks and vesting), each saying what it gets right and where
+it leaves holders, with its sources; a drop from each card into one Covenant vault that holds what we took from it,
+column under column, closed by "What each got right, written into one vault. No votes, no company, five fixed rules."
+Hovering or focusing a card lights its drop and its cell. Below 1200px each card is followed by its own drop and take.
