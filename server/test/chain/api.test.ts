@@ -48,6 +48,15 @@ describe('API', () => {
     expect(sheet.exit.rule).toBe('decaying-streak-onchain');
   });
 
+  it('allows the web app origins (8080 and 3000) and refuses others', async () => {
+    for (const origin of ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:3000']) {
+      const r = await app.request('/health', { headers: { origin } });
+      expect(r.headers.get('access-control-allow-origin')).toBe(origin);
+    }
+    const r = await app.request('/health', { headers: { origin: 'http://evil.example' } });
+    expect(r.headers.get('access-control-allow-origin')).toBeNull();
+  });
+
   it('rejects a bad address', async () => {
     expect((await get('/api/covenants/0x123')).status).toBe(400);
   });

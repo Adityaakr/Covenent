@@ -199,7 +199,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     startBlock: BigInt(env('START_BLOCK') ?? deployments?.startBlock ?? 0),
     apiPort,
     apiBaseUrl: env('API_BASE_URL') ?? `http://127.0.0.1:${apiPort}`,
-    corsOrigins: (env('CORS_ORIGINS') ?? 'http://localhost:3000,http://127.0.0.1:3000').split(',').map((s) => s.trim()),
+    corsOrigins: (env('CORS_ORIGINS') ?? 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080').split(',').map((s) => s.trim()),
     atlas: {
       apiKey: env('ATLAS_API_KEY'),
       bnbUsdFeedId: env('ATLAS_BNB_USD_FEED_ID') ?? String(deployments?.demo?.atlasBnbUsdFeedId ?? '1'),
