@@ -11,13 +11,14 @@ import {IPortal} from "src/flap/IPortal.sol";
 
 /// @title TestnetCovenant
 /// @notice Creates one covenant on BNB testnet through Flap's Portal and our demo launcher factory
-///         (contracts/deployments/97.json), from the team wallet. The terms are the cheapest that launch there:
-///         the testnet Portal refuses a pool seed under about 3.57 BNB (custom error 0xa32ef056(700e18, 2500e18) on a
-///         1 BNB seed, read on a fork on 26 Nov 2026), so the default is a 4.5 tBNB raise split 50 / 40 / 10, which
-///         seeds 3.6 tBNB and leaves 0.9 tBNB in the treasury.
+///         (contracts/deployments/97.json), from the team wallet. Flap's testnet Portal refuses a pool unless
+///         seed (BNB) x 700 >= 750 / pool share, i.e. seed >= 1.0714 BNB / pool share (custom error
+///         0xa32ef056(seed x 700, 750 / pool share), both 1e18, raised by a Portal facet inside launchTaxTokenV2; read
+///         on forks of chain 97 on 26 Nov 2026). The default split 50 / 45 / 5 (sale / pool / team) needs a seed of
+///         2.381 BNB, so the default raise is 2.65 tBNB: seed 2.385, treasury 0.265.
 ///
 ///   Required env:  TEAM_PRIVATE_KEY (the team wallet; it pays the Portal's salt-lock fee and the gas)
-///   Optional env:  TN_RAISE (wei, min = cap, default 4.5 ether), TN_SALE_SECONDS (default 300), TN_HEARTBEAT (s, 600),
+///   Optional env:  TN_RAISE (wei, min = cap, default 2.65 ether), TN_SALE_SECONDS (default 300), TN_HEARTBEAT (s, 600),
 ///                  TN_TAP_USD (dollars per 30 days, 100), TN_NAME, TN_SYMBOL
 ///
 /// @dev forge script script/TestnetCovenant.s.sol --rpc-url $BSC_TESTNET_RPC_URL            (simulation)
@@ -31,7 +32,7 @@ contract TestnetCovenant is Script, StackBuilder {
         uint256 key = vm.envUint("TEAM_PRIVATE_KEY");
         address team = vm.addr(key);
 
-        uint256 raise = vm.envOr("TN_RAISE", uint256(4.5 ether));
+        uint256 raise = vm.envOr("TN_RAISE", uint256(2.65 ether));
         bytes32 seed = keccak256(abi.encode("covenant-testnet", team, block.timestamp));
         Terms memory t = CovenantProfiles.demoTerms(
             vm.envOr("TN_NAME", string("Covenant Testnet")),
@@ -40,9 +41,9 @@ contract TestnetCovenant is Script, StackBuilder {
             team
         );
         t.saleBps = 5_000;
-        t.poolBps = 4_000;
+        t.poolBps = 4_500;
         t.trancheBps = new uint16[](1);
-        t.trancheBps[0] = 1_000;
+        t.trancheBps[0] = 500;
         t.trancheMultiple = new uint16[](1);
         t.trancheMultiple[0] = 200;
         t.minRaise = raise;

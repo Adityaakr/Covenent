@@ -38,11 +38,16 @@ the web read, git-ignored) and starts the server API, the keeper (push-feed poke
 `COVENANT_ALLOW_PUBLIC_NETWORK=1` is set in this mode only. There is no faucet and no seeded data: the app shows what
 is on chain 97, and "Get test funds" becomes a link to BNB Chain's testnet faucet.
 
-**Cost of a testnet covenant.** The testnet Portal refuses a pool seed under about 3.57 BNB: a 1 BNB seed fails at
-finalize with custom error `0xa32ef056(700e18, 2500e18)` (read on a testnet fork, 26 Nov 2026), so the launch fails
-and every commitment refunds. `script/TestnetCovenant.s.sol` creates the cheapest covenant that launches: a 4.5 tBNB
-raise split 50 / 40 / 10 (sale / pool / team), which seeds 3.6 tBNB and leaves 0.9 tBNB in the treasury. Gas for the
-whole journey (create, commit, finalize, claim, pokes, tap, wind-down, redeem) is under 8M, a fraction of a cent.
+**Cost of a testnet covenant.** Flap's testnet Portal refuses a pool unless seed (BNB) × 700 ≥ 750 / pool share,
+so the seed must be at least 1.0714 BNB / pool share. A Portal facet (`0x756b91aB3ecA51191212A98a68917685161b8A30`,
+selector `db9c8c66`, delegatecalled inside `launchTaxTokenV2`) reverts with custom error `0xa32ef056(seed × 700,
+750 / pool share)`, both 1e18: `(700, 2500)` for a 1 BNB seed at a 30% pool, `(1400, 1500)` for 2 BNB at 50%,
+`(1537.8, 1562.5)` for 2.197 BNB at 48%. Token supply does not change it. Pool share cannot exceed the sale share, so
+the absolute minimum is a 2.14 BNB seed. Measured on forks of chain 97 against our demo factory, 26 Nov 2026: the
+launch fails, the covenant ends FAILED and every commitment refunds. This floor is Flap's, not our profile's (the
+demo profile's own `minPoolQuote` is 1 BNB). `script/TestnetCovenant.s.sol` creates the cheapest covenant that keeps
+a team share and a treasury: a 2.65 tBNB raise split 50 / 45 / 5, seed 2.385, treasury 0.265. Gas for the whole
+journey (create, commit, finalize, claim, pokes, tap, wind-down, redeem) is under 8M, a fraction of a cent.
 
 ## What gets deployed
 
