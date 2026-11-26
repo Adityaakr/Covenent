@@ -1065,6 +1065,8 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 .code > span { min-width: 0; }
 .code.wrap { display: flex; align-items: flex-start; width: 100%; }
 .code.wrap > span { white-space: normal; overflow-wrap: anywhere; word-break: break-all; line-height: 1.5; }
+.code.block { display: flex; align-items: flex-start; width: 100%; margin-top: 10px; }
+.code.block > span { flex: 1; min-width: 0; white-space: pre; overflow-x: auto; line-height: 1.5; padding: 4px 0; }
 
 /* ---------- Settings ---------- */
 .set-page { gap: 22px; }
