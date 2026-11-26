@@ -204,7 +204,7 @@ function WalletMenu() {
                 <button className="pop-item" onClick={() => w.setMode("browser")}><Icon name="refresh" size={16} /><span>Use a browser wallet instead<span className="tiny muted" style={{ display: "block" }}>Skips Privy; adds local test accounts</span></span></button>
               ) : w.privyAvailable ? (
                 <>
-                  <button className="pop-item" onClick={() => w.setMode("privy")}><Icon name="refresh" size={16} /><span>Use Privy login{!privyOriginAllowed() ? <span className="tiny muted" style={{ display: "block" }}>This origin is not on the Privy app&apos;s allow list; run pnpm dev:privy (port 8080)</span> : null}</span></button>
+                  <button className="pop-item" onClick={() => w.setMode("privy")}><Icon name="refresh" size={16} /><span>Use Privy login{!privyOriginAllowed() ? <span className="tiny muted" style={{ display: "block" }}>This origin is not on the Privy app&apos;s allow list; open http://localhost:8080 (pnpm dev)</span> : null}</span></button>
                 </>
               ) : <p className="tiny muted" style={{ padding: "4px 10px" }}>Privy is off: no NEXT_PUBLIC_PRIVY_APP_ID.</p>}
             </>
