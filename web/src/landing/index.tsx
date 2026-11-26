@@ -1,22 +1,20 @@
 /*
- * Placeholder. The landing page (an exact code copy of the Framer template, with Covenant content) is built by the
- * covenant-framer worker, which owns src/landing/** and public/landing/**. This file only keeps "/" rendering
- * until that lands; replace it wholesale.
+ * Covenant landing: a code copy of the Framer template "Ondrel" with Covenant content (docs/landing/).
+ * Default export renders "/". Every other page has a default export in ./pages for the app router:
+ *   /features            ./pages/features          /pricing             ./pages/pricing
+ *   /use-cases           ./pages/use-cases         /use-cases/[slug]    ./pages/use-case        (+ generateStaticParams)
+ *   /changelog           ./pages/changelog         /changelog/[slug]    ./pages/changelog-entry (+ generateStaticParams)
+ *   /contact             ./pages/contact           not-found.tsx        ./pages/not-found
  */
-import Link from "next/link";
+import { Landing } from "./pages/Landing";
 
-export default function Landing() {
-  return (
-    <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24, background: "var(--sky)" }}>
-      <div style={{ maxWidth: 560, textAlign: "center" }}>
-        <h1 style={{ fontFamily: "var(--font-display-stack)", fontWeight: 600, fontSize: 44, lineHeight: 1.05, letterSpacing: "-0.035em", margin: 0 }}>
-          An agent can raise a budget it is held to.
-        </h1>
-        <p style={{ color: "var(--ink-2)", fontSize: 17, margin: "16px 0 28px" }}>
-          Covenant puts a raise in a vault with five rules: a capped tap, performance unlocks, an exit at book value, a switch if the team or agent stops, and disclosure.
-        </p>
-        <Link href="/app" style={{ display: "inline-block", background: "var(--ink)", color: "var(--bg)", padding: "10px 18px", borderRadius: 10, fontWeight: 500 }}>Open the app</Link>
-      </div>
-    </main>
-  );
-}
+export default Landing;
+export { Landing };
+export { FeaturesPage } from "./pages/FeaturesPage";
+export { PricingPage } from "./pages/PricingPage";
+export { UseCasesPage } from "./pages/UseCasesPage";
+export { UseCasePage, useCaseSlugs } from "./pages/UseCasePage";
+export { ChangelogPage } from "./pages/ChangelogPage";
+export { ChangelogEntryPage, changelogSlugs } from "./pages/ChangelogEntryPage";
+export { ContactPage } from "./pages/ContactPage";
+export { NotFoundPage } from "./pages/NotFoundPage";

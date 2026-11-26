@@ -1,6 +1,5 @@
-/* Placeholder for the Framer template's /contact page. Owned by the covenant-framer worker; replace wholesale. */
-import Landing from "../index";
+import { ContactPage } from "./ContactPage";
 
 export default function Page() {
-  return <Landing />;
+  return <ContactPage />;
 }

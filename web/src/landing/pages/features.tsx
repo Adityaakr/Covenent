@@ -1,6 +1,5 @@
-/* Placeholder for the Framer template's /features page. Owned by the covenant-framer worker; replace wholesale. */
-import Landing from "../index";
+import { FeaturesPage } from "./FeaturesPage";
 
 export default function Page() {
-  return <Landing />;
+  return <FeaturesPage />;
 }
