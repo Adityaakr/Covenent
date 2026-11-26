@@ -268,6 +268,17 @@ claude mcp add covenant -- pnpm --dir /absolute/path/to/Covenent/server mcp
 }
 ```
 
+One command starts anvil (a BNB Chain fork with chain id 56 when a BNB RPC that serves older state answers, else the
+offline mock stack on 31337; `--fork` / `--mock` force one; a block every second), deploys every contract, deploys the
+local test funds (Demo USDC and a dUSDC/WBNB pool on the local PancakeSwap), and seeds a covenant at every stage by real
+transactions: abandoned by its agent, wound down by its team, ACTIVE with tax and tap, an exit round open, and a raise
+under way (recorded under `.seeded` in `contracts/deployments/local.json`). It then starts the server API on `:8787`,
+the keeper (pokes every 20 s with the local Atlas test signer), an issuer agent on each live covenant and the web app
+on http://localhost:8080 (`WEB_PORT` moves it; 8081-8083 and 8085 are also Privy origins; `--prod` serves a build).
+Every screen reads the chain or the server; there is no stand-in data. Settings, Test funds (`/app/settings/funds`)
+sends a connected wallet test BNB and Demo USDC on the dev chain (and swaps dUSDC to BNB on the local pool), or a
+0.003 tBNB drip on BNB testnet, once per wallet a day.
+
 For BNB testnet, set `COVENANT_DEPLOYMENTS` to `contracts/deployments/97.local.json`, which `scripts/testnet-up.sh`
 writes. Agents that read skills can use [server/mcp/SKILL.md](server/mcp/SKILL.md). The site serves
 [`/llms.txt`](web/public/llms.txt).

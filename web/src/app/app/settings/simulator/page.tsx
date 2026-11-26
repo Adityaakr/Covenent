@@ -33,11 +33,11 @@ export default function SimulatorPage() {
   const r = real.data?.result;
 
   return (
-    <main className="page">
+    <div className="set-body">
       <header className="phead rise">
         <span className="eyebrow">Launch simulator</span>
         {real.isLoading ? <p className="loading-line"><ThinkingMark size={16} />Loading the simulator result…</p>
-          : <h1 className="h-page">{r?.headline.text ?? "What recent BNB Chain launches would have done under a covenant"}</h1>}
+          : <h2 className="h-page">{r?.headline.text ?? "What recent BNB Chain launches would have done under a covenant"}</h2>}
         {r ? <p className="t-s muted w5">{r.computedFromRealData ? "Real launches" : "Not real data"}: {r.sample.withCandles} BNB Chain pools with at least {r.sample.minDays} days of daily candles{r.sample.windowStart ? `, created ${new Date(r.sample.windowStart).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} to ${new Date(r.sample.windowEnd!).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}. Floor {pct(r.terms.floorShareOfOpen, 0)} of the opening price, tap cap {bps(r.terms.tapCapBpsPer30d)} a month, {r.terms.exitStreakDays}-day streak. {real.data?.from === "server" ? "From the Covenant server" : "From the server's committed snapshot"}, computed {new Date(r.generatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC.</p> : null}
       </header>
 
@@ -59,7 +59,7 @@ export default function SimulatorPage() {
           </section>
         </>
       ) : null}
-    </main>
+    </div>
   );
 }
 

@@ -44,7 +44,7 @@ function Redeem({ v, d }: { v: CovenantView; d: Derived }) {
         <div className="card">
           <div className="card-head ruled">
             <div><h3 className="h-card">Redeem at book value</h3><p className="t-xs muted w5">Burn tokens, receive treasury BNB</p></div>
-            {open ? <span className="badge warn"><span className="dot pulse" />{wind ? "Open forever, no fee" : <>Round ends in <span className="num">&nbsp;{duration(roundLeft, 2)}</span></>}</span> : <span className="badge">Closed</span>}
+            {open ? <span className="badge warn">{wind ? "Open forever, no fee" : <>Round ends in <span className="num">&nbsp;{duration(roundLeft, 2)}</span></>}</span> : <span className="badge">Closed</span>}
           </div>
           <div className="card-body ruled stack">
             <div className="swap">

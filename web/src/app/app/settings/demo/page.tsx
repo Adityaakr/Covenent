@@ -41,7 +41,7 @@ const STEPS: Step[] = [
   { at: "1:45", label: "Exit at book", scene: "exit", open: (v) => `/app/c/${v.id}/redeem`, say: <>The round is open. A holder burns tokens at book value, for more than the pool would pay. <span className="soft">Everyone who stays keeps exactly the same book value.</span></> },
   { at: "2:05", label: "Unplug the agent", scene: "unplugged", open: (v) => `/app/c/${v.id}`, cmd: "scripts/dev-all.sh stop-issuer", say: <>Now we unplug the agent. There is nobody to sue, and nobody needs to be sued. <span className="soft">Its heartbeat runs out and the keeper flips the switch on its next tick. If no keeper runs, anyone can press the button.</span></> },
   { at: "2:15", label: "Treasury opens", scene: "abandoned", open: (v) => `/app/c/${v.id}`, say: <>The budget stops, the locked tokens burn and the treasury opens to holders. <span className="soft">The outcome is written to the agent&apos;s ERC-8004 record, so it carries into its next raise.</span></> },
-  { at: "2:25", label: "Agents read terms", scene: "exit", open: () => "/app/simulator", say: <>The terms are on-chain, so another agent can read them, price the downside and exit by itself. <span className="soft">The same rules ship as a Four.meme template, and CoinMarketCap data shows how many recent launches would have triggered an exit.</span></> },
+  { at: "2:25", label: "Agents read terms", scene: "exit", open: () => "/app/settings/simulator", say: <>The terms are on-chain, so another agent can read them, price the downside and exit by itself. <span className="soft">The same rules ship as a Four.meme template, and CoinMarketCap data shows how many recent launches would have triggered an exit.</span></> },
   { at: "2:45", label: "Close", scene: null, say: <>MetaDAO showed the demand: $580M committed for raises that accepted about $45M. <span className="soft">Covenant brings that to BNB Chain, for human teams and for agents: the operating stack for autonomous ventures.</span></> },
 ];
 
@@ -63,11 +63,11 @@ export default function DemoPage() {
   const v = pick(live, step.scene);
 
   return (
-    <main className="page">
+    <div className="set-body">
       <div className="sec-head">
         <div className="stack-sm" style={{ display: "grid" }}>
           <span className="eyebrow">Demo script · three minutes</span>
-          <h1 className="h-page">The covenant story, scene by scene</h1>
+          <h2 className="h-page">The covenant story, scene by scene</h2>
         </div>
         <div className="row" style={{ gap: 8 }}>
           <span className="t-xs muted w5 hide-sm num">{i + 1} / {STEPS.length}</span>
@@ -104,7 +104,7 @@ export default function DemoPage() {
         ) : null}
       </section>
       <p className="t-xs muted w5">Every scene reads a real covenant on the configured chain that is in that stage now: the contracts&apos; demo factory runs the same rules with short timers (exit streak 3 minutes, round 5 minutes, heartbeat 10 minutes). Use ← and → to step.</p>
-    </main>
+    </div>
   );
 }
 

@@ -21,14 +21,10 @@ export const STATE_META: Record<CovenantState, { label: string; tone: Tone; colo
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
-export function StateBadge({ state, size, pulse }: { state: CovenantState; size?: "lg"; pulse?: boolean }) {
+/** A covenant's state as a word: tone carries meaning only where something needs attention (raising, exit, wind-down). */
+export function StateBadge({ state, size }: { state: CovenantState; size?: "lg" }) {
   const m = STATE_META[state];
-  const live = pulse ?? (state === "RAISING" || state === "EXIT_ROUND");
-  return <span className={cx("badge", m.tone !== "neutral" && m.tone, size === "lg" && "lg")}><span className={cx("dot", live && "pulse")} />{m.label}</span>;
-}
-
-export function StateDot({ state }: { state: CovenantState }) {
-  return <span className="state-dot" style={{ background: STATE_META[state].color }} aria-hidden />;
+  return <span className={cx("badge", m.tone !== "neutral" && m.tone, size === "lg" && "lg")} data-state={state}>{m.label}</span>;
 }
 
 /** A figure that says where it came from: hover shows the contract read or formula behind it; live figures link out. */
