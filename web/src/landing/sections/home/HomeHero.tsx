@@ -42,10 +42,10 @@ export function HomeHero() {
           </span>
           <Icon name="caretRight" size={12} className={s.arrow} />
         </Link>
-        <HeroHeading text="Investor protections that enforce themselves." />
+        <HeroHeading text="The operating stack for autonomous ventures." />
         <p className={["t-lead", s.sub].join(" ")}>
-          Covenant is a launcher and vault for token raises on BNB Chain. Five rules bind whoever holds the team
-          wallet, a human team or an AI agent.
+          {/* non-breaking spaces keep "AI agents", "24/7 on" and "BNB Chain" together at every width */}
+          {"Capital, budgets and exits for businesses run by AI\u00a0agents. Enforced by code, not courts. 24/7\u00a0on BNB\u00a0Chain."}
         </p>
         <div className={s.actions}>
           <Button variant="secondary" href="/features">

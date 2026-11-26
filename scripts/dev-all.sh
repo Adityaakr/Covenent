@@ -12,6 +12,7 @@
 #   scripts/dev-all.sh stop       stop the processes and the chain
 #   scripts/dev-all.sh stop-issuer   kill the issuer agent (the stage moment: nothing sends heartbeats any more)
 #
+# WEB_PORT (default 8080) moves the web app; 8081-8083 and 8085 are also origins the Privy app allows.
 # Every key used here is one of anvil's public test keys; signing is refused on any non-loopback RPC.
 # Logs and pids: .dev/ at the repository root (git-ignored). server/.env and web/.env.local are read if present.
 set -euo pipefail
@@ -101,11 +102,12 @@ done
 for bin in anvil forge cast jq curl pnpm node; do
   command -v "$bin" >/dev/null || { echo "missing $bin" >&2; exit 1; }
 done
-for p in 8787 8080; do
+WEB_PORT="${WEB_PORT:-8080}"
+for p in 8787 "$WEB_PORT"; do
   if lsof -nP -iTCP:"$p" -sTCP:LISTEN -t >/dev/null 2>&1; then
     owner="$(lsof -nP -iTCP:"$p" -sTCP:LISTEN -t | head -1)"
     if ! grep -qx "$owner" "$RUN"/*.pid 2>/dev/null; then
-      echo "port $p is taken by pid $owner (not this stack); stop it first" >&2
+      echo "port $p is taken by pid $owner (not this stack); stop it first, or set WEB_PORT for the web app" >&2
       exit 1
     fi
   fi
@@ -131,7 +133,7 @@ pnpm --dir "$ROOT/web" install --frozen-lockfile --silent
 
 # Server processes read server/.env (keys) and these demo settings; anvil indices follow deployments/local.json.
 export COVENANT_DATA_DIR="$RUN/server-data"
-export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000}"
+export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:$WEB_PORT,http://127.0.0.1:$WEB_PORT,http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000}"
 rm -rf "$COVENANT_DATA_DIR" && mkdir -p "$COVENANT_DATA_DIR"
 
 say "server API on :8787"
@@ -152,19 +154,19 @@ ISSUER_TICK_SECONDS=15 ISSUER_HEARTBEAT_EVERY_SECONDS=120 ISSUER_PERIOD_SECONDS=
 if [ "$PROD" = "1" ]; then
   say "building the web app"
   pnpm --dir "$ROOT/web" build >"$RUN/web-build.log" 2>&1 || { tail -30 "$RUN/web-build.log" >&2; exit 1; }
-  say "web app (production build) on http://localhost:8080"
-  start web "$ROOT/web" pnpm start
+  say "web app (production build) on http://localhost:$WEB_PORT"
+  start web "$ROOT/web" pnpm exec next start -p "$WEB_PORT"
 else
-  say "web app (dev server) on http://localhost:8080"
-  start web "$ROOT/web" pnpm dev
+  say "web app (dev server) on http://localhost:$WEB_PORT"
+  start web "$ROOT/web" pnpm exec next dev -p "$WEB_PORT"
 fi
-wait_http http://localhost:8080/ web
+wait_http "http://localhost:$WEB_PORT/" web
 
-say "ready: chain $CHAIN_ID ($MODE), web http://localhost:8080 (app at /app), API http://127.0.0.1:8787"
+say "ready: chain $CHAIN_ID ($MODE), web http://localhost:$WEB_PORT (app at /app), API http://127.0.0.1:8787"
 status
 cat <<EOF
 
-  Wallets: Privy on :8080, or "Browser wallet" -> "Local test account #n" (anvil's public accounts, unlocked).
+  Wallets: Privy on :$WEB_PORT, or "Browser wallet" -> "Local test account #n" (anvil's public accounts, unlocked).
   Story covenant (ended):  $(jq -r '.addresses.demoLauncherFactory' "$DEPLOY") factory, see /app
   Live covenant:           launcher $(jq -r .demo.launcher "$DEPLOY")  vault $(jq -r .demo.vault "$DEPLOY")
   Scenes on it:            scripts/dev-demo.sh slide | poke | redeem | abandon | advance <s>

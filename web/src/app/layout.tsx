@@ -2,10 +2,16 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { inter, interDisplay, mono } from "./fonts";
 
+const TITLE = "Covenant: The operating stack for autonomous ventures.";
+const DESCRIPTION = "Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts. 24/7 on BNB Chain.";
+
 export const metadata: Metadata = {
-  title: { default: "Covenant: investor protections that enforce themselves", template: "%s · Covenant" },
-  description: "A Flap Pool Launch launcher and vault on BNB Chain. Five rules bind a team or an AI agent after a token raise: tap, performance unlock, book-value exit, abandonment switch, disclosure.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:8080"),
+  title: { default: TITLE, template: "%s · Covenant" },
+  description: DESCRIPTION,
   applicationName: "Covenant",
+  openGraph: { type: "website", siteName: "Covenant", title: TITLE, description: DESCRIPTION, images: [{ url: "/landing/home/hero-plate.jpg", width: 2048, height: 1550, alt: "Covenant" }] },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: ["/landing/home/hero-plate.jpg"] },
 };
 
 export const viewport: Viewport = {
