@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useSwitchChain } from "wagmi";
-import { useWallet } from "@/components/providers";
+import { privyOriginAllowed, useWallet } from "@/components/providers";
 import { anvil, chainName, explorerTx } from "@/lib/chain/chains";
 import { useCovenants, useSource } from "@/lib/data/hooks";
 import { dismissToast, useToasts } from "@/lib/data/actions";
@@ -203,7 +203,9 @@ function WalletMenu() {
               {w.mode === "privy" ? (
                 <button className="pop-item" onClick={() => w.setMode("browser")}><Icon name="refresh" size={16} /><span>Use a browser wallet instead<span className="tiny muted" style={{ display: "block" }}>Skips Privy; adds local test accounts</span></span></button>
               ) : w.privyAvailable ? (
-                <button className="pop-item" onClick={() => w.setMode("privy")}><Icon name="refresh" size={16} />Use Privy login</button>
+                <>
+                  <button className="pop-item" onClick={() => w.setMode("privy")}><Icon name="refresh" size={16} /><span>Use Privy login{!privyOriginAllowed() ? <span className="tiny muted" style={{ display: "block" }}>This origin is not on the Privy app&apos;s allow list; run pnpm dev:privy (port 8080)</span> : null}</span></button>
+                </>
               ) : <p className="tiny muted" style={{ padding: "4px 10px" }}>Privy is off: no NEXT_PUBLIC_PRIVY_APP_ID.</p>}
             </>
           )}

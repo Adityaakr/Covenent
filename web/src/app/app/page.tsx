@@ -48,7 +48,30 @@ export default function CovenantsPage() {
       {loading ? <Skeleton h={320} /> : list.length === 0 ? (
         <div className="card card-pad small muted">The local deployment lists no covenant yet. {source.reason}</div>
       ) : (
-        <div className="card table-wrap">
+        <>
+        <div className="only-narrow" style={{ gap: 12 }}>
+          {list.map((v) => {
+            const d = derive(v);
+            const live = v.state !== "RAISING" && v.state !== "FAILED";
+            return (
+              <Link key={v.id} href={`/app/c/${v.id}`} className="card cov-card">
+                <div className="row between" style={{ alignItems: "flex-start" }}>
+                  <span className="row" style={{ gap: 10 }}>
+                    <TokenMark symbol={v.terms.symbol} size={36} />
+                    <span style={{ display: "grid", gap: 4 }}><span className="ink" style={{ fontWeight: 550 }}>{v.terms.name} <span className="mono muted tiny">${v.terms.symbol}</span></span><IssuerChip v={v} /></span>
+                  </span>
+                  <StateBadge state={v.state} />
+                </div>
+                <div className="figs">
+                  <div><div className="k">{live ? "Treasury" : "Committed"}</div><div className="v">{bnb(live ? v.treasury : v.raise.committed)}</div></div>
+                  <div><div className="k">Book / token</div><div className="v">{live ? price(d.book) : "–"}</div></div>
+                  <div><div className="k">vs book</div><div className={`v ${d.prem < 0 ? "down" : "up"}`}>{live ? signedPct(d.prem) : "–"}</div></div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+        <div className="card table-wrap only-wide">
           <table className="table">
             <thead>
               <tr>
@@ -88,6 +111,7 @@ export default function CovenantsPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
       {source.mode !== "live" ? (
         <p className="tiny muted" style={{ margin: 0 }}>Showing the demo data set (docs/DESIGN.md worked example, simulated hour by hour under the five rules). {source.reason}.</p>

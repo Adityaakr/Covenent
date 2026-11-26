@@ -8,7 +8,8 @@
     "start": "next start -p 3000",
     "lint": "eslint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dev:privy": "next dev -p 8080"
   },
   "dependencies": {
     "@privy-io/react-auth": "3.52.1",

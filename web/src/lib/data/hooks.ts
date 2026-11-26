@@ -7,7 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createPublicClient, http, type PublicClient } from "viem";
 import { anvil, bscTestnet, LOCAL_RPC } from "@/lib/chain/chains";
-import { launchersOf, type DeploymentPayload } from "@/lib/chain/deployment";
+import { abiFor, addressOf, hasFn, launchersOf, type DeploymentPayload } from "@/lib/chain/deployment";
 import { readCovenant } from "@/lib/chain/reader";
 import type { Address, CovenantView } from "@/lib/covenant/types";
 import { useWallet } from "@/components/providers";
@@ -19,6 +19,24 @@ export interface SourceStatus {
   payload?: DeploymentPayload;
   client?: PublicClient;
   chainId?: number;
+  launchers?: Address[];
+}
+
+/** Launchers the deployment names, plus every launcher the launcher factory has created (allLaunchers()). */
+async function discover(client: PublicClient, payload: DeploymentPayload): Promise<Address[]> {
+  const d = payload.deployment!;
+  const found = new Set(launchersOf(d).map((a) => a.toLowerCase()));
+  const out: Address[] = [...launchersOf(d)];
+  const F = abiFor(payload.abis, "CovenantLauncherFactory", "LauncherFactory");
+  for (const key of ["launcherFactory", "covenantLauncherFactory", "demoLauncherFactory"]) {
+    const f = addressOf(d, key);
+    if (!f || !hasFn(F, "allLaunchers")) continue;
+    try {
+      const all = (await client.readContract({ address: f, abi: F!, functionName: "allLaunchers" })) as Address[];
+      for (const a of all) if (!found.has(a.toLowerCase())) { found.add(a.toLowerCase()); out.push(a); }
+    } catch { /* factory not deployed at this address */ }
+  }
+  return out;
 }
 
 async function probe(): Promise<SourceStatus> {
@@ -37,11 +55,11 @@ async function probe(): Promise<SourceStatus> {
   try {
     const id = await client.getChainId();
     if (id !== d.chainId) return { mode: "mock", reason: `RPC answers chain ${id}, deployment is for ${d.chainId}`, payload };
-    const launchers = launchersOf(d);
+    const launchers = await discover(client, payload);
     if (launchers.length === 0) return { mode: "mock", reason: "Deployment names no launcher yet", payload };
     const code = await client.getCode({ address: launchers[0]! });
     if (!code || code === "0x") return { mode: "mock", reason: "Launcher has no code: the local chain was reset", payload };
-    return { mode: "live", reason: `${launchers.length} covenant${launchers.length > 1 ? "s" : ""} on chain ${id}`, payload, client, chainId: id };
+    return { mode: "live", reason: `${launchers.length} covenant${launchers.length > 1 ? "s" : ""} on chain ${id}`, payload, client, chainId: id, launchers };
   } catch {
     return { mode: "mock", reason: `Local chain not reachable at ${d.rpcUrl || LOCAL_RPC}`, payload };
   }
@@ -58,7 +76,7 @@ function useLiveCovenants(src: SourceStatus, account?: Address) {
     enabled: src.mode === "live",
     refetchInterval: 6_000,
     queryFn: async () => {
-      const launchers = launchersOf(src.payload!.deployment!);
+      const launchers = src.launchers ?? launchersOf(src.payload!.deployment!);
       return Promise.all(launchers.map((l) => readCovenant({ client: src.client!, payload: src.payload!, account }, l)));
     },
   });

@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# written by `next dev` (Next.js agent rules); not project content
+/AGENTS.md
+/CLAUDE.md

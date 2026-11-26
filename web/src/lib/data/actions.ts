@@ -8,9 +8,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 import { concatHex, encodeFunctionData, keccak256, parseEther, toHex, type Abi, type Hex } from "viem";
+import { hasFn } from "@/lib/chain/deployment";
 import { useConfig } from "wagmi";
 import { sendTransaction, waitForTransactionReceipt, writeContract } from "wagmi/actions";
-import { atlasReport } from "@/lib/api/server";
+import { pokeReport } from "@/lib/api/server";
 import { abiFor, pickFn } from "@/lib/chain/deployment";
 import { bookValue, redeemQuote, redeemableSupply } from "@/lib/covenant/math";
 import type { Address, CovenantView, Hash } from "@/lib/covenant/types";
@@ -108,7 +109,10 @@ export function useActions(view?: CovenantView) {
         }
         case "revenue": {
           if (!view.vault) throw new Error("No vault yet");
-          hash = await sendTransaction(config, { to: view.vault, value: wei(arg ?? 0), chainId });
+          // depositRevenue(tag) marks it as issuer revenue (and a heartbeat from the team wallet); a plain send also counts.
+          hash = hasFn(V, "depositRevenue")
+            ? await write(view.vault, V, ["depositRevenue"], [keccak256(toHex("issuer-revenue"))], wei(arg ?? 0))
+            : await sendTransaction(config, { to: view.vault, value: wei(arg ?? 0), chainId });
           break;
         }
         case "redeem": {
@@ -126,11 +130,14 @@ export function useActions(view?: CovenantView) {
         case "poke": {
           const fn = pickFn(O, "poke");
           if (!view.oracle || !O || !fn) throw new Error("Oracle not in the deployment");
-          const report = await atlasReport();
+          // The server returns the signed Atlas report and the full poke(vault) call; without it, poke plainly
+          // (the exit streak still counts on on-chain numbers; dollar rules wait for a report).
+          const report = await pokeReport(view.vault);
           let data: Hex = encodeFunctionData({ abi: O, functionName: fn, args: [view.vault] });
-          if (report) data = concatHex([data, report.payload]);
-          patchToast(id, { detail: report ? "Signed Atlas report attached" : "No signed report from the server: plain poke" });
-          hash = await sendTransaction(config, { to: view.oracle, data, chainId });
+          if (report?.tx?.data) data = report.tx.data;
+          else if (report?.extraData) data = concatHex([data, report.extraData]);
+          patchToast(id, { detail: report ? `Atlas report attached (${report.mode === "atlas" ? "Atlas" : "local test signer"})` : "No report from the server: plain poke" });
+          hash = await sendTransaction(config, { to: report?.tx?.to ?? view.oracle, data, chainId });
           break;
         }
       }

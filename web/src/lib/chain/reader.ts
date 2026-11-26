@@ -166,6 +166,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   const ledger: LedgerRow[] = [];
   const events: FeedEvent[] = [];
   const history: PricePoint[] = [];
+  const deposited = new Set<string>();
   const fromBlock = BigInt(d.startBlock ?? 0);
   const tsCache = new Map<bigint, number>();
   const ts = async (bn: bigint) => { if (!tsCache.has(bn)) tsCache.set(bn, Number((await client.getBlock({ blockNumber: bn })).timestamp)); return tsCache.get(bn)!; };
@@ -181,14 +182,11 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
       const amount = (...k: string[]) => { for (const kk of k) if (a[kk] !== undefined) return eth(a[kk]); return 0; };
       switch (l.eventName) {
         case "TreasuryFunded": ledger.push({ kind: "raise", at, amount: amount("amount", "value", "treasury"), tx: l.transactionHash, note: "Treasury share of the raise" }); break;
-        case "RevenueRecognized": {
-          const kindArg = String(a.source ?? a.kind ?? "").toLowerCase();
-          ledger.push({ kind: kindArg.includes("rev") || kindArg.includes("issuer") ? "revenue" : "tax", at, amount: amount("amount", "value"), tx: l.transactionHash, note: kindArg.includes("rev") ? "Issuer revenue" : "Trading tax" });
-          break;
-        }
-        case "IssuerRevenue": case "RevenueDeposited": ledger.push({ kind: "revenue", at, amount: amount("amount", "value"), tx: l.transactionHash, note: "Issuer revenue routed to the vault" }); break;
+        // Every BNB arrival is recognised by balance delta; RevenueDeposited marks the ones the issuer sent on purpose.
+        case "RevenueRecognized": ledger.push({ kind: "tax", at, amount: amount("amount", "value"), tx: l.transactionHash, note: "Trading tax dispatched to the vault" }); break;
+        case "RevenueDeposited": deposited.add(l.transactionHash); break;
         case "TapClaimed": ledger.push({ kind: "tap", at, amount: -amount("amount", "value"), tx: l.transactionHash, note: "Tap claimed by the team wallet" }); break;
-        case "Redeemed": ledger.push({ kind: "redeem", at, amount: -amount("out", "amountOut", "bnbOut"), tx: l.transactionHash, note: `${(amount("tokens", "got", "amount") / 1e6).toFixed(2)}M tokens burned at book` }); break;
+        case "Redeemed": ledger.push({ kind: "redeem", at, amount: -amount("bnbOut", "out", "amountOut"), tx: l.transactionHash, note: `${(amount("tokens", "got", "amount") / 1e6).toFixed(2)}M tokens burned at book` }); break;
         case "Observed": history.push({ t: at, price: amount("twapBnb", "twap", "price"), book: amount("bookValue", "book") }); break;
       }
       events.push({ at, name: l.eventName, detail: Object.entries(a).slice(0, 3).map(([k, v]) => `${k} ${typeof v === "bigint" ? (v > 10n ** 12n ? Number(formatEther(v)).toLocaleString("en-US", { maximumFractionDigits: 6 }) : v.toString()) : String(v)}`).join(" · "), tx: l.transactionHash });
@@ -196,11 +194,12 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   } catch {
     /* log queries can fail on a pruned node; the sheet still renders its reads */
   }
+  for (const row of ledger) if (row.kind === "tax" && row.tx && deposited.has(row.tx)) { row.kind = "revenue"; row.note = "Issuer revenue routed to the vault"; }
   events.sort((a, b) => b.at - a.at);
   const lastHeartbeat = hbRaw !== undefined ? num(hbRaw) : events.find((e) => ["Heartbeat", "TapClaimed", "TapLowered", "ReportPosted"].includes(e.name))?.at ?? now;
   const lastObs = history.at(-1);
 
-  return {
+  const view: CovenantView = {
     id: launcher,
     source: "live",
     chainId: d.chainId,
@@ -249,4 +248,68 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     position,
     now,
   };
+  return applyLens(ctx, view);
+}
+
+/**
+ * The contracts ship CovenantLens: one view call returns the whole status a sheet needs. When the deployment names
+ * it, its numbers replace the per-call reads above (same values, one round trip, and the exit streak the vault
+ * itself computes with the decaying rule).
+ */
+async function applyLens(ctx: ReadContext, v: CovenantView): Promise<CovenantView> {
+  const d = ctx.payload.deployment!;
+  const LENS = abiFor(ctx.payload.abis, "CovenantLens", "Lens");
+  const at = addressOf(d, "lens", "covenantLens");
+  const st = await call<Record<string, unknown>>(ctx, at, LENS, "status", [v.launcher]);
+  if (!st) return v;
+  const s = (k: string) => st[k];
+  const state = STATES[num(s("state"))] ?? v.state;
+  const tranches = Array.isArray(s("tranches")) ? (s("tranches") as Record<string, unknown>[]).map((t, k) => ({
+    bps: v.terms.trancheBps[k] ?? 0, multiple: num(t.multiple) || v.terms.trancheMultiple[k] || 0, progress: num(t.progress), unlocked: Boolean(t.unlocked),
+  })) : v.tranches;
+  const out: CovenantView = {
+    ...v,
+    state,
+    vault: (s("vault") as Address) && !/^0x0{40}$/i.test(String(s("vault"))) ? (s("vault") as Address) : v.vault,
+    token: (s("token") as Address) && !/^0x0{40}$/i.test(String(s("token"))) ? (s("token") as Address) : v.token,
+    pair: (s("pair") as Address) && !/^0x0{40}$/i.test(String(s("pair"))) ? (s("pair") as Address) : v.pair,
+    raise: { ...v.raise, committed: eth(s("committed")), contributors: num(s("contributorCount")), deadline: num(s("saleDeadline")) || v.raise.deadline, finalized: state !== "RAISING" },
+    treasury: eth(s("treasury")),
+    owedTeam: eth(s("owedTeam")),
+    lockedTeam: eth(s("lockedTeam")),
+    poolPrice: eth(s("lastTwapBnb")) || eth(s("spotBnb")) || v.poolPrice,
+    tap: { ...v.tap, accrued: eth(s("owedTeam")) },
+    tranches,
+    exit: { streak: num(s("exitStreak")), roundEndsAt: num(s("roundEnd")) > v.now ? num(s("roundEnd")) : null, cooldownEndsAt: num(s("cooldownEnd")) > v.now ? num(s("cooldownEnd")) : null },
+    lastHeartbeat: num(s("lastHeartbeat")) || v.lastHeartbeat,
+    terms: { ...v.terms, tapUsdPer30d: eth(s("tapUsdPer30d")) || v.terms.tapUsdPer30d, minRaise: eth(s("minRaise")) || v.terms.minRaise, cap: eth(s("cap")) || v.terms.cap, exitStreak: num(s("exitStreakNeeded")) || v.terms.exitStreak, agentId: num(s("agentId")) || v.terms.agentId, teamWallet: (s("teamWallet") as Address) ?? v.terms.teamWallet },
+    trust: {
+      ...v.trust,
+      lastPoke: num(s("lastObservedAt")) || v.trust.lastPoke,
+      bnbUsd: eth(s("lastBnbUsd")) || v.trust.bnbUsd,
+      exitGate: [
+        { label: "Pool TWAP read from the pair's cumulative price", pass: Boolean(s("lastTrusted")), detail: Boolean(s("lastTrusted")) ? "Last observation counted" : "No valid TWAP at the last poke" },
+        ...v.trust.exitGate.slice(1),
+      ],
+      strictGate: [
+        { label: "Atlas BNB/USD report verifies and is fresh", pass: Boolean(s("lastAtlas")), detail: Boolean(s("lastAtlas")) ? "Verified rate rode along with the last poke" : "No fresh Atlas rate at the last poke" },
+        { label: "Pool BNB at least half the launch seed", pass: Boolean(s("lastDeep")), detail: "Guards unlocks and the dollar tap only" },
+        { label: "Disclosure", pass: !s("disclosurePaused"), detail: s("disclosurePaused") ? "A missed report pauses the tap" : "Reports up to date" },
+      ],
+    },
+  };
+  // Issuer: ERC-8004 identity and the outcomes this vault has written
+  const iss = out.vault ? await call<Record<string, unknown>>(ctx, at, LENS, "issuer", [out.vault]) : undefined;
+  if (iss && num(iss.agentId) > 0) {
+    out.issuer = {
+      ...out.issuer, kind: "agent", agentId: num(iss.agentId), teamWallet: iss.teamWallet as Address,
+      registry: iss.identityRegistry as Address, registrationUri: typeof iss.agentURI === "string" && iss.agentURI ? iss.agentURI : undefined,
+      lastAction: { at: num(iss.lastHeartbeat), what: Boolean(iss.agentBound) ? "Heartbeat (identity bound to the team wallet)" : "Heartbeat" },
+    };
+    out.disclosure = { ...out.disclosure, passed: num(iss.reportsPosted) || out.disclosure.passed };
+  }
+  // Exit-round bands from the event feed
+  const opened = out.events.filter((e) => e.name === "ExitRoundOpened").map((e) => e.at).sort((a, b) => a - b);
+  out.bands = opened.map((from) => ({ from, to: Math.min(out.now, from + out.terms.roundLength), kind: "round" as const }));
+  return out;
 }

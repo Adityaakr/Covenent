@@ -18,12 +18,21 @@ import { ANVIL_ACCOUNTS, anvil, bscTestnet } from "@/lib/chain/chains";
 const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
 const DEV_WALLET = process.env.NEXT_PUBLIC_DEV_WALLET === "1";
 const FORCED = process.env.NEXT_PUBLIC_WALLET_MODE;
+/** Origins the Privy app allows (its dashboard setting). Elsewhere Privy's iframe is blocked, so browser wallets lead. */
+const PRIVY_ORIGINS = (process.env.NEXT_PUBLIC_PRIVY_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+export function privyOriginAllowed(): boolean {
+  return PRIVY_ORIGINS.length === 0 || (typeof window !== "undefined" && PRIVY_ORIGINS.includes(window.location.origin));
+}
 
 export type WalletMode = "privy" | "browser";
 
 function readMode(): WalletMode {
   if (!APP_ID || FORCED === "injected") return "browser";
-  try { return localStorage.getItem("wallet-mode") === "browser" ? "browser" : "privy"; } catch { return "privy"; }
+  try {
+    const saved = localStorage.getItem("wallet-mode");
+    if (saved === "browser" || saved === "privy") return saved;
+  } catch { /* storage blocked: fall through */ }
+  return privyOriginAllowed() ? "privy" : "browser";
 }
 
 export interface WalletUi {

@@ -14,7 +14,8 @@ export const ROUTES = {
   market: (token: string) => `/api/market/${token}`,
   candles: (token: string) => `/api/candles/${token}`,
   sample: "/api/simulator/sample",
-  atlasReport: "/api/atlas/report",
+  simulator: "/api/simulator",
+  pokeReport: (vault?: string) => `/api/poke-report${vault ? `?vault=${vault}` : ""}`,
   keeper: "/api/keeper/status",
 };
 
@@ -110,13 +111,43 @@ export function keeper(fallback: () => KeeperStatus): Promise<Sourced<KeeperStat
   });
 }
 
-/** A signed Atlas report for the poke button. No fallback: a poke without a report is sent as a plain call. */
-export async function atlasReport(): Promise<AtlasReport | null> {
+/** A signed Atlas BNB/USD report for the poke button, with the ready-to-send poke(vault) call when the server knows it. */
+export interface PokeReport { mode: "atlas" | "local-test-signer"; bnbUsd: string; timestamp: number; signer: string; extraData: `0x${string}`; note: string; tx: { to: `0x${string}`; data: `0x${string}`; value: string } | null }
+
+export async function pokeReport(vault?: string): Promise<PokeReport | null> {
   try {
-    const o = obj(await get<unknown>(ROUTES.atlasReport, 4000));
-    if (!o || typeof o.payload !== "string") return null;
-    return { bnbUsd: n(o.bnbUsd), timestamp: n(o.timestamp), payload: o.payload as `0x${string}`, signer: String(o.signer ?? "") };
+    const o = obj(await get<unknown>(ROUTES.pokeReport(vault), 5000));
+    if (!o || typeof o.extraData !== "string") return null;
+    return o as unknown as PokeReport;
   } catch {
     return null;
   }
+}
+
+/** The server's simulator result (server/src/schema.ts SimulatorResult), computed from fetched market data. */
+export interface SimVariant { rule: "reset" | "decay" | "twap72"; description: string; triggered: number; triggeredShare: number | null; medianDaysToTrigger: number | null; medianRedeemableShareOfRaise: number | null; medianRedeemVsMarket: number | null }
+export interface SimToken { token: string; pair: string; symbol: string | null; createdAt: number | null; days: number; openPrice: number; minPriceShareOfOpen: number; lastPriceShareOfOpen: number; triggers: Record<string, { day: number; price: number; floor: number } | null> }
+export interface SimulatorResult {
+  schemaVersion: 1; computedFromRealData: boolean; generatedAt: string;
+  source: { sample: string; candles: string; notes: string[] };
+  terms: { floorShareOfOpen: number; tapCapBpsPer30d: number; exitStreakDays: number; priceProxy: string };
+  sample: { requested: number; withCandles: number; minDays: number; windowStart: string | null; windowEnd: string | null };
+  headline: { text: string | null; rule: string; value: number | null; reason: string | null };
+  variants: SimVariant[];
+  tokens: SimToken[];
+}
+
+/** The running server first, then the snapshot the server package commits (read by this app's /api/simulator). */
+export async function simulator(): Promise<{ result: SimulatorResult; from: "server" | "snapshot" } | null> {
+  const ok = (o: Record<string, unknown> | null) => (o && o.schemaVersion === 1 && Array.isArray(o.variants) ? (o as unknown as SimulatorResult) : null);
+  try {
+    const r = ok(obj(await get<unknown>(ROUTES.simulator, 3000)));
+    if (r) return { result: r, from: "server" };
+  } catch { /* server not running */ }
+  try {
+    const res = await fetch("/api/simulator", { cache: "no-store" });
+    const r = res.ok ? ok(obj(await res.json())) : null;
+    if (r) return { result: r, from: "snapshot" };
+  } catch { /* no snapshot */ }
+  return null;
 }
