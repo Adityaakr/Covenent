@@ -15,7 +15,7 @@ const points = [
 
 /* Offsets and widths are the template's bar geometry. */
 const bars = [
-  { label: "Exit streak · 3 trusted days", offset: "0%", width: "46%", accent: false },
+  { label: "Exit streak · 3 days below book", offset: "0%", width: "46%", accent: false },
   { label: "Exit round · 7 days", offset: "30%", width: "56%", accent: true },
   { label: "Cooldown · 14 days", offset: "62%", width: "38%", accent: false },
 ];
@@ -30,7 +30,7 @@ export function ExitTimeline() {
             as="h3"
             className={s.heading}
             first="An exit that runs on a clock."
-            second="Three trusted days below book open a 7 day round. A 14 day cooldown follows before it can arm again."
+            second="Three days below book, on on-chain prices only, open a 7 day round. A 14 day cooldown follows before it can arm again."
           />
           {points.map((p) => (
             <div key={p} className={s.point}>

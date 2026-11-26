@@ -3,8 +3,12 @@ import { SplitHeading } from "../../components/SplitHeading";
 import { Eyebrow } from "../../components/Eyebrow";
 import { ScrollLift } from "../../components/ScrollLift";
 import { useCases, type UseCase } from "../../content/useCases";
+import { SourceLink } from "../../components/SourceLink";
+import Link from "next/link";
 import { HoverCard } from "./HoverCard";
 import { ArrowRight } from "./marks";
+import { RuleList } from "./RuleList";
+import { SheetCard } from "./SheetCard";
 import s from "./UseCases.module.css";
 
 const href = (u: UseCase) => `/use-cases/${u.slug}`;
@@ -59,7 +63,7 @@ export function FeaturedUseCase() {
 const stats = [
   { value: "60%", label: "of the sale price backed by the treasury at launch" },
   { value: "4%", label: "of the treasury per 30 days, the most the tap can pay" },
-  { value: "3 days", label: "trusted, below book value, open an exit round" },
+  { value: "3 days", label: "below book value, on on-chain prices, open an exit round" },
   { value: "45 days", label: "of team silence open the treasury to holders" },
 ];
 export function UseCaseStats() {
@@ -86,7 +90,7 @@ export function AllUseCases() {
         <SplitHeading
           className={s.sectionHeading}
           first="One vault, the same five rules."
-          second="Six ways to put them to work."
+          second="Five ways to put them to work."
         />
       </div>
       <div className={s.storiesGrid}>
@@ -106,6 +110,61 @@ export function AllUseCases() {
         ))}
       </div>
     </Section>
+  );
+}
+
+/** One block per case: the template section shell with a two-column body, text on the left (company row, H3
+ *  headline, situation, today, the five rules, the limit) and the illustrative sheet on the right (sticky). */
+export function UseCaseBlocks() {
+  return (
+    <>
+      {useCases.map((u, i) => (
+        <Section key={u.slug} name={`Use case ${i + 1}`} id={u.slug} contentClassName={s.blockContent}>
+          <div className={s.block}>
+            <div className={s.blockText}>
+              <div className={s.company}>
+                <span className={s.storyMarkWrap}>{u.mark}</span>
+                <p className="t-label">{u.name}</p>
+                <p className={["t-small c-text-2", s.storyIndustry].join(" ")}>
+                  {String(i + 1).padStart(2, "0")} / {String(useCases.length).padStart(2, "0")}
+                </p>
+              </div>
+              <h2 className="t-h3">{u.headline}</h2>
+              <div className={s.para}>
+                <p className="t-label">The situation</p>
+                <p className="t-body">{u.situation}</p>
+              </div>
+              <div className={s.para}>
+                <p className="t-label">What goes wrong today</p>
+                <p className="t-body">{u.today}</p>
+                <div className={s.sources}>
+                  {u.todaySources.map((src) => (
+                    <SourceLink key={src.href} href={src.href}>
+                      {src.label}
+                    </SourceLink>
+                  ))}
+                </div>
+              </div>
+              <div className={s.para}>
+                <p className="t-label">How the five rules handle it</p>
+                <RuleList u={u} />
+              </div>
+              <p className="t-small c-text-2">
+                <span className="c-text">The limit. </span>
+                {u.limit}
+              </p>
+              <Link href={href(u)} className={[s.read, "link-nav"].join(" ")}>
+                <span className="t-label">Read the use case</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+            <div className={s.blockSheet}>
+              <SheetCard u={u} />
+            </div>
+          </div>
+        </Section>
+      ))}
+    </>
   );
 }
 

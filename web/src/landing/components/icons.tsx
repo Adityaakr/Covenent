@@ -24,3 +24,12 @@ export function IconPlus({ size = 14, className }: P) {
     </svg>
   );
 }
+
+/* Phosphor "Arrow Up Right", stroke 1.5: marks a link that leaves the site. */
+export function IconArrowUpRight({ size = 12, className }: P) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flex: "none" }}>
+      <path d="M6 18 18 6M8.25 6H18v9.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

@@ -143,6 +143,18 @@
 .quoteCard > p { width: 100%; }
 .quoteAuthor { display: flex; flex-direction: column; gap: 2px; padding-top: 24px; width: 100%; }
 
+/* ---------- Use case blocks (one Section each) ---------- */
+.blockContent.blockContent { padding: 96px 64px; }
+.block { display: flex; flex-direction: row; align-items: flex-start; gap: 64px; width: 100%; }
+.blockText { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 28px; }
+.blockText > * { width: 100%; }
+.blockText > .read { width: auto; }
+.blockSheet { flex: none; width: 440px; position: sticky; top: 96px; }
+.para { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.para > * { width: 100%; }
+.sources { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.sources > * { width: auto; }
+
 /* ---------- Tablet ---------- */
 @media (max-width: 1199.98px) {
   .featuredContent { padding: 0 48px 80px; }
@@ -152,6 +164,9 @@
   .stat { padding: 32px 24px; }
   .storiesGrid { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
   .quotesGrid { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+  .blockContent.blockContent { padding: 80px 48px; }
+  .block { flex-direction: column; gap: 40px; }
+  .blockSheet { position: static; width: 100%; max-width: 560px; }
 }
 
 /* ---------- Phone ---------- */
@@ -168,4 +183,7 @@
   .quotesGrid { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
   .quotesGrid > * { width: 100%; }
   .quoteCard { height: auto; }
+  .blockContent.blockContent { padding: 56px 20px; }
+  .block { gap: 28px; }
+  .blockText { gap: 22px; }
 }

@@ -2,7 +2,10 @@ import { Section } from "../../components/Section";
 import { ScrollLift } from "../../components/ScrollLift";
 import type { UseCase } from "../../content/useCases";
 import { BackLink } from "./HoverCard";
+import { SourceLink } from "../../components/SourceLink";
 import { ArrowLeft, Quotes } from "./marks";
+import { RuleList } from "./RuleList";
+import { SheetCard } from "./SheetCard";
 import s from "./UseCaseDetail.module.css";
 
 /** Story Header (vqGTbvIk6): back link, mark + name, H1 title (max 960), Lead summary (max 640). */
@@ -34,7 +37,8 @@ export function UseCaseCover({ u }: { u: UseCase }) {
   );
 }
 
-/** Story Body (KFy_4VWTm): sticky facts column (Category, Who, Key term) + rich text. */
+/** Story Body (KFy_4VWTm): sticky facts column (Category, Who, Key term) + rich text, here the case's structured
+ *  fields with the rule list and the illustrative sheet as blocks in the text column. */
 export function UseCaseBody({ u }: { u: UseCase }) {
   return (
     <Section name="Story Body" contentClassName={s.bodyContent}>
@@ -55,17 +59,27 @@ export function UseCaseBody({ u }: { u: UseCase }) {
           <p className="t-small c-text-2">{u.resultLabel}</p>
         </div>
         <div className={s.rich}>
-          {u.body.map((b, i) =>
-            b.h2 ? (
-              <h2 key={i} className="t-h3">
-                {b.h2}
-              </h2>
-            ) : (
-              <p key={i} className="t-lead">
-                {b.p}
-              </p>
-            ),
-          )}
+          <h2 className="t-h3">The situation</h2>
+          <p className="t-lead">{u.situation}</p>
+          <h2 className="t-h3">What goes wrong today</h2>
+          <p className="t-lead">{u.today}</p>
+          <div className={s.sources}>
+            {u.todaySources.map((src) => (
+              <SourceLink key={src.href} href={src.href}>
+                {src.label}
+              </SourceLink>
+            ))}
+          </div>
+          <h2 className="t-h3">How the five rules handle it</h2>
+          <div className={s.block}>
+            <RuleList u={u} />
+          </div>
+          <h2 className="t-h3">The covenant sheet</h2>
+          <div className={s.block}>
+            <SheetCard u={u} />
+          </div>
+          <h2 className="t-h3">What it does not do</h2>
+          <p className="t-lead">{u.limit}</p>
         </div>
       </div>
     </Section>

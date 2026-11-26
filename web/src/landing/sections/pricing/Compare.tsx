@@ -3,6 +3,8 @@ import { Section } from "../../components/Section";
 import { Eyebrow } from "../../components/Eyebrow";
 import { SplitHeading } from "../../components/SplitHeading";
 import { compareColumns, compareFirstHeader, compareGroups } from "./compareData";
+import { SourceLink } from "../../components/SourceLink";
+import type { Source } from "../../content/problem";
 import s from "./Compare.module.css";
 
 function Cell({ value }: { value: string }) {
@@ -10,19 +12,29 @@ function Cell({ value }: { value: string }) {
   return <p className={["t-small", tone, s.cell].filter(Boolean).join(" ")}>{value}</p>;
 }
 
+export type CompareProps = {
+  eyebrow?: string;
+  first?: string;
+  second?: string;
+  id?: string;
+  /** A line under the table, with its sources. */
+  note?: { text: string; sources: Source[] };
+};
+
 /** Compare (d5j5gROy9): heading group, then a table with a sticky header row (Compare Header, top 64px),
- *  three groups of rows, row hover fill. */
-export function Compare() {
+ *  three groups of rows, row hover fill. The home page reuses it with its own heading. */
+export function Compare({
+  eyebrow = "Prior art",
+  first = "Same promise, different engine.",
+  second = "What a holder can do when it fails.",
+  id,
+  note,
+}: CompareProps = {}) {
   return (
-    <Section name="Compare">
+    <Section name="Compare" id={id}>
       <div className={s.headingGroup}>
-        <Eyebrow>Prior art</Eyebrow>
-        <SplitHeading
-          as="h2"
-          className={s.heading}
-          first="Same promise, different engine."
-          second="What a holder can do when it fails."
-        />
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <SplitHeading as="h2" className={s.heading} first={first} second={second} />
       </div>
       <div className={s.wrap} data-framer-name="Compare Table Wrap">
         <div className={s.table} role="table" data-framer-name="Compare Table">
@@ -57,6 +69,18 @@ export function Compare() {
           ))}
         </div>
       </div>
+      {note ? (
+        <div className={s.note}>
+          <p className="t-small c-text-2">{note.text}</p>
+          <div className={s.noteLinks}>
+            {note.sources.map((src) => (
+              <SourceLink key={src.href} href={src.href}>
+                {src.label}
+              </SourceLink>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </Section>
   );
 }

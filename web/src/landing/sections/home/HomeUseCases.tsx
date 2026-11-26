@@ -36,7 +36,7 @@ export function HomeUseCases() {
           <SplitHeading
             className={s.heading}
             first="One vault for every issuer."
-            second="Agents, teams and launchpads raise under the same rules."
+            second="AI agents, teams, machines and launchpads raise under the same five rules."
           />
         </div>
         <Link href="/use-cases" className={s.link}>

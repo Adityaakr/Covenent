@@ -60,6 +60,8 @@
 .rich > h2 { margin-top: 40px; text-wrap: auto; }
 .rich > p { margin-top: 20px; text-wrap: auto; }
 .rich > :first-child { margin-top: 0; }
+.rich > .sources { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.rich > .block { margin-top: 20px; }
 
 /* ---------- Story Quote ---------- */
 .quoteContent { gap: 28px; align-items: center; }

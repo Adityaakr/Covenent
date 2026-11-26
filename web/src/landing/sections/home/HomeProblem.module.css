@@ -1,13 +1,35 @@
-/* Framer "Stats" (s8Ki2GStV). Content has no padding; the cells carry it. */
+/* "The problem today", grown from the template's "Stats" (s8Ki2GStV). Content has no padding; the intro, the
+   group heads and the cells carry it. Cell padding and borders are the Stats values. */
 .content.content {
   padding: 0;
   gap: 0;
 }
-/* Desktop: horizontal row of four 1fr cells, left border on cells 2-4. */
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 120px 64px 72px;
+}
+.heading { width: 100%; max-width: 1040px; }
+
+/* Group head: Text/H4 title and Body note, the Compare group row with the section's top rule. */
+.group { box-shadow: inset 0 1px 0 var(--c-border); }
+.groupHead {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 24px;
+  padding: 28px 40px 0;
+}
+.groupHead > h3 { flex: none; width: 260px; }
+.groupNote { flex: 1 1 0; min-width: 0; max-width: 560px; }
+
+/* Desktop: horizontal row of four 1fr cells, left border on cells 2-4 (Stats). */
 .row {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: stretch;
   width: 100%;
 }
 .stat {
@@ -17,35 +39,57 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
-  padding: 48px 40px;
+  padding: 36px 40px 48px;
 }
 .stat > * { width: 100%; }
 .stat + .stat { border-left: 1px solid var(--c-border); }
+.value { white-space: nowrap; }
+.source.source { width: auto; margin-top: auto; padding-top: 6px; }
 
-/* Tablet: 2 x 2 grid, padding 36 32. Cell 2 left, cell 3 top, cell 4 left + top. */
+/* Demand row: one wide cell, accent value beside a Lead line (Background fill; the next section is on Surface). */
+.demand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 48px;
+  padding: 48px 40px 56px;
+  box-shadow: inset 0 1px 0 var(--c-border);
+}
+.demandValue { flex: none; white-space: nowrap; }
+.demandText { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; max-width: 760px; }
+
+/* Tablet: 2 x 2 grid, padding 36 32. Cell 2 left, cell 3 top, cell 4 left + top (Stats). */
 @media (max-width: 1199.98px) {
+  .intro { padding: 96px 48px 56px; }
+  .groupHead { padding: 28px 32px 0; flex-direction: column; gap: 6px; }
+  .groupHead > h3 { width: 100%; }
+  .groupNote { flex: none; width: 100%; }
   .row {
     display: grid;
     grid-template-columns: repeat(2, minmax(50px, 1fr));
     grid-auto-rows: auto;
     align-items: stretch;
   }
-  .stat { padding: 36px 32px; }
+  .stat { padding: 28px 32px 36px; }
   .stat + .stat { border-left: 0; }
   .stat:nth-child(2) { border-left: 1px solid var(--c-border); }
   .stat:nth-child(3) { border-top: 1px solid var(--c-border); }
   .stat:nth-child(4) { border-left: 1px solid var(--c-border); border-top: 1px solid var(--c-border); }
+  .demand { padding: 36px 32px; gap: 32px; }
 }
 
-/* Phone: vertical stack, padding 28 20, top border on cells 2-4. */
+/* Phone: vertical stack, padding 28 20, top border on cells 2-4 (Stats). */
 @media (max-width: 809.98px) {
+  .intro { padding: 64px 20px 36px; }
+  .groupHead { padding: 24px 20px 0; }
   .row {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
   }
-  .stat { width: 100%; flex: none; padding: 28px 20px; }
+  .stat { width: 100%; flex: none; padding: 24px 20px 28px; }
   .stat:nth-child(2) { border-left: 0; }
   .stat:nth-child(4) { border-left: 0; }
   .stat + .stat { border-top: 1px solid var(--c-border); }
+  .demand { flex-direction: column; align-items: flex-start; gap: 12px; padding: 28px 20px; }
 }
