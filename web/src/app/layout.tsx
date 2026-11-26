@@ -15,14 +15,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#ffffff" }, { media: "(prefers-color-scheme: dark)", color: "#0b0c0e" }],
+  themeColor: "#ffffff",
 };
 
 /**
- * Runs before first paint: the visitor's saved theme, else the system's, on <html data-theme>, so a dark page never
- * flashes light. With no saved choice it follows the system as it changes. Storage can throw in private windows.
+ * Runs before first paint: the visitor's saved theme on <html data-theme>, else dark (the app's default; the landing
+ * page keeps its own light palette whatever this says), so a page never flashes the wrong theme. Storage can throw
+ * in private windows.
  */
-const THEME_SCRIPT = `(function(){var d=document.documentElement,m=window.matchMedia("(prefers-color-scheme: dark)");function saved(){try{var t=localStorage.getItem("theme");return t==="dark"||t==="light"?t:null}catch(e){return null}}function apply(){d.dataset.theme=saved()||(m.matches?"dark":"light")}apply();m.addEventListener("change",function(){if(!saved())apply()})})();`;
+const THEME_SCRIPT = `(function(){var t=null;try{t=localStorage.getItem("theme")}catch(e){}document.documentElement.dataset.theme=t==="light"?"light":"dark"})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -1,120 +1,150 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { CovenantCard, nextEvent } from "@/components/app/covenant";
 import { Sparkline } from "@/components/app/chart";
-import { IssuerChip, TokenMark } from "@/components/app/covenant";
-import { LiteList } from "@/components/app/lite";
 import { Icon } from "@/components/app/icons";
-import { Skeleton, StateBadge } from "@/components/app/ui";
+import { ConnectChain } from "@/components/app/live";
+import { IntentPicker } from "@/components/app/onboarding";
+import { reopenOnboarding, useIntents, useOnboarded, type Intent } from "@/components/app/prefs";
+import { Empty, SecHead, Skeleton, StateBadge, Ticker, TokenAvatar, cx, seedOf } from "@/components/app/ui";
 import { derive } from "@/lib/covenant/derive";
-import { duration } from "@/lib/covenant/time";
+import { DAY } from "@/lib/covenant/time";
+import type { CovenantView } from "@/lib/covenant/types";
 import { useCovenants } from "@/lib/data/hooks";
-import { bnb, pct, price, signedPct } from "@/lib/format";
+import { bnb, price, signedPct } from "@/lib/format";
 
-export default function CovenantsPage() {
-  const { list, source, loading } = useCovenants();
-  const router = useRouter();
+const subscribeNoop = () => () => {};
+const hourNow = () => new Date().getHours();
+
+function greeting(h: number) {
+  if (h < 0) return "Welcome back.";
+  return h < 5 ? "Good evening." : h < 12 ? "Good morning." : h < 18 ? "Good afternoon." : "Good evening.";
+}
+
+export default function DiscoverPage() {
+  const { list: all, source, loading: reading } = useCovenants();
+  const online = source.mode === "live";
+  const list = online ? all.filter((v) => v.source === "live") : [];
+  const loading = source.mode === "checking" || (online && reading);
+  const onboarded = useOnboarded();
+  const intents = useIntents();
+  const hour = useSyncExternalStore(subscribeNoop, hourNow, () => -1);
   const launched = list.filter((v) => v.state !== "RAISING" && v.state !== "FAILED");
   const held = launched.reduce((a, v) => a + v.treasury, 0);
-  const under = launched.filter((v) => derive(v).prem < 0).length;
-  const agents = list.filter((v) => v.issuer.kind === "agent").length;
+  const under = launched.filter((v) => v.state === "ACTIVE" && derive(v).prem < 0);
+  const rounds = list.filter((v) => v.state === "EXIT_ROUND" || v.state === "WIND_DOWN");
+  const raising = list.filter((v) => v.state === "RAISING");
+  const agents = list.filter((v) => v.issuer.kind === "agent");
+  const order: Intent[] = intents.length ? intents : ["invest", "watch", "agent", "raise"];
+
+  const sections: Record<Intent, ReactNode> = {
+    invest: (
+      <section key="invest" className="stack">
+        <SecHead title="Raising now" sub="Commitments are uncapped and scale back pro rata above the cap. Under the minimum, everyone is refunded in full." right={<Link className="btn btn-secondary btn-sm" href="/app/covenants">All covenants<Icon name="arrow" size={14} /></Link>} />
+        {raising.length ? <div className="cgrid">{raising.map((v, i) => <CovenantCard key={v.id} v={v} i={i} />)}</div>
+          : <div className="card"><Empty title="Nothing is raising right now" icon="coins" action={<Link className="btn btn-primary btn-sm" href="/app/create">Launch your autonomous venture</Link>}>New covenants appear here the moment their raise opens.</Empty></div>}
+      </section>
+    ),
+    watch: (
+      <section key="watch" className="stack">
+        <SecHead title="Under book and in exit rounds" sub="Where the pool trades below what the treasury holds per token. Exit streaks count on-chain numbers only." />
+        {under.length + rounds.length ? <WatchList list={[...rounds, ...under]} /> : <div className="card"><Empty title="Every covenant trades above book" icon="shieldCheck">No exit streak is counting and no round is open.</Empty></div>}
+      </section>
+    ),
+    agent: (
+      <section key="agent" className="stack">
+        <SecHead title="Agent issuers" sub="Ventures run by an ERC-8004 agent: a budget it is held to, with outcomes written to its record." />
+        {agents.length ? <div className="cgrid">{agents.map((v, i) => <CovenantCard key={v.id} v={v} i={i} />)}</div> : <div className="card"><Empty title="No agent issuers yet" icon="agent" /></div>}
+      </section>
+    ),
+    raise: <RaiseInvite key="raise" />,
+  };
 
   return (
     <main className="page">
-      <section className="sky">
-        <div className="sky-inner" style={{ display: "grid", gap: 22 }}>
-          <div style={{ display: "grid", gap: 12, maxWidth: 760 }}>
-            <span className="pill-new" style={{ justifySelf: "start" }}><b>New</b>Agents can raise a budget they are held to</span>
-            <h1 className="d1">Every covenant, <span className="soft">and whether its rules are holding.</span></h1>
-            <p className="lede">Treasury, book value and the five rules for each raise, read from the vault. Numbers before adjectives: no score, no badge.</p>
+      {onboarded === "no" ? <IntentPicker seeds={list.map(seedOf)} /> : null}
+      <section className="dhero rise">
+        <div className="row top between wrap-ok" style={{ gap: 20 }}>
+          <div className="stack-sm" style={{ display: "grid", maxWidth: 640 }}>
+            <span className="eyebrow">The operating stack for autonomous ventures</span>
+            <h1 className="h-hero">{greeting(hour)} <span className="soft">Here is every covenant, and whether its rules are holding.</span></h1>
           </div>
-          <div className="stats glass" style={{ ["--n" as string]: 4 }}>
-            <div className="stat"><p className="k">BNB under covenant</p><div className="v">{bnb(held)}</div><div className="s">Held by {launched.length} vaults</div></div>
-            <div className="stat"><p className="k">Trading under book</p><div className="v">{under}</div><div className="s">Exit streak counting</div></div>
-            <div className="stat"><p className="k">Raising now</p><div className="v">{list.filter((v) => v.state === "RAISING").length}</div><div className="s">Commitments open</div></div>
-            <div className="stat"><p className="k">Agent issuers</p><div className="v">{agents}</div><div className="s">With an ERC-8004 identity</div></div>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-secondary" onClick={reopenOnboarding}><Icon name="sparkle" size={15} />Personalise</button>
+            <Link className="btn btn-primary" href="/app/create"><Icon name="plus" size={15} />Create a covenant</Link>
           </div>
         </div>
+        {!online && !loading ? null : loading ? <Skeleton h={96} r={18} /> : (
+          <div className="kpis keep2">
+            <Kpi k="BNB under covenant" v={<Ticker value={held} format={(n) => bnb(n)} />} s={`Held by ${launched.length} vault${launched.length === 1 ? "" : "s"}`} />
+            <Kpi k="Under book" v={<Ticker value={under.length} format={(n) => n.toFixed(0)} />} s="Exit streak counting" tone={under.length ? "warn" : undefined} />
+            <Kpi k="Raising now" v={<Ticker value={raising.length} format={(n) => n.toFixed(0)} />} s="Commitments open" />
+            <Kpi k="Agent issuers" v={<Ticker value={agents.length} format={(n) => n.toFixed(0)} />} s="With an ERC-8004 identity" />
+          </div>
+        )}
       </section>
 
-      <div className="row wrap between">
-        <h2 className="d3">Covenants <span className="faint mono" style={{ fontSize: 15 }}>{list.length}</span></h2>
-        <div className="row" style={{ gap: 8 }}>
-          <Link className="btn btn-ghost btn-sm" href="/app/simulator"><Icon name="flask" size={15} />Simulator</Link>
-          <Link className="btn btn-primary btn-sm" href="/app/create"><Icon name="plus" size={15} />Create a covenant</Link>
-        </div>
-      </div>
+      {loading ? <div className="cgrid">{[0, 1, 2].map((k) => <Skeleton key={k} h={300} r={18} />)}</div>
+        : !online ? <ConnectChain source={source} />
+        : list.length === 0 ? (
+          <div className="card"><Empty title="No covenants on this deployment yet" icon="layers" action={<Link className="btn btn-primary btn-sm" href="/app/create">Create the first one</Link>}>{source.reason}. The operating stack for autonomous ventures starts with a raise.</Empty></div>
+        ) : order.map((k) => sections[k])}
 
-      {loading ? <Skeleton h={320} /> : list.length === 0 ? (
-        <div className="card card-pad small muted">{source.mode === "live" ? "The local deployment lists no covenant yet." : `No chain to read: ${source.reason}.`} Start the stack with <span className="mono">scripts/dev-all.sh</span>; it deploys the contracts and seeds covenants at every stage with real transactions.</div>
-      ) : (
-        <>
-        <div className="only-narrow" style={{ gap: 12 }}>
-          {list.map((v) => {
-            const d = derive(v);
-            const live = v.state !== "RAISING" && v.state !== "FAILED";
-            return (
-              <Link key={v.id} href={`/app/c/${v.id}`} className="card cov-card">
-                <div className="row between" style={{ alignItems: "flex-start" }}>
-                  <span className="row" style={{ gap: 10 }}>
-                    <TokenMark symbol={v.terms.symbol} size={36} />
-                    <span style={{ display: "grid", gap: 4 }}><span className="ink" style={{ fontWeight: 550 }}>{v.terms.name} <span className="mono muted tiny">${v.terms.symbol}</span></span><IssuerChip v={v} /></span>
-                  </span>
-                  <StateBadge state={v.state} />
-                </div>
-                <div className="figs">
-                  <div><div className="k">{live ? "Treasury" : "Committed"}</div><div className="v">{bnb(live ? v.treasury : v.raise.committed)}</div></div>
-                  <div><div className="k">Book / token</div><div className="v">{live ? price(d.book) : "–"}</div></div>
-                  <div><div className="k">vs book</div><div className={`v ${d.prem < 0 ? "down" : "up"}`}>{live ? signedPct(d.prem) : "–"}</div></div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-        <div className="card table-wrap only-wide">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Covenant</th><th>State</th><th className="r">Treasury</th><th className="r">Book / token</th><th className="r">Pool price</th><th className="r">vs book</th><th>Next event</th><th>90 days</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((v) => {
-                const d = derive(v);
-                const live = v.state !== "RAISING" && v.state !== "FAILED";
-                const next = v.state === "RAISING" ? `Closes in ${duration(v.raise.deadline - v.now)} · ${pct(v.raise.committed / v.terms.cap, 0)} of cap`
-                  : v.state === "FAILED" ? "Refunds open"
-                  : v.state === "EXIT_ROUND" ? `Round ends in ${duration(v.exit.roundEndsAt! - v.now)}`
-                  : v.state === "WIND_DOWN" ? "Redemption open, no fee"
-                  : d.eta !== null ? `Exit opens in ${duration(d.eta)}` : `Heartbeat due in ${duration(d.hbLeft)}`;
-                return (
-                  <tr key={v.id} className="link" onClick={() => router.push(`/app/c/${v.id}`)}>
-                    <td>
-                      <Link href={`/app/c/${v.id}`} className="row" style={{ gap: 10 }}>
-                        <TokenMark symbol={v.terms.symbol} size={32} />
-                        <span style={{ display: "grid" }}>
-                          <span className="ink" style={{ fontWeight: 550 }}>{v.terms.name} <span className="mono muted tiny">${v.terms.symbol}</span></span>
-                          <span style={{ transform: "scale(0.92)", transformOrigin: "left" }}><IssuerChip v={v} /></span>
-                        </span>
-                      </Link>
-                    </td>
-                    <td><StateBadge state={v.state} /></td>
-                    <td className="r mono">{live ? `${bnb(v.treasury)}` : `${bnb(v.raise.committed)}`}<span className="tiny muted"> {live ? "BNB" : "committed"}</span></td>
-                    <td className="r mono">{live ? price(d.book) : "–"}</td>
-                    <td className="r mono">{live ? price(v.poolPrice) : "–"}</td>
-                    <td className={`r mono ${d.prem < 0 ? "down" : "up"}`}>{live ? signedPct(d.prem) : "–"}</td>
-                    <td className="small muted" style={{ whiteSpace: "nowrap" }}>{next}</td>
-                    <td><Sparkline points={v.history.filter((p) => p.t > v.now - 90 * 86400)} width={110} height={28} /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        </>
-      )}
-      <LiteList />
     </main>
   );
 }
+
+function Kpi({ k, v, s, tone }: { k: string; v: ReactNode; s: string; tone?: "warn" }) {
+  return <div className="kpi"><p className="k">{k}</p><div className={cx("v", tone === "warn" && "warn-t")}>{v}</div><div className="s">{s}</div></div>;
+}
+
+function WatchList({ list }: { list: CovenantView[] }) {
+  return (
+    <div className="card" style={{ overflow: "hidden" }}>
+      {list.map((v, i) => {
+        const d = derive(v);
+        const nx = nextEvent(v, d);
+        return (
+          <Link key={v.id} href={`/app/c/${v.id}`} className="ledger-row rise" style={{ gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr) auto", borderTop: i ? undefined : 0, ["--i" as string]: i } as CSSProperties}>
+            <span className="row" style={{ gap: 12 }}>
+              <TokenAvatar seed={seedOf(v)} size={36} issuer={v.issuer.kind} />
+              <span style={{ display: "grid", minWidth: 0 }}><span className="ink trunc">{v.terms.name} <span className="mono t-xs muted">${v.terms.symbol}</span></span><span className={cx("t-xs w5", nx.tone === "warn" ? "warn-t" : nx.tone === "bad" ? "down" : "muted")}>{nx.text}</span></span>
+            </span>
+            <span className="row hide-sm" style={{ gap: 12 }}><StateBadge state={v.state} /><Sparkline points={v.history.filter((p) => p.t > v.now - 14 * DAY)} width={96} height={26} /></span>
+            <span className="ledger-amt"><span className={cx("num", d.prem < 0 ? "down" : "up")}>{signedPct(d.prem)}</span><span className="t-xs muted mono">book {price(d.book)}</span></span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function RaiseInvite() {
+  const steps = [
+    { icon: "sheet" as const, t: "Write the terms", s: "Split, tap, exit and heartbeat, inside the factory's bounds." },
+    { icon: "sparkle" as const, t: "Mine the address", s: "Flap needs the token to end in 7777; a worker finds it." },
+    { icon: "coins" as const, t: "Raise with refunds", s: "Uncapped commitments, pro rata above the cap." },
+    { icon: "vault" as const, t: "Launch and hold", s: "One transaction seeds the pool and funds the vault." },
+  ];
+  return (
+    <section className="stack">
+      <SecHead title="Launch your autonomous venture" sub="A raise your buyers can price: the five rules are fixed at creation, and only the tap can go down." />
+      <div className="hgrid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        {steps.map((x, i) => (
+          <div key={x.t} className="hcell rise" style={{ ["--i" as string]: i } as CSSProperties}>
+            <span className="row between"><span className="icon-tile"><Icon name={x.icon} size={17} /></span><span className="mono t-xs faint">0{i + 1}</span></span>
+            <p className="h-card">{x.t}</p>
+            <p className="t-s muted w5">{x.s}</p>
+          </div>
+        ))}
+      </div>
+      <div className="row wrap-ok" style={{ gap: 8 }}>
+        <Link className="btn btn-primary" href="/app/create">Start a covenant<Icon name="arrow" size={15} /></Link>
+        <Link className="btn btn-secondary" href="/app/simulator"><Icon name="flask" size={15} />Test terms in the simulator</Link>
+      </div>
+    </section>
+  );
+}
+

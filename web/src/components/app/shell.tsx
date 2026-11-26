@@ -1,93 +1,144 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useSwitchChain } from "wagmi";
 import { privyOriginAllowed, useWallet } from "@/components/providers";
-import { ANVIL_ROLES, anvil, chainName, explorerTx } from "@/lib/chain/chains";
+import { ANVIL_ACCOUNTS, ANVIL_ROLES, anvil, chainName, explorerTx } from "@/lib/chain/chains";
 import { useCovenants, useSource } from "@/lib/data/hooks";
 import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
 import { Icon, Mark, type IconName } from "./icons";
-import { StateDot } from "./ui";
+import { hidePromo, reopenOnboarding, setCollapsed, useCollapsed, usePromoHidden } from "./prefs";
+import { CoverCut, Skeleton, TokenAvatar, coverVars, cx, seedOf } from "./ui";
+import { withBnb } from "@/components/app/bnb";
 
 const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = [
-  { href: "/app", label: "Covenants", icon: "grid", exact: true },
+  { href: "/app", label: "Discover", icon: "compass", exact: true },
+  { href: "/app/covenants", label: "Covenants", icon: "layers" },
+  { href: "/app/portfolio", label: "Portfolio", icon: "pie" },
   { href: "/app/create", label: "Create", icon: "plus" },
+];
+const TOOLS: { href: string; label: string; icon: IconName }[] = [
+  { href: "/app/faucet", label: "Get test funds", icon: "drop" },
   { href: "/app/simulator", label: "Simulator", icon: "flask" },
-  { href: "/app/demo", label: "Demo", icon: "play" },
-  { href: "/app/faucet", label: "Get test funds", icon: "coins" },
+  { href: "/app/demo", label: "Demo script", icon: "play" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
+  const [cmdk, setCmdk] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const collapsed = useCollapsed();
   const path = usePathname();
-  const { list } = useCovenants();
-  const search = useRef<HTMLInputElement>(null);
   const [lastPath, setLastPath] = useState(path);
-  if (path !== lastPath) { setLastPath(path); setOpen(false); }
+  if (path !== lastPath) { setLastPath(path); setOpen(false); setCmdk(false); }
 
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); search.current?.focus(); } };
+    const k = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setCmdk((x) => !x); }
+      if (e.key === "Escape") setOpen(false);
+    };
+    const s = () => setScrolled(window.scrollY > 4);
     window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
+    window.addEventListener("scroll", s, { passive: true });
+    return () => { window.removeEventListener("keydown", k); window.removeEventListener("scroll", s); };
   }, []);
 
-  const shown = list.filter((v) => !q || `${v.terms.name} ${v.terms.symbol}`.toLowerCase().includes(q.toLowerCase()));
   return (
-    <div className="cv shell">
-      <div className="scrim" data-open={open} onClick={() => setOpen(false)} />
-      <aside className="side" data-open={open} aria-label="App navigation">
-        <Link href="/" className="brand"><span className="brand-mark"><Mark /></span>Covenant</Link>
-        <label className="side-search">
-          <Icon name="search" size={15} />
-          <input ref={search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search covenants" aria-label="Search covenants" />
-          <kbd>⌘K</kbd>
-        </label>
-        {NAV.map((n) => {
-          const active = n.exact ? path === n.href : path.startsWith(n.href);
-          return (
-            <Link key={n.href} href={n.href} className="nav-item" aria-current={active ? "page" : undefined}>
-              <Icon name={n.icon} size={17} />{n.label}
-              {n.href === "/app" ? <span className="count">{list.length}</span> : null}
-            </Link>
-          );
-        })}
-        <div className="side-label">Covenants</div>
-        {shown.map((v) => {
-          const href = `/app/c/${v.id}`;
-          return (
-            <Link key={v.id} href={href} className="side-cov" aria-current={path.startsWith(href) ? "page" : undefined}>
-              <StateDot state={v.state} />
-              <span className="sym">{v.terms.name}</span>
-              {v.issuer.kind === "agent" ? <Icon name="agent" size={14} style={{ color: "var(--agent)" }} /> : null}
-            </Link>
-          );
-        })}
-        {shown.length === 0 ? <p className="tiny faint" style={{ padding: "4px 10px" }}>No match</p> : null}
-        <div className="side-foot">
-          <SourceChip />
-          <div className="row between" style={{ padding: "0 4px" }}>
-            <Link className="tiny muted" href="/">covenant · BNB Chain</Link>
-            <ThemeSwitch />
-          </div>
-        </div>
-      </aside>
-      <div className="main">
-        <header className="topbar">
-          <button className="menu-btn" aria-label="Open navigation" onClick={() => setOpen(true)}><Icon name="menu" /></button>
+    <div className="cv" data-open={open} data-collapsed={collapsed}>
+      <div className="scrim" onClick={() => setOpen(false)} aria-hidden />
+      <Sidebar collapsed={collapsed} onSearch={() => setCmdk(true)} />
+      <div className="frame">
+        <header className="tb" data-scrolled={scrolled}>
+          <button className="icon-btn menu-btn" aria-label="Open navigation" onClick={() => setOpen(true)}><Icon name="menu" size={20} /></button>
           <Crumbs />
-          <div className="right">
+          <div className="tb-right">
+            <SourcePill />
+            <button className="icon-btn hide-sm" aria-label="Search (Command K)" title="Search  ⌘K" onClick={() => setCmdk(true)}><Icon name="search" size={18} /></button>
             <NetworkChip />
             <WalletMenu />
           </div>
         </header>
-        {children}
+        <div className="pg">{children}</div>
       </div>
+      {cmdk ? <CommandPalette onClose={() => setCmdk(false)} /> : null}
       <Toasts />
     </div>
+  );
+}
+
+/* ---------- Sidebar ---------- */
+
+function Sidebar({ collapsed, onSearch }: { collapsed: boolean; onSearch: () => void }) {
+  const path = usePathname();
+  const { list, source, loading } = useCovenants();
+  const promoHidden = usePromoHidden();
+  const online = source.mode === "live";
+  const live = online ? list.filter((v) => v.source === "live" && v.state !== "FAILED") : [];
+  return (
+    <aside className="sb" aria-label="App navigation">
+      <div className="sb-top">
+        <Link href="/" className="sb-logo" title="Covenant home"><Mark size={22} /><span>Covenant</span></Link>
+        <button className="sb-collapse" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed(!collapsed)}><Icon name="sidebar" size={18} /></button>
+      </div>
+      <button className="sb-item" onClick={onSearch} title="Search">
+        <Icon name="search" size={18} /><span className="lab">Search</span>
+        <span className="kbd" aria-hidden><kbd>⌘</kbd><kbd>K</kbd></span>
+      </button>
+      {NAV.map((n) => {
+        const active = n.exact ? path === n.href : path.startsWith(n.href);
+        return (
+          <Link key={n.href} href={n.href} className="sb-item" aria-current={active ? "page" : undefined} title={n.label}>
+            <Icon name={n.icon} size={18} /><span className="lab">{n.label}</span>
+            {n.href === "/app/covenants" && online ? <span className="count">{live.length}</span> : null}
+          </Link>
+        );
+      })}
+      <div className="sb-label">Tools</div>
+      {TOOLS.map((n) => (
+        <Link key={n.href} href={n.href} className="sb-item" aria-current={path.startsWith(n.href) ? "page" : undefined} title={n.label}>
+          <Icon name={n.icon} size={18} /><span className="lab">{n.label}</span>
+        </Link>
+      ))}
+      <div className="sb-label">Covenants</div>
+      <div className="sb-covs" style={{ display: "grid", gap: 2 }}>
+        {live.map((v) => {
+          const href = `/app/c/${v.id}`;
+          return (
+            <Link key={v.id} href={href} className="sb-cov" aria-current={path === href || path.startsWith(href + "/") ? "page" : undefined} title={`${v.terms.name} · ${v.terms.symbol}`}>
+              <TokenAvatar seed={seedOf(v)} size={22} />
+              <span className="name">{v.terms.name}</span>
+              <span className="tick">{v.terms.symbol}</span>
+            </Link>
+          );
+        })}
+        {!online ? (
+          <Link href="/app" className="sb-offline" title={source.reason}><span className="dot" /><span>{source.mode === "checking" ? "Checking the local chain" : "Not connected to the local chain"}</span></Link>
+        ) : loading ? [0, 1, 2].map((k) => <span key={k} className="sb-cov" aria-hidden><Skeleton h={22} w={22} r={22} /><Skeleton h={12} w={`${60 - k * 12}%`} /></span>)
+          : live.length === 0 ? <p className="sb-empty">No covenants yet</p> : null}
+      </div>
+      <div className="sb-spacer" />
+      {!promoHidden ? (
+        <div className="promo">
+          <div className="promo-art cover" style={coverVars("operating stack")}>
+            <CoverCut className="cover-cut" />
+          </div>
+          <button className="promo-x" aria-label="Dismiss" onClick={hidePromo}><Icon name="x" size={13} /></button>
+          <div className="promo-body">
+            <p className="h-card" style={{ fontSize: 15 }}>Launch your autonomous venture</p>
+            <p className="t-s muted w5">Raise from your community under a covenant: five rules that enforce themselves.</p>
+            <Link href="/app/create" className="btn btn-secondary btn-sm btn-block">Get started</Link>
+          </div>
+        </div>
+      ) : null}
+      <div className="sb-foot">
+        <Link href="/features" title="Docs"><Icon name="book" size={16} /><span className="lab">Docs</span></Link>
+        <Link href="/contact" title="Community"><Icon name="send" size={16} /><span className="lab">Community</span></Link>
+        <ThemeSwitch />
+      </div>
+    </aside>
   );
 }
 
@@ -95,44 +146,37 @@ function Crumbs() {
   const path = usePathname();
   const { list } = useCovenants();
   const parts = path.split("/").filter(Boolean).slice(1);
-  let title = "Covenants";
-  let sub: string | null = null;
-  if (parts[0] === "create") title = "Create a covenant";
-  else if (parts[0] === "simulator") title = "Launch simulator";
-  else if (parts[0] === "faucet") title = "Get test funds";
-  else if (parts[0] === "demo") title = "Demo";
-  else if (parts[0] === "c") {
+  const top: Record<string, string> = { create: "Create a covenant", simulator: "Launch simulator", demo: "Demo script", portfolio: "Portfolio", covenants: "Covenants", faucet: "Get test funds" };
+  if (parts[0] === "c") {
     const v = list.find((x) => x.id.toLowerCase() === (parts[1] ?? "").toLowerCase());
-    title = v ? `${v.terms.name}` : "Covenant";
-    sub = parts[2] ? { raise: "Raise", settle: "Settle", redeem: "Redeem", team: "Team console" }[parts[2]] ?? null : "Covenant sheet";
+    const sub = parts[2] ? { raise: "Raise", settle: "Settlement", redeem: "Redeem", team: v?.issuer.kind === "agent" ? "Agent console" : "Team console" }[parts[2]] ?? null : null;
+    return (
+      <nav className="crumbs" aria-label="Breadcrumb">
+        <Link href="/app/covenants" className="hide-sm">Covenants</Link>
+        <span className="sep hide-sm">/</span>
+        {sub ? <Link href={`/app/c/${parts[1]}`} className="trunc">{v?.terms.name ?? "Covenant"}</Link> : <b>{v?.terms.name ?? "Covenant"}</b>}
+        {sub ? <><span className="sep">/</span><b>{sub}</b></> : null}
+      </nav>
+    );
   }
-  return (
-    <nav className="crumbs" aria-label="Breadcrumb">
-      <b>{title}</b>
-      {sub ? <><span className="faint">/</span><span className="hide-sm" style={{ whiteSpace: "nowrap" }}>{sub}</span></> : null}
-    </nav>
-  );
+  return <nav className="crumbs" aria-label="Breadcrumb"><b>{parts[0] ? top[parts[0]] ?? "Covenant" : "Discover"}</b></nav>;
 }
 
-export function SourceChip() {
+export function SourcePill() {
   const s = useSource();
-  const tone = s.mode === "live" ? "chip-good" : s.mode === "checking" ? "" : "chip-warn";
-  return (
-    <div className="card" style={{ padding: 10, display: "grid", gap: 6, boxShadow: "none" }}>
-      <span className={`chip ${tone}`} style={{ justifySelf: "start" }}><span className="dot" />{s.mode === "live" ? "Live contracts" : s.mode === "checking" ? "Checking" : "Offline"}</span>
-      <span className="tiny muted" style={{ overflowWrap: "anywhere" }}>{s.reason}</span>
-    </div>
-  );
+  const cls = s.mode === "live" ? "live" : s.mode === "checking" ? "" : "mock";
+  return <span className={cx("srcpill hide-sm", cls)} title={s.reason}><span className="dot" />{s.mode === "live" ? <>Live · {s.chainId ? withBnb(chainName(s.chainId)) : "local chain"}</> : s.mode === "checking" ? "Checking" : "Not connected"}</span>;
 }
 
 function NetworkChip() {
   const w = useWallet();
+  const src = useSource();
   const { switchChain } = useSwitchChain();
   if (!w.address || !w.chainId) return null;
-  const wrong = w.chainId !== anvil.id && w.chainId !== 97;
+  const wrong = src.chainId ? w.chainId !== src.chainId : w.chainId !== anvil.id && w.chainId !== 97;
   return (
-    <button className={`chip chip-outline hide-sm ${wrong ? "chip-warn" : ""}`} onClick={() => switchChain?.({ chainId: anvil.id })} title="Switch to the local chain">
-      <span className="dot" style={{ color: wrong ? "var(--warn)" : "var(--good)" }} />{chainName(w.chainId)}
+    <button className={cx("netpill hide-sm", wrong && "warn")} onClick={() => switchChain?.({ chainId: src.chainId ?? anvil.id })} title={wrong ? "Wrong network: switch to the local chain" : "Connected network"}>
+      <span className="dot" style={wrong ? { background: "var(--warn)" } : undefined} />{withBnb(chainName(w.chainId))}
     </button>
   );
 }
@@ -142,73 +186,93 @@ function subscribeTheme(cb: () => void) {
   o.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   return () => o.disconnect();
 }
+function setTheme(next: "light" | "dark") {
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch { /* this page only */ }
+}
+export function useTheme(): "light" | "dark" {
+  return useSyncExternalStore(subscribeTheme, () => (document.documentElement.dataset.theme === "light" ? "light" : "dark"), () => "dark");
+}
 
 export function ThemeSwitch() {
-  const theme = useSyncExternalStore(subscribeTheme, () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light"), () => "light");
+  const theme = useTheme();
   const next = theme === "dark" ? "light" : "dark";
   return (
-    <button type="button" className="icon-btn" style={{ width: 32, height: 32 }} aria-label={`Switch to ${next} theme`} title={`Switch to ${next} theme`}
-      onClick={() => { document.documentElement.dataset.theme = next; try { localStorage.setItem("theme", next); } catch { /* this page only */ } }}>
+    <button type="button" className="icon-btn sm" aria-label={`Switch to ${next} theme`} title={`Switch to ${next} theme`} onClick={() => setTheme(next)}>
       <Icon name={theme === "dark" ? "sun" : "moon"} size={16} />
     </button>
   );
 }
 
-function WalletMenu() {
-  const w = useWallet();
-  const [open, setOpen] = useState(false);
+/* ---------- Wallet ---------- */
+
+function useDismiss(open: boolean, close: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", close);
+    const down = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) close(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    document.addEventListener("mousedown", down);
     document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
-  }, [open]);
+    return () => { document.removeEventListener("mousedown", down); document.removeEventListener("keydown", esc); };
+  }, [open, close]);
+  return ref;
+}
+
+function WalletMenu() {
+  const w = useWallet();
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const ref = useDismiss(open, () => setOpen(false));
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
       {w.address ? (
-        <button className="btn btn-ghost btn-sm" onClick={() => setOpen(!open)} aria-expanded={open}>
-          <span className="state-dot" style={{ background: "var(--good)" }} /><span className="mono">{short(w.address)}</span>
+        <button className="walletbtn" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
+          <TokenAvatar seed={w.address} size={26} /><span className="lab mono">{short(w.address, 6, 4)}</span><Icon name="chevronDown" size={14} style={{ color: "var(--muted)" }} />
         </button>
       ) : (
-        <button className="btn btn-primary btn-sm" onClick={() => setOpen(!open)} aria-expanded={open}><Icon name="wallet" size={15} />Connect</button>
+        <button className="btn btn-primary btn-sm" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu"><Icon name="wallet" size={15} />Connect</button>
       )}
       {open ? (
         <div className="pop" role="menu">
           {w.address ? (
             <>
-              <div className="pop-label">Connected with {w.label ?? "wallet"}</div>
-              <div style={{ padding: "4px 10px 10px" }}><span className="mono small" style={{ overflowWrap: "anywhere" }}>{w.address}</span></div>
-              <button className="pop-item" onClick={() => { void navigator.clipboard?.writeText(w.address!); setOpen(false); }}><Icon name="copy" size={16} />Copy address</button>
-              <button className="pop-item" onClick={() => { w.disconnect(); setOpen(false); }}><Icon name="x" size={16} />Disconnect</button>
+              <div className="wallet-head">
+                <TokenAvatar seed={w.address} size={40} />
+                <div style={{ minWidth: 0 }}>
+                  <div className="mono ink" style={{ fontSize: 14 }}>{short(w.address, 8, 6)}</div>
+                  <div className="t-xs muted w5">Connected with {w.label ?? "a wallet"}{w.chainId ? ` · ${chainName(w.chainId)}` : ""}</div>
+                </div>
+              </div>
+              <div className="pop-sep" />
+              <button className="pop-item" role="menuitem" onClick={() => { void navigator.clipboard?.writeText(w.address!); setCopied(true); setTimeout(() => setCopied(false), 1200); }}><Icon name={copied ? "check" : "copy"} size={16} />{copied ? "Copied" : "Copy address"}</button>
+              <Link className="pop-item" role="menuitem" href="/app/portfolio" onClick={() => setOpen(false)}><Icon name="pie" size={16} />Portfolio</Link>
+              <Link className="pop-item" role="menuitem" href="/app/faucet" onClick={() => setOpen(false)}><Icon name="drop" size={16} />Get test funds</Link>
+              <button className="pop-item" role="menuitem" onClick={() => { w.disconnect(); setOpen(false); }}><Icon name="exit" size={16} />Disconnect</button>
             </>
           ) : (
             <>
               <div className="pop-label">Connect a wallet</div>
               {w.mode === "privy" ? (
-                <button className="pop-item" onClick={() => { w.connect(); setOpen(false); }}><Icon name="wallet" size={16} /><span>Privy<span className="tiny muted" style={{ display: "block" }}>Wallet or email login</span></span></button>
+                <button className="pop-item" role="menuitem" onClick={() => { w.connect(); setOpen(false); }}><span className="icon-tile sm accent"><Icon name="wallet" size={15} /></span><span>Privy<small>Wallet or email login</small></span></button>
               ) : (
-                <button className="pop-item" onClick={() => { w.connect(); setOpen(false); }}><Icon name="wallet" size={16} /><span>Browser wallet<span className="tiny muted" style={{ display: "block" }}>MetaMask, Rabby or any injected wallet</span></span></button>
+                <button className="pop-item" role="menuitem" onClick={() => { w.connect(); setOpen(false); }}><span className="icon-tile sm accent"><Icon name="wallet" size={15} /></span><span>Browser wallet<small>MetaMask, Rabby or any injected wallet</small></span></button>
               )}
               {w.mode === "browser" && w.devWallet ? (
                 <>
-                  <div className="pop-label">Local chain (anvil test accounts)</div>
+                  <div className="pop-label">Local chain test accounts</div>
                   {ANVIL_ROLES.map((role, i) => (
-                    <button key={i} className="pop-item" onClick={() => { w.connectLocal(i); setOpen(false); }}><Icon name="user" size={16} /><span>Account #{i}<span className="tiny muted" style={{ display: "block" }}>{role}</span></span></button>
+                    <button key={i} className="pop-item" role="menuitem" onClick={() => { w.connectLocal(i); setOpen(false); }}><TokenAvatar seed={ANVIL_ACCOUNTS[i] ?? `account-${i}`} size={28} /><span>Account #{i}<small>{role}</small></span></button>
                   ))}
                 </>
               ) : null}
-              <div className="hr" style={{ margin: "6px 0" }} />
+              <div className="pop-sep" />
               {w.mode === "privy" ? (
-                <button className="pop-item" onClick={() => w.setMode("browser")}><Icon name="refresh" size={16} /><span>Use a browser wallet instead<span className="tiny muted" style={{ display: "block" }}>Skips Privy; adds local test accounts</span></span></button>
+                <button className="pop-item" role="menuitem" onClick={() => w.setMode("browser")}><Icon name="refresh" size={16} /><span>Use a browser wallet instead<small>Skips Privy; adds local test accounts</small></span></button>
               ) : w.privyAvailable ? (
-                <>
-                  <button className="pop-item" onClick={() => w.setMode("privy")}><Icon name="refresh" size={16} /><span>Use Privy login{!privyOriginAllowed() ? <span className="tiny muted" style={{ display: "block" }}>This origin is not on the Privy app&apos;s allow list; open http://localhost:8080 (pnpm dev)</span> : null}</span></button>
-                </>
-              ) : <p className="tiny muted" style={{ padding: "4px 10px" }}>Privy is off: no NEXT_PUBLIC_PRIVY_APP_ID.</p>}
+                <button className="pop-item" role="menuitem" onClick={() => w.setMode("privy")}><Icon name="refresh" size={16} /><span>Use Privy login{!privyOriginAllowed() ? <small>This origin is not on the Privy app&apos;s allow list; open http://localhost:8080 (pnpm dev)</small> : null}</span></button>
+              ) : <p className="t-xs muted w5" style={{ padding: "6px 10px" }}>Privy is off: no NEXT_PUBLIC_PRIVY_APP_ID.</p>}
             </>
           )}
         </div>
@@ -217,6 +281,69 @@ function WalletMenu() {
   );
 }
 
+/* ---------- Command palette (⌘K) ---------- */
+
+type Cmd = { id: string; group: string; label: string; hint?: string; icon?: IconName; symbol?: string; run: () => void };
+
+function CommandPalette({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const { list } = useCovenants();
+  const theme = useTheme();
+  const [q, setQ] = useState("");
+  const [sel, setSel] = useState(0);
+  const go = (href: string) => () => { router.push(href); onClose(); };
+  const all = useMemo<Cmd[]>(() => [
+    ...NAV.map((n) => ({ id: n.href, group: "Pages", label: n.label, icon: n.icon, run: go(n.href) })),
+    ...TOOLS.map((n) => ({ id: n.href, group: "Pages", label: n.label, icon: n.icon, run: go(n.href) })),
+    ...list.filter((v) => v.source === "live").map((v) => ({ id: v.id, group: "Covenants", label: v.terms.name, hint: v.terms.symbol, symbol: seedOf(v), run: go(`/app/c/${v.id}`) })),
+    { id: "theme", group: "Actions", label: `Switch to ${theme === "dark" ? "light" : "dark"} theme`, icon: theme === "dark" ? "sun" : "moon", run: () => { setTheme(theme === "dark" ? "light" : "dark"); onClose(); } },
+    { id: "intents", group: "Actions", label: "Personalise Discover", icon: "sparkle", run: () => { reopenOnboarding(); router.push("/app"); onClose(); } },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [list, theme]);
+  const shown = all.filter((c) => !q || `${c.label} ${c.hint ?? ""}`.toLowerCase().includes(q.toLowerCase()));
+  const groups = [...new Set(shown.map((c) => c.group))];
+  const active = Math.min(sel, Math.max(0, shown.length - 1));
+
+  return (
+    <div className="modal-wrap" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="cmdk" role="dialog" aria-modal="true" aria-label="Search">
+        <div className="cmdk-in">
+          <Icon name="search" size={18} />
+          <input autoFocus value={q} placeholder="Search covenants, pages and actions" aria-label="Search"
+            onChange={(e) => { setQ(e.target.value); setSel(0); }}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(shown.length - 1, s + 1)); }
+              if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(0, s - 1)); }
+              if (e.key === "Enter") shown[active]?.run();
+              if (e.key === "Escape") onClose();
+            }} />
+          <span className="kbd"><kbd>esc</kbd></span>
+        </div>
+        <div className="cmdk-list" role="listbox">
+          {shown.length === 0 ? <p className="t-s muted w5" style={{ padding: "18px 12px" }}>Nothing matches &ldquo;{q}&rdquo;.</p> : groups.map((g) => (
+            <div key={g}>
+              <div className="pop-label">{g}</div>
+              {shown.filter((c) => c.group === g).map((c) => {
+                const i = shown.indexOf(c);
+                return (
+                  <button key={c.id} className="pop-item" role="option" aria-selected={i === active} data-active={i === active} onMouseEnter={() => setSel(i)} onClick={c.run}>
+                    {c.symbol ? <TokenAvatar seed={c.symbol} size={22} /> : <Icon name={c.icon ?? "arrow"} size={16} />}
+                    <span className="grow">{c.label}</span>
+                    {c.hint ? <span className="mono t-xs muted">{c.hint}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        <div className="cmdk-foot"><span>↑↓ to move</span><span>↵ to open</span><span>esc to close</span></div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Transaction toasts ---------- */
+
 function Toasts() {
   const list = useToasts();
   return (
@@ -224,14 +351,15 @@ function Toasts() {
       {list.map((t) => {
         const href = t.hash && t.chainId ? explorerTx(t.chainId, t.hash) : null;
         return (
-          <div key={t.id} className="glass toast" role="status">
-            {t.status === "pending" ? <span className="spin" /> : <Icon name={t.status === "done" ? "check" : "alert"} size={18} style={{ color: t.status === "done" ? "var(--good)" : "var(--bad)" }} />}
+          <div key={t.id} className="toast" role="status">
+            <span className={cx("toast-ic", t.status)}>{t.status === "pending" ? <span className="spin" /> : <Icon name={t.status === "done" ? "check" : "alert"} size={16} />}</span>
             <div style={{ minWidth: 0 }}>
               <div className="t">{t.title}{t.status === "done" ? " confirmed" : t.status === "error" ? " failed" : ""}</div>
-              {t.detail ? <div className="tiny muted">{t.detail}</div> : null}
-              {t.hash ? <div className="tiny mono faint">{href ? <a href={href} target="_blank" rel="noreferrer">{short(t.hash, 10, 6)}</a> : short(t.hash, 10, 6)}</div> : null}
+              {t.detail ? <div className="d anywhere">{t.detail}</div> : null}
+              {t.hash ? <div className="t-xs mono faint" style={{ marginTop: 4 }}>{href ? <a href={href} target="_blank" rel="noreferrer" className="link">{short(t.hash, 10, 6)}</a> : short(t.hash, 10, 6)}</div> : null}
             </div>
-            <button aria-label="Dismiss" onClick={() => dismissToast(t.id)} className="faint"><Icon name="x" size={14} /></button>
+            <button aria-label="Dismiss" onClick={() => dismissToast(t.id)} className="icon-btn sm"><Icon name="x" size={14} /></button>
+            {t.status === "pending" ? <span className="bar"><i /></span> : null}
           </div>
         );
       })}

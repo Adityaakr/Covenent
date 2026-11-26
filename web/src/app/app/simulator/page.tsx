@@ -1,9 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/app/icons";
-import { Note, Segmented, Skeleton } from "@/components/app/ui";
+import { CopyCode } from "@/components/app/live";
+import { Empty, Segmented, Skeleton, Ticker, TokenAvatar, cx } from "@/components/app/ui";
 import { API_BASE, sample, simulator, type SimulatorResult } from "@/lib/api/server";
 import { floorAfterMonths, startingFloorRatio } from "@/lib/covenant/math";
 import { DAY, date } from "@/lib/covenant/time";
@@ -24,90 +25,89 @@ export default function SimulatorPage() {
   const [cap, setCap] = useState(400);
   const [exitDays, setExitDays] = useState(3);
   const [saleBps, poolBps] = splitKey.split("-").map(Number) as [number, number];
-  const result = useMemo(() => (q.data ? replay(q.data.data, { saleBps, poolBps, tapCapBps: cap, exitDays }) : null), [q.data, saleBps, poolBps, cap, exitDays]);
+  // Only real candles from the Covenant server are replayed; the synthetic fallback is never shown.
+  const realSample = q.data?.source === "server";
+  const result = useMemo(() => (q.data && realSample ? replay(q.data.data, { saleBps, poolBps, tapCapBps: cap, exitDays }) : null), [q.data, realSample, saleBps, poolBps, cap, exitDays]);
   const [filter, setFilter] = useState<"all" | "hit" | "held">("all");
   const rows = result ? result.tokens.filter((r) => filter === "all" || (filter === "hit" ? r.triggered : !r.triggered)).sort((a, b) => (a.triggerDay ?? 1e9) - (b.triggerDay ?? 1e9)) : [];
+  const rv = real.data ? (real.data.result.variants.find((x) => x.rule === "decay") ?? real.data.result.variants[0]!) : null;
 
   return (
     <main className="page">
-      <section className="sky">
-        <div className="sky-inner" style={{ display: "grid", gap: 20 }}>
-          <div style={{ display: "grid", gap: 10, maxWidth: 780 }}>
-            <p className="eyebrow">Launch simulator</p>
-            <h1 className="d1">What if recent BNB launches <span className="soft">had carried a covenant?</span></h1>
-            <p className="lede">Daily candles for each launch, replayed against a floor of {pct(startingFloorRatio(saleBps, poolBps), 0)} of the opening price that falls by the tap cap each month. A token triggers when it closes under the floor for {exitDays} days, counted with the decaying streak.</p>
-          </div>
-          {real.data ? (() => { const r = real.data.result; const v = r.variants.find((x) => x.rule === "decay") ?? r.variants[0]!; return (
-            <div className="stats glass" style={{ ["--n" as string]: 4 }}>
-              <div className="stat"><p className="k">Would have opened an exit</p><div className="v" style={{ fontSize: 34 }}>{v.triggeredShare === null ? "–" : pct(v.triggeredShare, 1)}</div><div className="s">{v.triggered} of {r.sample.withCandles} launches</div></div>
-              <div className="stat"><p className="k">Median time to trigger</p><div className="v">{v.medianDaysToTrigger === null ? "–" : `${v.medianDaysToTrigger} days`}</div><div className="s">After launch</div></div>
-              <div className="stat"><p className="k">Redeemable at that point</p><div className="v">{v.medianRedeemableShareOfRaise === null ? "–" : pct(v.medianRedeemableShareOfRaise, 0)}</div><div className="s">Of the raise, median, still in the vault</div></div>
-              <div className="stat"><p className="k">Data</p><div className="v" style={{ fontSize: 16 }}>{r.computedFromRealData ? "Real BNB Chain launches" : "Not real data"}</div><div className="s">{r.source.candles.split(" ")[0]} daily candles</div></div>
-            </div>
-          ); })() : real.isError && q.isError ? (
-            <Note tone="warn" icon="alert"><b>No simulator data.</b> The Covenant server at <span className="mono">{API_BASE}</span> did not answer and the app has no snapshot to read. Start the stack with <span className="mono">scripts/dev-all.sh</span>, or run <span className="mono">pnpm --dir server sim</span>. Nothing is shown in its place.</Note>
-          ) : q.isLoading || !result ? <Skeleton h={110} /> : (
-            <div className="stats glass" style={{ ["--n" as string]: 4 }}>
-              <div className="stat"><p className="k">Would have opened an exit</p><div className="v" style={{ fontSize: 34 }}>{pct(result.share, 0)}</div><div className="s">{result.triggered} of {result.sampled} launches</div></div>
-              <div className="stat"><p className="k">Median time to trigger</p><div className="v">{result.medianDays === null ? "–" : `${result.medianDays.toFixed(0)} days`}</div><div className="s">From the first candle</div></div>
-              <div className="stat"><p className="k">Redeemable at that point</p><div className="v">{result.medianRedeemable === null ? "–" : pct(result.medianRedeemable, 0)}</div><div className="s">Of the raise, median, still in the vault</div></div>
-              <div className="stat"><p className="k">Data</p><div className="v" style={{ fontSize: 16 }}>Server candles</div><div className="s">{result.sampled} tokens · up to {result.daysCovered.toFixed(0)} days</div></div>
-            </div>
-          )}
+      <section className="dhero rise">
+        <div className="stack-sm" style={{ display: "grid", maxWidth: 760 }}>
+          <span className="eyebrow">Launch simulator</span>
+          <h1 className="h-hero">What if recent BNB launches <span className="soft">had carried a covenant?</span></h1>
+          <p className="lede">Daily candles for each launch, replayed against a floor of {pct(startingFloorRatio(saleBps, poolBps), 0)} of the opening price that falls by the tap cap each month. A token triggers when it closes under the floor for {exitDays} days, counted with the decaying streak.</p>
         </div>
+        {rv && real.data ? (
+          <div className="kpis">
+            <div className="kpi"><p className="k">Would have opened an exit</p><div className="v" style={{ fontSize: 30 }}>{rv.triggeredShare === null ? "–" : <Ticker value={rv.triggeredShare * 100} format={(n) => `${n.toFixed(1)}%`} />}</div><div className="s">{rv.triggered} of {real.data.result.sample.withCandles} launches</div></div>
+            <div className="kpi"><p className="k">Median time to trigger</p><div className="v">{rv.medianDaysToTrigger === null ? "–" : `${rv.medianDaysToTrigger} days`}</div><div className="s">After launch</div></div>
+            <div className="kpi"><p className="k">Redeemable at that point</p><div className="v">{rv.medianRedeemableShareOfRaise === null ? "–" : pct(rv.medianRedeemableShareOfRaise, 0)}</div><div className="s">Of the raise, median, still in the vault</div></div>
+            <div className="kpi"><p className="k">Data</p><div className="v" style={{ fontSize: 16 }}>{real.data.result.computedFromRealData ? "Real BNB Chain launches" : "Not real data"}</div><div className="s">{real.data.result.source.candles.split(" ")[0]} daily candles</div></div>
+          </div>
+        ) : q.isLoading || real.isLoading ? <Skeleton h={104} r={18} /> : !result ? null : (
+          <div className="kpis">
+            <div className="kpi"><p className="k">Would have opened an exit</p><div className="v" style={{ fontSize: 30 }}><Ticker value={result.share * 100} format={(n) => `${n.toFixed(0)}%`} /></div><div className="s">{result.triggered} of {result.sampled} launches</div></div>
+            <div className="kpi"><p className="k">Median time to trigger</p><div className="v">{result.medianDays === null ? "–" : `${result.medianDays.toFixed(0)} days`}</div><div className="s">From the first candle</div></div>
+            <div className="kpi"><p className="k">Redeemable at that point</p><div className="v">{result.medianRedeemable === null ? "–" : pct(result.medianRedeemable, 0)}</div><div className="s">Of the raise, median, still in the vault</div></div>
+            <div className="kpi"><p className="k">Data</p><div className="v" style={{ fontSize: 16 }}>CoinMarketCap DEX</div><div className="s">{result.sampled} tokens · up to {result.daysCovered.toFixed(0)} days</div></div>
+          </div>
+        )}
       </section>
 
       {real.data ? <RealResult r={real.data.result} from={real.data.from} /> : null}
-      {real.data ? (
-        <div className="row wrap between" style={{ marginTop: 8 }}>
-          <div><h2 className="d3">Try other terms</h2><p className="small muted" style={{ margin: "4px 0 0" }}>The same method, rerun in your browser on the same launches&apos; daily candles from the server. Use it to see how terms move the result; the headline above is the server&apos;s run.</p></div>
-        </div>
-      ) : null}
 
-      {q.isError && real.data ? (
-        <Note tone="warn" icon="alert">The server did not return candles for the replay ({(q.error as Error).message}), so the table below is empty. Rerun <span className="mono">pnpm --dir server sim</span> to store them.</Note>
-      ) : null}
-
-      <div className="card card-pad">
-        <div className="grid3" style={{ alignItems: "end" }}>
-          <div><span className="label">Sale / pool split</span><Segmented label="Split" value={splitKey} onChange={setSplit} options={SPLITS} /></div>
-          <div>
-            <span className="label">Tap cap <span className="hint mono">{bps(cap)} / 30d</span></span>
-            <input className="range" type="range" min={100} max={1000} step={50} value={cap} onChange={(e) => setCap(Number(e.target.value))} aria-label="Tap cap" />
+      <section className="stack">
+        <div className="sec-head"><div><h2 className="h-sec">Try other terms</h2><p className="t-s muted w5">The same method, rerun in your browser on the server&apos;s daily candles. Use it to see how terms move the result, not to quote a number.</p></div></div>
+        {!realSample ? (
+          <div className="card">
+            <Empty title={q.isLoading ? "Loading the server's candles" : "Rerunning needs the Covenant server"} icon="flask" action={q.isLoading ? undefined : <CopyCode text="scripts/dev-all.sh" />}>
+              {q.isLoading ? "Fetching daily candles for recent BNB Chain launches." : <>The server at <span className="mono">{API_BASE}</span> did not return candles{q.error ? ` (${(q.error as Error).message})` : ""}. It serves the launch candles from CoinMarketCap&apos;s DEX data; this page never replays made-up curves. Run <span className="mono">pnpm --dir server sim</span> to store them.</>}
+            </Empty>
           </div>
-          <div>
-            <span className="label">Exit streak <span className="hint mono">{exitDays} days</span></span>
-            <input className="range" type="range" min={1} max={14} step={1} value={exitDays} onChange={(e) => setExitDays(Number(e.target.value))} aria-label="Exit streak days" />
+        ) : (<>
+        <div className="hgrid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+          <div className="hcell"><span className="label" style={{ margin: 0 }}>Sale / pool split</span><Segmented label="Split" value={splitKey} onChange={setSplit} options={SPLITS} /></div>
+          <div className="hcell">
+            <span className="label" style={{ margin: 0 }}>Tap cap <span className="hint num">{bps(cap)} / 30d</span></span>
+            <input className="range" type="range" min={100} max={1000} step={50} value={cap} onChange={(e) => setCap(Number(e.target.value))} aria-label="Tap cap" style={{ ["--fill" as string]: `${((cap - 100) / 900) * 100}%` }} />
+          </div>
+          <div className="hcell">
+            <span className="label" style={{ margin: 0 }}>Exit streak <span className="hint num">{exitDays} days</span></span>
+            <input className="range" type="range" min={1} max={14} step={1} value={exitDays} onChange={(e) => setExitDays(Number(e.target.value))} aria-label="Exit streak days" style={{ ["--fill" as string]: `${((exitDays - 1) / 13) * 100}%` }} />
           </div>
         </div>
-      </div>
 
-      <div className="card">
-        <div className="card-head">
-          <h3 className="d4">Launches</h3>
-          <Segmented label="Filter" value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "hit", label: "Triggered" }, { value: "held", label: "Held" }]} />
-        </div>
-        {q.isLoading ? <div className="card-body"><Skeleton h={240} /></div> : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Token</th><th>Launched</th><th>Price against the covenant floor</th><th className="r">Lowest close</th><th className="r">Now</th><th className="r">Exit</th></tr></thead>
-              <tbody>
-                {rows.slice(0, 60).map((r) => (
-                  <tr key={r.token.address + r.token.symbol}>
-                    <td><span className="ink" style={{ fontWeight: 550 }}>{r.token.symbol}</span><span className="tiny muted" style={{ display: "block" }}>{r.token.name}</span></td>
-                    <td className="small muted" style={{ whiteSpace: "nowrap" }}>{date(r.token.launchedAt || r.token.candles[0]?.t || 0)}</td>
-                    <td><FloorChart r={r} saleBps={saleBps} poolBps={poolBps} cap={cap} /></td>
-                    <td className="r mono">{pct(r.minRatio, 0)}</td>
-                    <td className={`r mono ${r.lastRatio < 1 ? "down" : "up"}`}>{pct(r.lastRatio, 0)}</td>
-                    <td className="r">{r.triggered ? <span className="chip chip-warn">day {r.triggerDay!.toFixed(0)} · {pct(r.redeemableShare!, 0)}</span> : <span className="chip">held</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="card" style={{ overflow: "hidden" }}>
+          <div className="card-head">
+            <div><h3 className="h-card">Launches</h3><p className="t-xs muted w5">{result ? `${result.triggered} of ${result.sampled} would have opened an exit with these terms` : "Loading the sample"}</p></div>
+            <Segmented size="sm" label="Filter" value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "hit", label: "Triggered" }, { value: "held", label: "Held" }]} />
           </div>
-        )}
-      </div>
-      <p className="tiny muted" style={{ margin: 0 }}><Icon name="info" size={13} style={{ verticalAlign: -2 }} /> Ratios are against each token&apos;s opening price. The redeemable share is the treasury left as a share of the raise on the trigger day: {pct((saleBps - poolBps) / saleBps, 0)} at launch, falling by the cap each month. Tax income and earlier redemptions would only raise it.</p>
+          {q.isLoading ? <div className="card-body"><Skeleton h={240} /></div> : rows.length === 0 ? <Empty title="No launches in this filter" icon="flask" /> : (
+            <div className="table-wrap" style={{ borderTop: "1px solid var(--line)" }}>
+              <table className="table">
+                <thead><tr><th>Token</th><th>Launched</th><th>Price against the covenant floor</th><th className="r">Lowest</th><th className="r">Now</th><th className="r">Exit</th></tr></thead>
+                <tbody>
+                  {rows.slice(0, 60).map((r, i) => (
+                    <tr key={r.token.address + r.token.symbol} className="rise" style={{ ["--i" as string]: Math.min(i, 12) } as CSSProperties}>
+                      <td><span className="row" style={{ gap: 10 }}><TokenAvatar seed={r.token.address || r.token.symbol} size={28} /><span style={{ display: "grid" }}><span className="ink">{r.token.symbol}</span><span className="t-xs muted">{r.token.name}</span></span></span></td>
+                      <td className="t-s muted" style={{ whiteSpace: "nowrap" }}>{date(r.token.launchedAt || r.token.candles[0]?.t || 0)}</td>
+                      <td><FloorChart r={r} saleBps={saleBps} poolBps={poolBps} cap={cap} /></td>
+                      <td className="r">{pct(r.minRatio, 0)}</td>
+                      <td className={cx("r", r.lastRatio < 1 ? "down" : "up")}>{pct(r.lastRatio, 0)}</td>
+                      <td className="r">{r.triggered ? <span className="tag warn">day {r.triggerDay!.toFixed(0)} · {pct(r.redeemableShare!, 0)}</span> : <span className="tag">held</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        </>)}
+        <p className="t-xs muted w5 row top" style={{ gap: 6 }}><Icon name="info" size={13} style={{ marginTop: 2 }} /><span>Ratios are against each token&apos;s opening price. The redeemable share is the treasury left as a share of the raise on the trigger day: {pct((saleBps - poolBps) / saleBps, 0)} at launch, falling by the cap each month. Tax income and earlier redemptions would only raise it.</span></p>
+      </section>
     </main>
   );
 }
@@ -129,7 +129,7 @@ function FloorChart({ r, saleBps, poolBps, cap }: { r: TokenReplay; saleBps: num
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-label="Price against the floor, log scale" style={{ display: "block" }}>
       <path d={f} fill="none" stroke="var(--accent)" strokeWidth="1.3" strokeDasharray="3 2" />
-      <path d={p} fill="none" stroke="var(--ink)" strokeWidth="1.2" />
+      <path d={p} fill="none" stroke={r.triggered ? "var(--bad)" : "var(--ink)"} strokeWidth="1.3" strokeLinejoin="round" />
       {tx !== null ? <line x1={tx} x2={tx} y1={1} y2={H - 1} stroke="var(--warn)" strokeWidth="1.5" /> : null}
     </svg>
   );
@@ -141,23 +141,23 @@ function RealResult({ r, from }: { r: SimulatorResult; from: "server" | "snapsho
   const hits = r.tokens.filter((t) => t.triggers.decay).sort((a, b) => a.triggers.decay!.day - b.triggers.decay!.day);
   return (
     <section className="stack">
-      <div className="card card-pad sky-soft stack">
-        <div className="row wrap between">
-          <span className={`chip ${r.computedFromRealData ? "chip-good" : "chip-warn"}`}><span className="dot" />{r.computedFromRealData ? "Computed from real market data" : "Not real data"}</span>
-          <span className="tiny muted">{from === "server" ? "Live from the Covenant server" : "Snapshot committed by the server package"} · generated {new Date(r.generatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC</span>
+      <div className="card card-pad stack">
+        <div className="row wrap-ok between">
+          <span className={cx("badge", r.computedFromRealData ? "good" : "warn")}><span className="dot" />{r.computedFromRealData ? "Computed from real market data" : "Not real data"}</span>
+          <span className="t-xs muted w5">{from === "server" ? "Live from the Covenant server" : "Snapshot committed by the server package"} · generated {new Date(r.generatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC</span>
         </div>
-        {r.headline.text ? <p className="d3" style={{ margin: 0 }}>{r.headline.text}</p> : <p className="small muted" style={{ margin: 0 }}>{r.headline.reason}</p>}
+        {r.headline.text ? <p className="h-sec">{r.headline.text}</p> : <p className="t-s muted w5">{r.headline.reason}</p>}
         <div className="grid3">
           {r.variants.map((v) => (
-            <div key={v.rule} className="card card-pad" style={{ boxShadow: "none", borderColor: v.rule === "decay" ? "var(--accent-line)" : undefined }}>
-              <div className="row between"><span className="d4" style={{ fontSize: 14 }}>{RULE_LABEL[v.rule] ?? v.rule}</span>{v.rule === "decay" ? <span className="chip chip-accent">shipped</span> : null}</div>
-              <div className="mono" style={{ fontSize: 28, margin: "8px 0 2px" }}>{v.triggeredShare === null ? "–" : pct(v.triggeredShare, 1)}</div>
-              <div className="tiny muted">{v.triggered} launches · median day {v.medianDaysToTrigger ?? "–"} · {v.medianRedeemableShareOfRaise === null ? "–" : pct(v.medianRedeemableShareOfRaise, 0)} of the raise left</div>
-              <p className="tiny muted" style={{ margin: "8px 0 0" }}>{v.description}</p>
+            <div key={v.rule} className={cx("variant", v.rule === "decay" && "on")}>
+              <div className="row between"><span className="t-s ink w5">{RULE_LABEL[v.rule] ?? v.rule}</span>{v.rule === "decay" ? <span className="tag accent">shipped</span> : null}</div>
+              <div className="fig-lg">{v.triggeredShare === null ? "–" : pct(v.triggeredShare, 1)}</div>
+              <div className="t-xs muted w5">{v.triggered} launches · median day {v.medianDaysToTrigger ?? "–"} · {v.medianRedeemableShareOfRaise === null ? "–" : pct(v.medianRedeemableShareOfRaise, 0)} of the raise left</div>
+              <p className="t-xs muted w5">{v.description}</p>
             </div>
           ))}
         </div>
-        <div className="tiny muted" style={{ display: "grid", gap: 4 }}>
+        <div className="t-xs muted w5" style={{ display: "grid", gap: 4 }}>
           <span>Sample: {r.sample.withCandles} of {r.sample.requested} pools with at least {r.sample.minDays} days of candles{r.sample.windowStart ? `, created ${new Date(r.sample.windowStart).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} to ${new Date(r.sample.windowEnd!).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}. Terms: floor {pct(r.terms.floorShareOfOpen, 0)} of the open, tap cap {bps(r.terms.tapCapBpsPer30d)} / 30d, {r.terms.exitStreakDays}-day streak.</span>
           {r.source.notes.map((n) => <span key={n}>· {n}</span>)}
         </div>
@@ -169,11 +169,11 @@ function RealResult({ r, from }: { r: SimulatorResult; from: "server" | "snapsho
             <tbody>
               {hits.map((t) => (
                 <tr key={t.token}>
-                  <td><span className="ink" style={{ fontWeight: 550 }}>{t.symbol ?? "?"}</span><span className="tiny mono muted" style={{ display: "block" }}>{t.token.slice(0, 10)}…{t.token.slice(-4)}</span></td>
-                  <td className="r mono">{t.days}</td>
-                  <td className="r mono">{pct(t.minPriceShareOfOpen, 0)}</td>
-                  <td className={`r mono ${t.lastPriceShareOfOpen < 1 ? "down" : "up"}`}>{pct(t.lastPriceShareOfOpen, 0)}</td>
-                  <td className="r"><span className="chip chip-warn">day {t.triggers.decay!.day}</span></td>
+                  <td><span className="ink">{t.symbol ?? "?"}</span><span className="t-xs mono muted" style={{ display: "block" }}>{t.token.slice(0, 10)}…{t.token.slice(-4)}</span></td>
+                  <td className="r">{t.days}</td>
+                  <td className="r">{pct(t.minPriceShareOfOpen, 0)}</td>
+                  <td className={cx("r", t.lastPriceShareOfOpen < 1 ? "down" : "up")}>{pct(t.lastPriceShareOfOpen, 0)}</td>
+                  <td className="r"><span className="tag warn">day {t.triggers.decay!.day}</span></td>
                 </tr>
               ))}
             </tbody>
