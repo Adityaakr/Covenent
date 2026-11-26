@@ -4,7 +4,7 @@
   "artifactId": "covenant-launcher",
   "name": "Covenant Launcher",
   "chainId": 97,
-  "factoryAddress": "0x270de514c8cbe98e574d842e42c724335e742fd1",
+  "factoryAddress": "0x528374fef9da2c31c646e59ae19eb2ae18b7a0df",
   "configContract": "launcher-detail/v1",
   "surfaces": [
     "launcher-ui"

@@ -15,9 +15,9 @@ const readJson = p => JSON.parse(fs.readFileSync(p, "utf8"));
 const abi = name => { const raw = readJson(path.join(root, "contracts/abi", `${name}.json`)); return Array.isArray(raw) ? raw : raw.abi; };
 const fn = (entries, name) => entries.filter(e => e.type === "function" && e.name === name);
 
-// Getters the Launcher UI reads that the covenant-flap-rereview change adds to CovenantLauncher. Until its ABI
-// export lands they are allowed to be missing; the host then shows them as unavailable.
-const PENDING_LAUNCHER_GETTERS = new Set(["minRaise", "cap", "expectedToken"]);
+// Getters the Launcher UI reads that may be missing from the ABI (the host then shows them as unavailable). The
+// re-review's minRaise(), cap() and expectedToken() are exported now, so none.
+const PENDING_LAUNCHER_GETTERS = new Set();
 
 const launcherManifest = readJson(flap("launcher-ui/manifest.json"));
 const vaultManifest = readJson(flap("vault-ui/manifest.json"));
