@@ -53,6 +53,7 @@ export const integrations: Integration[] = [
       "The team creates a covenant with Portal.newLauncher and our launcher factory.",
       "At finalize, the launcher calls Portal.launchTaxTokenV2 with the pool quote.",
       "The vault deposits the reserved tokens through the TokenDockRouter.",
+      "Tax collects in the token and Flap swaps it to BNB in batches, once it is worth about $500; a dispatch then sends the vault its share (90% in our testnet run, Flap keeps 10%).",
     ],
     addresses: [
       { label: "Portal", address: "0x000042108465206185A077Edc3F3fd2b49060000", chain: "bsc-testnet" },

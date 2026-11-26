@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useSwitchChain } from "wagmi";
-import { privyOriginAllowed, useWallet } from "@/components/providers";
-import { ANVIL_ACCOUNTS, ANVIL_ROLES, anvil, chainName, explorerTx, faucetFor } from "@/lib/chain/chains";
+import { useWallet } from "@/components/providers";
+import { anvil, chainName, explorerTx, faucetFor } from "@/lib/chain/chains";
 import { useCovenants, useSource } from "@/lib/data/hooks";
 import { dismissToast, useToasts } from "@/lib/data/actions";
 import { short } from "@/lib/format";
@@ -173,7 +173,9 @@ function Crumbs() {
 export function SourcePill() {
   const s = useSource();
   const cls = s.mode === "live" ? "live" : s.mode === "checking" ? "" : "mock";
-  return <span className={cx("srcpill hide-sm", cls)} title={`${s.mode === "live" ? "Live" : s.mode === "checking" ? "Checking" : "Not connected"}: ${s.reason}`}>{s.mode === "live" && s.chainId ? withBnb(chainName(s.chainId)) : s.mode === "checking" ? "Checking" : "Not connected"}</span>;
+  // Only the live chain is named here; an offline source says why on the page itself, not in a status pill.
+  if (s.mode !== "live" || !s.chainId) return null;
+  return <span className={cx("srcpill hide-sm", cls)} title={`Live: ${s.reason}`}>{withBnb(chainName(s.chainId))}</span>;
 }
 
 function NetworkChip() {
@@ -241,11 +243,10 @@ function WalletMenu() {
           <TokenAvatar seed={w.address} size={26} /><span className="lab mono">{short(w.address, 6, 4)}</span><Icon name="chevronDown" size={14} style={{ color: "var(--muted)" }} />
         </button>
       ) : (
-        w.mode === "privy"
-          ? <button className="btn btn-primary btn-sm connectbtn" onClick={() => w.connect()} disabled={!w.ready}><Icon name="wallet" size={15} />Connect</button>
-          : <button className="btn btn-primary btn-sm connectbtn" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu"><Icon name="wallet" size={15} />Connect</button>
+        // Straight to Privy (email and wallets in one popup); without Privy, straight to the browser's wallet.
+        <button className="btn btn-primary btn-sm connectbtn" onClick={() => w.connect()} disabled={!w.ready}><Icon name="wallet" size={15} />Connect</button>
       )}
-      {open ? (
+      {open && w.address ? (
         <div className="pop" role="menu">
           {w.address ? (
             <>
@@ -269,30 +270,7 @@ function WalletMenu() {
               {w.switchAccount ? <button className="pop-item" role="menuitem" onClick={() => { w.switchAccount!(); setOpen(false); }}><Icon name="users" size={16} />Switch account</button> : null}
               <button className="pop-item" role="menuitem" onClick={() => { w.disconnect(); setOpen(false); }}><Icon name="exit" size={16} />{w.mode === "privy" ? "Log out" : "Disconnect"}</button>
             </>
-          ) : (
-            <>
-              <div className="pop-label">Connect a wallet</div>
-              {w.mode === "privy" ? (
-                <button className="pop-item" role="menuitem" onClick={() => { w.connect(); setOpen(false); }}><span className="icon-tile sm accent"><Icon name="wallet" size={15} /></span><span>Privy<small>Wallet or email login</small></span></button>
-              ) : (
-                <button className="pop-item" role="menuitem" onClick={() => { w.connect(); setOpen(false); }}><span className="icon-tile sm accent"><Icon name="wallet" size={15} /></span><span>Browser wallet<small>MetaMask, Rabby or any injected wallet</small></span></button>
-              )}
-              {w.mode === "browser" && w.devWallet ? (
-                <>
-                  <div className="pop-label">Local chain test accounts</div>
-                  {ANVIL_ROLES.map((role, i) => (
-                    <button key={i} className="pop-item" role="menuitem" onClick={() => { w.connectLocal(i); setOpen(false); }}><TokenAvatar seed={ANVIL_ACCOUNTS[i] ?? `account-${i}`} size={28} /><span>Account #{i}<small>{role}</small></span></button>
-                  ))}
-                </>
-              ) : null}
-              <div className="pop-sep" />
-              {w.mode === "privy" ? (
-                <button className="pop-item" role="menuitem" onClick={() => w.setMode("browser")}><Icon name="refresh" size={16} /><span>Use a browser wallet instead<small>{w.devWallet ? "Skips Privy; adds local test accounts" : "Skips Privy; MetaMask or another injected wallet"}</small></span></button>
-              ) : w.privyAvailable ? (
-                <button className="pop-item" role="menuitem" onClick={() => w.setMode("privy")}><Icon name="refresh" size={16} /><span>Use Privy login{!privyOriginAllowed() ? <small>This origin is not on the Privy app&apos;s allow list; open http://localhost:8080 (pnpm dev)</small> : null}</span></button>
-              ) : <p className="t-xs muted w5" style={{ padding: "6px 10px" }}>Privy is off: no NEXT_PUBLIC_PRIVY_APP_ID.</p>}
-            </>
-          )}
+          ) : null}
         </div>
       ) : null}
     </div>
