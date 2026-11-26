@@ -22,6 +22,11 @@ export function redactUrl(url: string | undefined | null): string {
   }
 }
 
+/** Any URL inside free text (an upstream error message, say) reduced to its host. */
+export function redactSecrets(text: string): string {
+  return text.replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)\]]+/gi, (u) => redactUrl(u));
+}
+
 // C0/C1 controls (keeping \n and \t), bidi overrides and isolates, zero-width and BOM characters.
 // eslint-disable-next-line no-control-regex
 const UNSAFE_CHARS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F​-‏‪-‮⁠-⁤⁦-⁩﻿]/g;
@@ -49,32 +54,60 @@ export function untrustedBlock(label: string, data: unknown): string {
   ].join('\n');
 }
 
-/** Fixed-window limiter keyed by caller (IP). Small and in-memory: it protects one process, not a fleet. */
+/** An IPv6 caller is keyed by its /64 (one host usually holds the whole prefix); IPv4 as is. */
+export function rateKey(ip: string): string {
+  const v = ip.replace(/^::ffff:/i, '');
+  if (!v.includes(':')) return v;
+  return v.split(':').slice(0, 4).join(':') + '::/64';
+}
+
+/**
+ * The caller's address. Behind a trusted proxy (trustProxy) the proxy appends the peer it saw as the LAST
+ * X-Forwarded-For hop; every hop before it is whatever the client sent, so only the last one is used.
+ */
+export function callerAddress(xff: string | undefined, socketAddress: string | undefined, trustProxy: boolean): string {
+  if (trustProxy && xff) {
+    const hops = xff.split(',').map((h) => h.trim()).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1]!;
+  }
+  return socketAddress ?? 'unknown';
+}
+
+/**
+ * Fixed-window limiter keyed by caller. Small and in-memory: it protects one process, not a fleet. The key map is
+ * bounded: past maxKeys the oldest window is dropped (insertion order), never a full scan.
+ */
 export class RateLimiter {
   private hits = new Map<string, { windowStart: number; count: number }>();
   constructor(
     readonly limit: number,
     readonly windowMs = 60_000,
     private now: () => number = Date.now,
+    private maxKeys = 10_000,
   ) {}
 
-  /** true when the call is allowed; records it. */
-  take(key: string): { ok: boolean; retryAfterSeconds: number; remaining: number } {
+  /** Records `cost` calls when they fit in the window; refuses (recording nothing) when they do not. */
+  take(caller: string, cost = 1): { ok: boolean; retryAfterSeconds: number; remaining: number } {
+    const key = rateKey(caller);
     const t = this.now();
-    const h = this.hits.get(key);
+    let h = this.hits.get(key);
     if (!h || t - h.windowStart >= this.windowMs) {
-      this.hits.set(key, { windowStart: t, count: 1 });
-      if (this.hits.size > 10_000) this.prune(t);
-      return { ok: true, retryAfterSeconds: 0, remaining: this.limit - 1 };
+      if (h) this.hits.delete(key);
+      h = { windowStart: t, count: 0 };
+      this.hits.set(key, h);
+      while (this.hits.size > this.maxKeys) this.hits.delete(this.hits.keys().next().value!);
     }
-    if (h.count >= this.limit) return { ok: false, retryAfterSeconds: Math.ceil((h.windowStart + this.windowMs - t) / 1000), remaining: 0 };
-    h.count++;
+    if (h.count + cost > this.limit) return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((h.windowStart + this.windowMs - t) / 1000)), remaining: Math.max(0, this.limit - h.count) };
+    h.count += cost;
     return { ok: true, retryAfterSeconds: 0, remaining: this.limit - h.count };
   }
+}
 
-  private prune(t: number) {
-    for (const [k, h] of this.hits) if (t - h.windowStart >= this.windowMs) this.hits.delete(k);
-  }
+/** A Map that keeps at most `max` entries, dropping the oldest insert. */
+export function boundedSet<K, V>(m: Map<K, V>, k: K, v: V, max: number): void {
+  m.delete(k);
+  m.set(k, v);
+  while (m.size > max) m.delete(m.keys().next().value!);
 }
 
 /** Chains Covenant runs on: anvil (31337), a loopback BNB Chain fork (56) and BNB testnet (97). */
@@ -117,6 +150,28 @@ export function assertValueWithinCap(chainId: number, valueWei: bigint): void {
     throw new Error(
       `${formatEther(valueWei)} BNB is above the per-call cap of ${formatEther(cap)} BNB on chain ${chainId}; ` +
         'split it or raise COVENANT_MAX_VALUE_BNB where the server runs',
+    );
+  }
+}
+
+/**
+ * URIs written on chain (period reports, the ERC-8004 agentURI) must resolve for everyone. On a public chain (a
+ * non-loopback RPC) refuse a loopback or plain-http base unless COVENANT_ALLOW_LOOPBACK_URIS=1 says it is on purpose.
+ */
+export function assertPublicUriBase(chainId: number, rpcUrl: string, base: string, what: string): void {
+  if (isLoopbackRpc(rpcUrl) || process.env.COVENANT_ALLOW_LOOPBACK_URIS === '1') return;
+  let ok = false;
+  try {
+    const u = new URL(base);
+    ok = u.protocol === 'https:' || u.protocol === 'ipfs:';
+    ok &&= !isLoopbackRpc(base) && !/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(u.hostname);
+  } catch {
+    ok = false;
+  }
+  if (!ok) {
+    throw new Error(
+      `${what} is ${redactUrl(base) || '(unset)'} on chain ${chainId}: holders cannot open that. Set it to a public https:// URL ` +
+        '(or COVENANT_ALLOW_LOOPBACK_URIS=1 to post unreachable URIs on purpose).',
     );
   }
 }

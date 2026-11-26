@@ -74,7 +74,11 @@ export class CmcClient {
       parsed = { error: 'upstream returned non-JSON', status: res.status };
     }
     const value: CmcResult = { status: res.status, body: parsed, mode, cached: false };
-    if (res.ok) this.cache.set(key, { at: Date.now(), value });
+    if (res.ok) {
+      this.cache.delete(key);
+      this.cache.set(key, { at: Date.now(), value });
+      while (this.cache.size > 500) this.cache.delete(this.cache.keys().next().value!);
+    }
     return value;
   }
 }

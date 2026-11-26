@@ -17,6 +17,15 @@ const DEPLOYMENT_FILE = process.env.COVENANT_DEPLOYMENTS
   ? path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.COVENANT_DEPLOYMENTS)
   : path.join(CONTRACTS_DIR, "deployments", "local.json");
 
+function isLoopbackUrl(u: string): boolean {
+  try {
+    const h = new URL(u).hostname;
+    return h === "127.0.0.1" || h === "localhost" || h === "::1" || h === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 export async function GET() {
   const deploymentFile = DEPLOYMENT_FILE;
   const name = path.basename(deploymentFile);
@@ -30,7 +39,9 @@ export async function GET() {
     } else {
       payload.deployment = {
         chainId: Number(raw.chainId ?? 31337),
-        rpcUrl: typeof raw.rpcUrl === "string" ? raw.rpcUrl : undefined,
+        // Only a loopback dev-chain RPC is served to the browser: a hosted RPC URL can carry an API key in its path
+        // or query, and the testnet build reads public RPCs (lib/chain/target.ts) anyway.
+        rpcUrl: typeof raw.rpcUrl === "string" && isLoopbackUrl(raw.rpcUrl) ? raw.rpcUrl : undefined,
         addresses: raw.addresses,
         demo: typeof raw.demo === "object" && raw.demo !== null ? raw.demo : {},
         // First block worth reading logs from. On a fork, deployedAtBlock is the fork block itself, and any log range

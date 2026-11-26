@@ -1,4 +1,5 @@
 import { BaseError, decodeErrorResult, type Abi, type Address, type Hex, type PublicClient } from 'viem';
+import { redactSecrets } from '../safety.js';
 import type { Simulation, UnsignedTx } from '../schema.js';
 
 /** Plain-language meaning of the contracts' custom errors (contracts/src/vault, launcher, oracle). */
@@ -39,7 +40,7 @@ function revertData(e: unknown): Hex | undefined {
 
 function shortMessage(e: unknown): string {
   const m = (e as { shortMessage?: string }).shortMessage ?? (e as Error).message ?? String(e);
-  return m.split('\n')[0]!.slice(0, 240);
+  return redactSecrets(m.split('\n')[0]!).slice(0, 240);
 }
 
 /** Every error the Covenant contracts can revert with, for decoding. */

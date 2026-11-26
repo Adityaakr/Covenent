@@ -21,6 +21,7 @@ const app = createMcpHttpApp({
   writes,
   ratePerMinute: Number(process.env.MCP_HTTP_RATE_PER_MIN ?? 120),
   allowedHosts,
+  allowedOrigins: (process.env.MCP_HTTP_ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
   trustProxy: process.env.MCP_HTTP_TRUST_PROXY === '1',
 });
 serve({ fetch: app.fetch, hostname: host, port }, (info) => {

@@ -3,7 +3,7 @@ import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import type { ServerConfig } from '../src/config.js';
 import { CovenantService } from '../src/covenant/read.js';
-import { RateLimiter } from '../src/safety.js';
+import { callerAddress, RateLimiter } from '../src/safety.js';
 import { createMcpServer, SERVER_VERSION, TOOL_NAMES, READ_TOOLS } from './tools.js';
 
 export interface McpHttpOptions {
@@ -15,16 +15,17 @@ export interface McpHttpOptions {
   ratePerMinute?: number;
   /** Host header values to accept (DNS-rebinding guard); empty accepts any */
   allowedHosts?: string[];
+  /**
+   * Browser origins allowed to call the endpoint. MCP clients send no Origin; a request that carries one from anywhere
+   * else is refused, so a web page cannot drive a local server. Empty: no browser origin is allowed.
+   */
+  allowedOrigins?: string[];
   trustProxy?: boolean;
 }
 
 function callerIp(c: Context, trustProxy: boolean): string {
-  if (trustProxy) {
-    const fwd = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
-    if (fwd) return fwd;
-  }
   const env = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;
-  return env?.incoming?.socket?.remoteAddress ?? 'unknown';
+  return callerAddress(c.req.header('x-forwarded-for'), env?.incoming?.socket?.remoteAddress, trustProxy);
 }
 
 /**
@@ -37,7 +38,8 @@ export function createMcpHttpApp(opts: McpHttpOptions) {
   const mode = opts.writes ? 'full' : 'read-only';
   const limiter = new RateLimiter(opts.ratePerMinute ?? 120);
   const app = new Hono();
-  app.use('/mcp', cors({ origin: '*', allowMethods: ['POST', 'GET', 'DELETE', 'OPTIONS'], allowHeaders: ['content-type', 'mcp-protocol-version', 'accept'], exposeHeaders: ['mcp-protocol-version'] }));
+  const origins = (opts.allowedOrigins ?? []).map((o) => o.toLowerCase());
+  app.use('/mcp', cors({ origin: (o) => (origins.includes(o.toLowerCase()) ? o : null), allowMethods: ['POST', 'GET', 'DELETE', 'OPTIONS'], allowHeaders: ['content-type', 'mcp-protocol-version', 'accept'], exposeHeaders: ['mcp-protocol-version'] }));
 
   app.get('/health', (c) =>
     c.json({ ok: true, name: 'covenant-mcp', version: SERVER_VERSION, transport: 'streamable-http', stateless: true, mode, chainId: opts.cfg.chainId, tools: mode === 'full' ? TOOL_NAMES.length : READ_TOOLS.length }),
@@ -48,7 +50,14 @@ export function createMcpHttpApp(opts: McpHttpOptions) {
       const host = (c.req.header('host') ?? '').toLowerCase();
       if (!opts.allowedHosts.includes(host)) return c.json({ jsonrpc: '2.0', error: { code: -32000, message: `host ${host} not allowed` }, id: null }, 403);
     }
-    const lim = limiter.take(callerIp(c, opts.trustProxy ?? false));
+    const origin = c.req.header('origin');
+    if (origin && !origins.includes(origin.toLowerCase())) {
+      return c.json({ jsonrpc: '2.0', error: { code: -32000, message: `origin ${origin} not allowed` }, id: null }, 403);
+    }
+    // a JSON-RPC batch costs one token per message in it
+    const body = (await c.req.raw.clone().json().catch(() => null)) as unknown;
+    const cost = Array.isArray(body) ? Math.max(1, body.length) : 1;
+    const lim = limiter.take(callerIp(c, opts.trustProxy ?? false), cost);
     if (!lim.ok) {
       c.header('retry-after', String(lim.retryAfterSeconds));
       return c.json({ jsonrpc: '2.0', error: { code: -32000, message: `rate limited: retry in ${lim.retryAfterSeconds} s` }, id: null }, 429);
