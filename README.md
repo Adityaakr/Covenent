@@ -519,8 +519,11 @@ otherwise. After changing a contract, run `scripts/dev-abi.sh` to re-export the 
   `lowerTap()`, `postReport()`. It cannot count as a heartbeat, raise the tap, change the team wallet or any term,
   unlock team tokens, or send treasury BNB or tokens anywhere but the team wallet's accrued tap and redeeming holders,
   short of an upgrade.
-- **One Atlas signer.** It prices the dollar tap, which never exceeds its cap of the treasury per 30 days. It cannot
-  unlock team tokens on its own: a tranche also needs the multiple in BNB from the pool's own TWAP, with no oracle.
+- **One Atlas signer, and whoever pokes.** The rate prices the dollar tap, which never exceeds its cap of the treasury
+  per 30 days. It cannot unlock team tokens on its own: a tranche also needs the multiple in BNB from the pool's own
+  TWAP, with no oracle. Whoever pokes decides whether a report rides along, so a poke without one resets the unlock
+  counters, a rate older than `staleAfter` stops pricing the tap (the tap pauses, it never falls back to its cap), and
+  the dollar sale price is fixed at launch from the push feed, or ratchets only upward for a short window.
 - **Refused at creation, not at finalize.** The launcher factory screens the name and symbol against Flap's blocklist
   and checks the minimum raise against Flap's live liquidity floor for the chosen pool share (graduation floor in
   production), so no raise collects money for a launch Flap would refuse. The trading tax runs 30 days to 100 years
@@ -530,7 +533,13 @@ otherwise. After changing a contract, run `scripts/dev-abi.sh` to re-export the 
   swept into the treasury once every refund is claimed. `finalize()` must be sent with a gas limit of 16.7M (every
   client does); about 5 to 7M is used.
 - **Four.meme Lite vault.** `CovenantLiteVault` is outside Flap's audit scope: it never touches Flap's Portal or
-  Guardian and needs its own review.
+  Guardian and needs its own review. Its tap is bounded like Covenant's: at most 10% per period of 30 to 90 days.
+- **Reports and abandonment.** Reports are write-once per period and verdicts count per period. A team past its
+  heartbeat that winds down forfeits the tap, as abandonment would. A launch Flap refuses can be retried for a short
+  window before the raise refunds.
+- **Policy and known issues.** [SECURITY.md](SECURITY.md) (scope, reporting) and
+  [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md) (every item from Flap's review and the pre-audit, with its status). CI runs
+  the contract, server and web suites and checks the storage layout of the upgradeable contracts.
 - **The exit needs no oracle.** It compares the pool TWAP with book value, two BNB numbers the vault reads itself. A
   wrong or missing Atlas rate cannot open or block a round.
 - **Manipulation limits.** Pokes are at least an hour apart. One poke adds at most six hours to any counter. The TWAP

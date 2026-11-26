@@ -176,6 +176,8 @@ export interface CovenantView {
   bands: Band[];
   events: FeedEvent[];
   position?: Position;
+  /** the vault's freshBnbUsd(): the last verified BNB/USD if it is still fresh, else 0 (tap paused); null when unknown */
+  freshBnbUsd?: number | null;
   /** when Flap's tax token stops charging tax (launch + taxDuration), unix seconds; null before launch or unknown */
   taxEndsAt?: number | null;
   /** who ended the covenant, from the vault's windDownCause/windDownBy (null when it has not ended or the vault predates it) */

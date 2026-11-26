@@ -129,6 +129,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     call(ctx, token, TAX_TOKEN, "taxExpirationTime"),
     call(ctx, vault, V, "windDownCause"),
     call<Address>(ctx, vault, V, "windDownBy"),
+    call(ctx, vault, V, "freshBnbUsd"),
   ]);
   const trancheP = Promise.all(terms.trancheBps.map((_, k) => call(ctx, vault, V, "trancheProgress", [BigInt(k)])));
   const positionP = account ? Promise.all([
@@ -160,7 +161,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     const s = num(vStateRaw);
     state = (s < STATES.length && STATES[s] && s >= 2 ? STATES[s] : VAULT_ONLY[s]) ?? state;
   }
-  const [treasuryRaw, [deadRaw, balRaw], earlyReserves, tapCapRaw, trancheRaw, positionRaw, logsEarly, [taxEndRaw, causeRaw, byRaw]] = await Promise.all([treasuryP, tokenBalsP, reservesP, tapCapP, trancheP, positionP, logsP, auditP]);
+  const [treasuryRaw, [deadRaw, balRaw], earlyReserves, tapCapRaw, trancheRaw, positionRaw, logsEarly, [taxEndRaw, causeRaw, byRaw, freshRaw]] = await Promise.all([treasuryP, tokenBalsP, reservesP, tapCapP, trancheP, positionP, logsP, auditP]);
   const treasury = vault ? eth(treasuryRaw) : 0;
   const pair = zero(pairRaw) ? launcherPool ?? addressOf(d, "pair", "pool") : pairRaw;
   const windDown = WIND_DOWN_CAUSE[num(causeRaw)] && byRaw ? { cause: WIND_DOWN_CAUSE[num(causeRaw)]!, by: byRaw } : null;
@@ -295,6 +296,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     events,
     position,
     taxEndsAt: taxEndRaw !== undefined && num(taxEndRaw) > 0 ? num(taxEndRaw) : null,
+    freshBnbUsd: freshRaw !== undefined ? eth(freshRaw) : null,
     windDown,
     now,
   };

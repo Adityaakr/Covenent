@@ -157,12 +157,13 @@ Months after launch | Treasury left | Floor as a share of sale price |
 ### Rule 2: performance unlock
 Team tokens unlock on price, not on dates. Default tranches: 5% of supply at 2x, 10% at 4x, 10% at 8x, measured against the sale price both in dollars and in BNB.
 Each poke() yields the time-weighted pool price since the last one, converted to dollars with Atlas.
-For tranche k, a counter adds the interval when the observation is strict and the price is at or above m_k times the sale price in dollars (TWAP x Atlas BNB/USD against the dollar sale price) and in BNB (the pool TWAP against Q / A, no oracle). The BNB leg reads only the pool, so one Atlas signer's bad rate, high or low, cannot advance an unlock counter by itself; the dollar leg keeps the team from unlocking on a BNB rally the token did not share. A trusted observation below resets it. An untrusted one leaves it unchanged.
-The tranche unlocks when its counter reaches 30 days and the cliff (6 months) has passed.
+For tranche k, a counter adds the interval when the observation is strict and the price is at or above m_k times the sale price in dollars (TWAP x Atlas BNB/USD against the dollar sale price) and in BNB (the pool TWAP against Q / A, no oracle). The BNB leg reads only the pool, so one Atlas signer's bad rate, high or low, cannot advance an unlock counter by itself; the dollar leg keeps the team from unlocking on a BNB rally the token did not share. A strict observation below either multiple resets it, and so does a trusted observation that is not strict (no verified rate rode along, or the pool is shallow): whoever pokes chooses whether to attach a report, so a missing rate counts against unlocking rather than being skipped (pre-audit H-1). An untrusted one (no valid TWAP) leaves it unchanged.
+The tranche unlocks when its counter reaches 30 days and the cliff (6 months) has passed. Strict time before the cliff counts toward the 30 days, so the first strict observation after the cliff can unlock at once if the counter is already full.
+The dollar sale price behind the dollar targets is fixed in the launch transaction from the oracle's push feed when one is fresh; otherwise the first verified rate sets it, and for staleAfter after that a higher verified rate raises it, a lower one never lowers it (pre-audit M-2). A poker who waits for a BNB/USD dip cannot lower the targets, and the BNB leg needs the real multiple anyway.
 Unlocked tokens are ordinary tokens. They join R, so each unlock dilutes book value: after all three tranches, b is 0.75 of what it would otherwise be. This is disclosed on the covenant sheet.
 At wind-down, tranches still locked go to the burn address.
 ### Rule 3: book-value exit
-A streak counter adds trusted time while the interval price is below b. A trusted observation at or above b resets it.
+A streak counter adds trusted time while the interval price is below b. A trusted observation at or above b takes the same time off it: the streak decays, it does not reset (exit fix 1), so an hour above book cancels an hour below, not three days.
 When the streak reaches 3 days, an exit round opens for 7 days.
 During the round, redeem(x) takes x tokens, sends them to the burn address and pays x * b * (1 - fee). Default fee is 1% and stays in the treasury.
 After the round, a 14 day cooldown runs before the trigger can arm again. In a permanent discount the tap is paused at most 29% of the time (7 of every 24 days).
@@ -204,7 +205,7 @@ Two facts shape the build:
 Push feeds can be read-restricted. In whitelist mode only approved contracts can read. Our adapter must be whitelisted, or the feed must be in open-read mode (push guide). Pull mode has no such gate, so it is our first choice.
 Status is not in the published interfaces yet. The Consensus Score page describes a score, six statuses and a reason code per feed. The push and pull interfaces we read return a price and timestamps only, and the data quality page lists the score as coming soon. This is question one for the Atlas team on site.
 ### The trust gate
-An observation is trusted when all of these hold. Untrusted observations never advance or reset a counter.
+As built, the oracle has two levels. Trusted means the pool TWAP is valid; that is all the exit streak needs. Strict additionally needs a verified, fresh BNB/USD rate (a signed pull report or a fresh push round) and a pool holding at least half its launch seed; only strict observations price the tap and add unlock time, and a trusted observation that is not strict resets the unlock counters. The checks below are the full design; the token-feed agreement and the Atlas status gate wait for Atlas to publish them on-chain and are not in the code.
 The Atlas BNB/USD report verifies and is no older than maxDelay.
 Its timestamp is not older than the last one accepted. Atlas notes that a signed report can be replayed inside its freshness window, so we enforce monotonic timestamps.
 The pool's BNB reserve is at least half of the launch seed.
@@ -220,7 +221,7 @@ UNKNOWN | not enough data | No | No |
 The gate is stricter when it pays the team than when it protects holders. At CRITICAL, Atlas publishes the last trusted value and stops advancing, so on a push feed the timestamp simply ages out and check 1 fails (Consensus Score).
 Atlas's own stress cases show why the gate matters for a new token: a roughly 7x price inflation on one DEX against other venues scores 0.10 and flips to SPLIT_MARKET, and a +2000% spike on a thin venue scores about 0.45 (Consensus Score). Those are exactly the moves a team would try in order to fake an unlock.
 ### What the oracle does and does not decide
-The exit rule compares two BNB numbers the vault can read itself: pool price and treasury per token. It would work with no oracle. Atlas adds the cross-venue check and blocks counting during broken markets.
+The exit rule compares two BNB numbers the vault can read itself: pool price and treasury per token. It works with no oracle, and in the code it uses none. A cross-venue check against an Atlas token feed is design only: no token feed is configured and the code has no such check.
 The tap and the unlock are different. Both are set in dollars, so both depend on Atlas for every step. That is the honest split: the oracle is a guard for rule 3 and the engine for rules 1 and 2.
 ### Time-weighted price
 Each poke() reads the pair's cumulative price and timestamp, in the style of the Uniswap V2 oracle. The average since the previous poke is the difference in cumulative price divided by elapsed time.
@@ -230,8 +231,8 @@ A flash loan cannot move it: the cumulative value only records prices that survi
 ### Fallback ladder
 Pull report verified in the poke transaction.
 Push feed read, if the adapter is whitelisted or the feed is open.
-No trusted observation for 14 days: pool-only mode. The tap falls back to its treasury cap alone, the exit streak runs on pool price with a 6 day requirement, and unlock counters freeze.
-The ladder fails toward holders. If the oracle disappears, the exit still works and the team cannot unlock tokens.
+No verified rate fresher than staleAfter (14 days in production): the tap pauses, because a cap-only fallback would let whoever pokes turn the dollar budget into the cap by withholding reports (pre-audit M-1). The exit streak keeps running on pool price, and observations without a rate reset the unlock counters.
+The ladder fails toward holders. If the oracle disappears, the exit still works, the team cannot unlock tokens and the tap stops until a verified rate returns.
 ### CoinMarketCap DEX API in the app
 Base URL https://pro-api.coinmarketcap.com, header X-CMC_PRO_API_KEY (token endpoints, candles).
 Use in Covenant | Endpoint | 
@@ -622,11 +623,13 @@ This is the first thing cut if time runs short. Rules 1 to 4 do not depend on it
 The vault holds other people's money under rules that pay out on price. The threats that matter are the ones that move a price, a clock or a balance.
 ### Threats and defenses
 Threat | How it would work | Defense | What remains | 
-Fake an unlock | Team pumps the pool above a multiple | 30 trusted days on a time-weighted price, strict gate, pool depth check, cross-venue check, cliff | A team willing to hold the price up with real money for a month. Holders can sell to them at that price | 
+Fake an unlock | Team pumps the pool above a multiple | 30 strict days on a time-weighted price, the multiple in BNB and in dollars, pool depth check, cliff | A team willing to hold the price up with real money for a month. Holders can sell to them at that price | 
+Withhold Atlas reports | Whoever pokes leaves the report off while the price is under a multiple, so the reset never happens | A trusted observation without a verified rate resets the unlock counters (H-1) | Griefing the other way: draining the pool under half its seed resets the team's counters, at the attacker's cost | 
+Pick the dollar sale price | First strict poke made at a BNB/USD dip | Fixed at launch from the push feed; else ratchets up only, for staleAfter (M-2); the BNB leg needs the real multiple | A rate within the first window, if every honest poke is front-run | 
 Force an exit round | Attacker dumps to push price under book for three days | Selling below book hands value to buyers. Cooldown bounds the tap pause | Griefing that costs the attacker more than the team | 
 Flash-loan the price | Move the pool inside one transaction | Cumulative prices only record end-of-block values. Hourly minimum between pokes | None practical | 
 Replay an old Atlas report | Reuse a signed report inside its freshness window | Monotonic timestamp per vault, maxDelay of 180 s | Choice of report within three minutes | 
-Stale or halted feed | Atlas stops updating | Freshness check fails, counters freeze, fallback ladder after 14 days | Tap paid on the treasury cap alone during the outage | 
+Stale or halted feed | Atlas stops updating | Freshness check fails; unlock counters reset; the last rate expires after staleAfter (M-1) | The tap pauses during an outage longer than staleAfter; the exit rule keeps running | 
 Reentrancy on payout | Receiver re-enters during a BNB transfer | Ledger updated before transfer, nonReentrant, pull payments only | None known | 
 Trapped raise | Launch reverts after the raise succeeded | Try and catch around the launch, FAILED state, full refunds | None known | 
 Vault squatting | Someone deploys at the vault's address first | newVault is onlyHub, as Flap's spec requires | None | 
@@ -636,13 +639,18 @@ Forced BNB into the vault | Self-destruct or plain send | Counted as revenue. It
 Rounding | Many small redemptions | Division rounds toward the vault | Dust stays with remaining holders | 
 Team redeems its unlocked tokens | Team exits at book in a round | Disclosed on the sheet. Stretch: linear release after unlock | Team shares the floor for tokens it earned | 
 Abandonment false alarm | Honest team forgets the heartbeat | Any team action counts, 45 day window, keeper reminders | Irreversible if missed. The window is deliberately long | 
-Nobody pokes | Counters never advance | Anyone can poke. The app has a button. Sparse pokes add at most 6 hours each | Triggers arrive late, never early | 
+Nobody pokes | Counters never advance | Anyone can poke. The app has a button and the MCP server a tool. Sparse pokes add at most 6 hours each | Triggers arrive late. If the team runs the only keeper and stops, holders must poke for exit rounds to open | 
+Terms the Portal refuses | A covenant raises for weeks, then Flap refuses the launch | The factory mirrors the Portal's launch checks at creation: name blocklist, liquidity floor, at least one tax rate, tax duration bounds (M-3); a refusal at finalize can be retried for a window (L-5) before refunds | Flap changing a rule during the sale | 
+Lapsed team winds down | A team past its heartbeat calls windDown to keep the tap abandonment forfeits | Past the deadline a wind-down is an abandonment (L-4) | None | 
+Rewritten report | Team swaps a report after a passing verdict | Reports are write-once per period (L-1); verdicts count per period, a late pass cannot lift a newer failure (L-2) | The relayer's honesty | 
+Unverified addresses through the API or MCP | A contract posing as a vault is read, listed, or asks for approvals | Server side, being fixed by the agentic review (A-1); approvals are for the exact amount (L-6) | See docs/KNOWN-ISSUES.md | 
+Prompt injection through token names, terms or URIs | Text from chain or users reaches an LLM client | Server side, agentic review (L-14) | Clients must treat names and URIs as data | 
 ### Trust assumptions, all shown on the covenant sheet
-Flap's Guardian can upgrade the vault. It is the only upgrade path, as Flap's low-risk badge requires. Flap states that upgrades take about 24 hours of security review. After audit we can ship a factory whose upgrade function always reverts.
-Atlas's signer is honest about BNB/USD. A wrong rate misprices the tap and the unlock. It cannot open or block an exit round, because book value and pool price are both read on-chain.
+Flap's Guardian can upgrade the vault and the launcher (so the treasury and the refund BNB are only as safe as the Guardian). It is the only upgrade path, as Flap's low-risk badge requires. Flap states that upgrades take about 24 hours of security review. After audit we can ship a factory whose upgrade function always reverts. Per Flap's spec it can also call every team function: windDown on any covenant (recorded as a Guardian wind-down), lowerTap (even to zero, for good), postReport (write-once, recorded as the Guardian's), claimTap (pays only the fixed team wallet) and heartbeat (never counts). The vault's description() lists these.
+Atlas's signer is honest about BNB/USD. A wrong rate can misprice the tap, within its cap. It cannot unlock team tokens alone (the BNB leg reads only the pool) and cannot open or block an exit round, because book value and pool price are both read on-chain.
 The PancakeSwap V2 pair is the price. Liquidity is locked at launch, so the pair cannot be pulled.
 The Cournot relayer is honest, for rule 5 only.
-There are no Covenant admin keys. No owner, no pause, no fee switch.
+There are no Covenant admin keys: no owner, no pause, no fee switch. The Guardian's powers above are Flap's, not Covenant's.
 ### What the contract does not protect against
 A treasury that is legitimately spent. The floor falls with every tap claim.
 A falling BNB price. The treasury is BNB, so its dollar value moves.
@@ -966,7 +974,7 @@ Most time one poke can add | 6 hours | 1 minute | No |
 Atlas report age | 180 seconds | Same | No | 
 Pool depth for a trusted observation | Half of the launch seed | Same | No | 
 Pool against Atlas agreement band | 10% | Same | No | 
-Pool-only fallback | After 14 days without a trusted observation | Not shown | No | 
+Rate expiry (staleAfter) | A verified BNB/USD prices the tap for 14 days; then the tap pauses until a fresh one | 1 hour | No | 
 Notes on the choices:
 Four-day sale follows MetaDAO's raise length.
 Trading tax is lower than the 3% and 5% in Flap's examples. A lower buy tax keeps the pool price closer to book during an exit round, because arbitrage has to pay it.

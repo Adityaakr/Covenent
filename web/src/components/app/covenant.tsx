@@ -331,7 +331,7 @@ function BudgetCell({ v, d }: { v: CovenantView; d: Derived }) {
     <>
       <div className="row between"><span className="lbl">Operating budget</span><span className={cx("tag", d.tapPaused ? "warn" : "good")}>{!launched ? "Starts at launch" : d.tapPaused ? "Paused" : "Accruing"}</span></div>
       <div className="fig-md"><span className="num">{usd(t.tapUsdPer30d)}</span><span className="u">/ 30 days</span></div>
-      <p className="t-s muted w5">≈ <span className="num">{bnb(d.budget.bnb)}</span> BNB at the Atlas rate · capped at {bps(t.tapCapBps)} of the treasury ({d.budget.binding === "cap" ? "cap binds" : "dollar budget binds"})</p>
+      <p className="t-s muted w5">≈ <span className="num">{bnb(d.budget.bnb)}</span> BNB at the Atlas rate · capped at {bps(t.tapCapBps)} of the treasury ({d.budget.binding === "paused" ? "paused: no fresh Atlas rate" : d.budget.binding === "cap" ? "cap binds" : "dollar budget binds"})</p>
       {launched ? (
         <>
           <Meter value={used} max={Math.max(d.cap30, used)} label="Tap drawn or owed this period against the cap" />
@@ -451,7 +451,7 @@ function useRuleRows(v: CovenantView, d: Derived): RuleRow[] {
       figure: <><span className="num">{bnb(v.tap.accrued)}</span><BnbUnit /></>, figSub: "claimable",
       meter: d.cap30 > 0 ? { value: used, max: Math.max(d.cap30, used) } : undefined,
       next: ended ? "Ended at wind-down" : d.cap30 > 0 ? <><span className="num">{bnb(used)}</span> of <span className="num">{bnb(d.cap30)}</span> BNB cap this period</> : "Cap follows the treasury",
-      detail: <>The {w} draws {usd(t.tapUsdPer30d)} per 30 days at the Atlas rate (about <span className="num">{bnb(d.budget.bnb)}</span> BNB today), never more than {bps(t.tapCapBps)} of the treasury. The {d.budget.binding === "cap" ? "cap" : "dollar budget"} binds today. It can lower the tap, never raise it, and it pauses during an exit round.</>,
+      detail: <>The {w} draws {usd(t.tapUsdPer30d)} per 30 days at the Atlas rate (about <span className="num">{bnb(d.budget.bnb)}</span> BNB today), never more than {bps(t.tapCapBps)} of the treasury. {d.budget.binding === "paused" ? "No fresh Atlas rate right now, so the tap is paused until one rides along with a poke." : <>The {d.budget.binding === "cap" ? "cap" : "dollar budget"} binds today.</>} It can lower the tap, never raise it, and it pauses during an exit round.</>,
       attention: 0,
     },
     {

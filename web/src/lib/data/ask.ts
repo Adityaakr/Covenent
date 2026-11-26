@@ -82,7 +82,7 @@ export async function answer(q: string, v: CovenantView, all: CovenantView[]): P
     const runway = d.budget.bnb > 0 ? v.treasury / d.budget.bnb : 0;
     return {
       tool: `get_status(${sym})`, source: "local",
-      text: `The tap is ${usd(t.tapUsdPer30d)} per 30 days at the Atlas rate (about ${bnb(d.budget.bnb)} BNB), capped at ${bps(t.tapCapBps)} of the treasury; the ${d.budget.binding === "cap" ? "cap" : "dollar budget"} binds today. ${bnb(v.tap.accrued, 3)} BNB is claimable now${d.tapPaused ? " but accrual is paused" : ""}. At this draw the treasury lasts about ${runway.toFixed(0)} months. ${who[0]!.toUpperCase() + who.slice(1)} can lower the tap, never raise it.`,
+      text: `The tap is ${usd(t.tapUsdPer30d)} per 30 days at the Atlas rate (about ${bnb(d.budget.bnb)} BNB), capped at ${bps(t.tapCapBps)} of the treasury; ${d.budget.binding === "paused" ? "with no fresh Atlas rate the tap is paused right now" : `the ${d.budget.binding === "cap" ? "cap" : "dollar budget"} binds today`}. ${bnb(v.tap.accrued, 3)} BNB is claimable now${d.tapPaused ? " but accrual is paused" : ""}. At this draw the treasury lasts about ${runway.toFixed(0)} months. ${who[0]!.toUpperCase() + who.slice(1)} can lower the tap, never raise it.`,
     };
   }
   if (/(heartbeat|alive|abandon|stopp|switch|present)/.test(s)) {

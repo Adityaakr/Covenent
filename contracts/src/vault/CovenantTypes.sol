@@ -68,7 +68,7 @@ struct Profile {
     uint32 maxCliff;
     uint32 minPokeGap; // the oracle refuses a second poke of a vault within this time
     uint32 maxStep; // the most time one observation can add to any counter or to the tap
-    uint32 staleAfter; // with no strict observation ever, the tap falls back to its cap after this long
+    uint32 staleAfter; // a verified BNB/USD prices the tap for this long; also the dollar sale price's ratchet window
     uint32 antiFarmerDuration; // passed to Flap's launch
     // Which of Flap's two liquidity floors the minimum raise's pool seed must clear at creation, read live from the
     // Portal (`graduationFloorV2`): true = the graduation floor (twice the creation floor; the token is marked

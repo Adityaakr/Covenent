@@ -83,11 +83,12 @@ export function tapCap30d(treasury: number, capBps: number): number {
 
 /**
  * Tap budget per 30 days in BNB: the dollar budget at the Atlas rate, capped as a share of the treasury.
- * With no trusted BNB/USD (pool-only mode) the tap falls back to its treasury cap alone.
+ * With no fresh verified BNB/USD the tap pauses (the vault has no cap-only fallback: a poker could otherwise reach the
+ * cap by withholding reports).
  */
-export function tapPer30d(tapUsd: number, bnbUsd: number | null, treasury: number, capBps: number): { bnb: number; binding: "usd" | "cap" } {
+export function tapPer30d(tapUsd: number, bnbUsd: number | null, treasury: number, capBps: number): { bnb: number; binding: "usd" | "cap" | "paused" } {
   const cap = tapCap30d(treasury, capBps);
-  if (!bnbUsd || bnbUsd <= 0) return { bnb: cap, binding: "cap" };
+  if (!bnbUsd || bnbUsd <= 0) return { bnb: 0, binding: "paused" };
   const usd = tapUsd / bnbUsd;
   return usd <= cap ? { bnb: usd, binding: "usd" } : { bnb: cap, binding: "cap" };
 }
