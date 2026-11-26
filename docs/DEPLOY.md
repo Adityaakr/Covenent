@@ -60,9 +60,12 @@ The keeper poked 14 times and dispatched tax 14 times on its own; the issuer age
 | Buyer redeems its last 50M CVT at book (0.01395 tBNB) | [`0xc6ef64d2…`](https://testnet.bscscan.com/tx/0xc6ef64d27ccfc62aed8ab4c8b3b66e988f7b33e5e3095bd8676a32d9a3349a7f) |
 
 Of the 2.65 tBNB raised, 1.199 came back to the buyer (sell 1.185, redeem 0.014). 0.251 stays in the vault for the
-other holders (mostly tokens in the pool), and the rest is in the pool. The trading tax the keeper dispatched did not
-reach the vault in this run (the sheet shows trading tax +0.00), which is still to be checked against Flap's tax
-processor on testnet.
+other holders (mostly tokens in the pool), and the rest is in the pool. The trading tax did not reach the vault in this
+run, and that is Flap's batching, not a fault: the one 1.18 BNB sell left 4.5M tokens of tax (about 0.006 BNB) in the
+token, under the processor's 0.714 BNB threshold (see Operating notes, Tax), so the keeper's 14 dispatches each moved
+nothing (`FlapTaxProcessorDispatchExecuted(token, 0, 0, 0)`). The threshold is priced against the pool at the time; on
+a fork of chain 97 one 5 BNB round trip (9.6 BNB of volume) crossed it and the vault received 0.3515 BNB. Within the
+0.05 tBNB this run allowed for trades, 1% tax yields about 0.0005 BNB, so it was not triggered on chain.
 
 **Hosting the web app (Vercel or any host).** Set `NEXT_PUBLIC_PRIVY_APP_ID` (the owner's Privy app id; public, not a
 secret) in the host's environment, and add the deployed domain to the Privy app's allowed origins in the Privy
@@ -198,7 +201,12 @@ set -a && . ./.env && set +a
   most 6 hours to any counter. `finalize()` needs a gas limit of at least 15M (the launch guard) and at most 16,777,216: BNB testnet refuses any
   transaction above 2^24 gas (`-32003: gas limit too high`). The app sends 16.7M; from the command line pass
   `--gas-limit 16700000`.
-- **Tax.** Anyone can call the token's tax processor `dispatch()`; the vault recognizes the BNB by balance delta.
+- **Tax.** Tax collects in the token as tokens. On a sell, Flap's tax processor swaps it to BNB only once it is worth
+  about 0.714 BNB (it asks the router `getAmountsIn(0.714285 BNB)`, $500 at the Portal's internal $700/BNB; read on
+  chain 97, 26 Nov 2026), so small volume leaves it pending. Anyone can then call the processor's `dispatch()`; the
+  vault recognizes the BNB by balance delta. On a fork of chain 97 one 5 BNB round trip crossed the threshold and a
+  dispatch sent the vault 0.3515 BNB, with 0.0391 (10%) kept as the processor's `feeQuoteBalance`. The keeper
+  dispatches only when the processor holds BNB beyond its own balances.
 - **Agents.** An agent covenant needs the ERC-8004 agent NFT in the team wallet when the covenant is created. The
   vault records abandonment (-100), wind-down (0) and each unlock (+multiple) on the ReputationRegistry. Read only
   feedback whose client address is a vault from our vault factory (`vaultFactory.launcherOf(vault) != 0`).
