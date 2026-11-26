@@ -48,9 +48,12 @@ describe('Covenant MCP server', () => {
     for (const t of tools) {
       expect(t.description!.length, t.name).toBeGreaterThan(40);
       expect(t.inputSchema.type, t.name).toBe('object');
-      expect(t.annotations?.readOnlyHint, t.name).toBe(true);
+      // a transaction builder is never read-only: its output is something to sign (clients auto-approve read-only tools)
+      expect(t.annotations?.readOnlyHint, t.name).toBe(!(WRITE_TOOLS as readonly string[]).includes(t.name));
     }
     for (const name of WRITE_TOOLS) expect(tools.find((t) => t.name === name)!.outputSchema, name).toBeTruthy();
+    expect(tools.find((t) => t.name === 'wind_down')!.annotations?.destructiveHint).toBe(true);
+    expect(tools.find((t) => t.name === 'commit')!.annotations?.destructiveHint).toBe(false);
   });
 
   it('get_network reports the chain, the contracts and the limits', async () => {
@@ -251,6 +254,16 @@ describe('MCP over streamable HTTP (stateless)', () => {
     const req = () => app.request('/mcp', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body });
     expect((await req()).status).toBe(200);
     expect((await req()).status).toBe(429);
+  });
+
+  it('charges a JSON-RPC batch one token per message, and refuses browser origins it was not told about', async () => {
+    const app = createMcpHttpApp({ cfg: fx.cfg(), ratePerMinute: 5, allowedOrigins: ['https://app.example'] });
+    const headers = { 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
+    const batch = JSON.stringify(Array.from({ length: 6 }, (_, i) => ({ jsonrpc: '2.0', id: i, method: 'tools/list', params: {} })));
+    expect((await app.request('/mcp', { method: 'POST', headers, body: batch })).status).toBe(429);
+    const one = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} });
+    expect((await app.request('/mcp', { method: 'POST', headers: { ...headers, origin: 'https://evil.example' }, body: one })).status).toBe(403);
+    expect((await app.request('/mcp', { method: 'POST', headers: { ...headers, origin: 'https://app.example' }, body: one })).status).toBe(200);
   });
 });
 

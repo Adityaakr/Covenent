@@ -1,5 +1,7 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { formatEther, type Address, type Hex, type PublicClient, type WalletClient } from 'viem';
+import { decodeFunctionData, erc20Abi, formatEther, getAddress, parseAbi, type Address, type Hex, type PublicClient, type WalletClient } from 'viem';
+
+const REDEEM_ABI = parseAbi(['function redeem(uint256 amount, uint256 minOut)']);
 import type { CovenantSummary, Downside, UnsignedTx } from '../../src/schema.js';
 
 export interface InvestorDecision {
@@ -40,6 +42,30 @@ export class InvestorAgent {
 
   private log(m: string) {
     (this.opts.log ?? ((x: string) => console.log(`[investor] ${x}`)))(m);
+  }
+
+  /**
+   * The agent signs only what it asked for: on its own chain, no BNB attached, approvals of exactly its covenant token
+   * to that vault for at most the amount, then redeem() on that vault for at most the amount. A server that returns
+   * anything else (a compromised or misconfigured MCP server, an injected address) gets nothing signed.
+   */
+  checkRedeem(tx: UnsignedTx, expect: { vault: Address; token: Address | null; amount: bigint }): void {
+    const chainId = this.wallet.chain?.id;
+    const same = (a: string, b: string | null) => b !== null && getAddress(a) === getAddress(b);
+    for (const step of [...tx.prerequisites, tx]) {
+      if (chainId !== undefined && step.chainId !== chainId) throw new Error(`refusing to sign: chain ${step.chainId}, wallet is on ${chainId}`);
+      if (BigInt(step.value) !== 0n) throw new Error(`refusing to sign: ${step.functionName} carries ${step.value} wei`);
+    }
+    for (const p of tx.prerequisites) {
+      if (!same(p.to, expect.token)) throw new Error(`refusing to sign: prerequisite targets ${p.to}, not the covenant token`);
+      const d = decodeFunctionData({ abi: erc20Abi, data: p.data });
+      if (d.functionName !== 'approve') throw new Error(`refusing to sign: prerequisite is ${d.functionName}, not approve`);
+      const [spender, value] = d.args as readonly [Address, bigint];
+      if (!same(spender, expect.vault) || value > expect.amount) throw new Error('refusing to sign: approval is not exactly the vault for the redeemed amount');
+    }
+    if (!same(tx.to, expect.vault)) throw new Error(`refusing to sign: redeem targets ${tx.to}, not the vault ${expect.vault}`);
+    const d = decodeFunctionData({ abi: REDEEM_ABI, data: tx.data });
+    if (d.args[0] > expect.amount) throw new Error('refusing to sign: redeem amount is above the position');
   }
 
   private async sign(tx: UnsignedTx): Promise<Hex[]> {
@@ -87,6 +113,12 @@ export class InvestorAgent {
       // the simulation runs before the approval lands, so a revert there is expected only while a prerequisite is pending
       if (simulation.ok === false && unsignedTransaction.prerequisites.length === 0) {
         out.push({ ...base, action: 'hold', reason: `Redeem would revert now, not sent: ${simulation.note}` });
+        continue;
+      }
+      try {
+        this.checkRedeem(unsignedTransaction, { vault: c.vault, token: c.token, amount: BigInt(d.tokensWei) });
+      } catch (e) {
+        out.push({ ...base, action: 'hold', reason: (e as Error).message });
         continue;
       }
       const txs = await this.sign(unsignedTransaction);

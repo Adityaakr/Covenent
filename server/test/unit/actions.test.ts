@@ -71,7 +71,16 @@ describe('planActions', () => {
     expect(wd.by.redeem!.why).toMatch(/no fee/);
     expect(wd.by.poke!.available).toBe(false);
     expect(wd.by.heartbeat!.available).toBe(false);
-    expect(wd.by.deposit_revenue!.available).toBe(false);
+    expect(wd.by.deposit_revenue!.available).toBe(true); // depositRevenue has no state check; it raises what redeemers get
+    expect(wd.by.post_report!.why).toMatch(/Team wallet only/);
+    const wdTeam = plan({ sheet: sheet('WIND_DOWN'), wallet: TEAM, position: pos({ wallet: TEAM, isTeamWallet: true }) });
+    expect(wdTeam.by.post_report!.available).toBe(true); // disclosure stays possible after wind-down
+    expect(wdTeam.by.heartbeat!.available).toBe(false);
+  });
+  it('accrued tap stays claimable by the team after a round opens or wind-down', () => {
+    const team = plan({ sheet: sheet('WIND_DOWN', { tap: { accruedWei: '5', paused: true } } as Partial<CovenantSheet>), wallet: TEAM, position: pos({ wallet: TEAM, isTeamWallet: true }) });
+    expect(team.by.claim_tap!.available).toBe(true);
+    expect(team.by.claim_tap!.why).toMatch(/stays claimable/);
   });
   it('unlocked team tranches can be released by anyone', () => {
     expect(plan({ sheet: sheet('ACTIVE'), unlockedUnreleasedWei: '1000000000000000000' }).by.release_team!.available).toBe(true);

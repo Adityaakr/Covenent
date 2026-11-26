@@ -162,30 +162,42 @@ export function planActions(p: PlanInput): { actions: ActionOption[]; summary: s
     });
     out.push({
       tool: 'deposit_revenue',
-      available: !terminal,
+      available: true,
       signer: 'anyone',
-      why: terminal ? 'The covenant is wound down.' : 'Anyone can send revenue to the vault; it raises book value for every holder (from the team wallet it is also a heartbeat).',
+      why: terminal
+        ? 'Anyone can still send revenue to the vault: it raises what every holder redeems for at book.'
+        : 'Anyone can send revenue to the vault; it raises book value for every holder (from the team wallet it is also a heartbeat).',
     });
 
     // issuer side
     const isTeam = pos?.isTeamWallet === true;
     const teamWhy = (ok: boolean, yes: string, no: string) => (p.wallet && !isTeam ? `Team wallet only (${s.issuer.teamWallet ?? 'unknown'}); this wallet is not it.` : ok ? yes : no);
     const accrued = big(s.tap.accruedWei);
-    const tapOk = accrued > 0n && !s.tap.paused;
+    const tapOk = accrued > 0n;
     out.push({
       tool: 'claim_tap',
       available: tapOk && (isTeam || !p.wallet),
       signer: 'team wallet',
-      why: teamWhy(tapOk, `${bnb(accrued)} of tap has accrued; claiming also counts as a heartbeat.`, s.tap.paused ? `The tap is paused in state ${state}.` : 'Nothing has accrued yet.'),
+      why: teamWhy(
+        tapOk,
+        `${bnb(accrued)} of tap is owed to the team${s.tap.paused ? ` (accrual is paused in ${state}, what accrued stays claimable)` : ''}; claiming${terminal ? '' : ' also counts as a heartbeat'}.`,
+        'Nothing has accrued yet.',
+      ),
     });
     for (const [tool, yes] of [
       ['heartbeat', `Resets the abandonment clock (window ${s.heartbeat.windowSeconds ?? '?'} s; last ${s.heartbeat.ageSeconds ?? '?'} s ago).`],
       ['lower_tap', `Lowers the tap below $${s.terms.tapUsdPer30d ?? '?'} per 30 days, for good.`],
-      ['post_report', 'Posts the next period report pointer and hash.'],
       ['wind_down', 'Closes the covenant for good: holders redeem at book with no fee.'],
     ] as const) {
       out.push({ tool, available: !terminal && (isTeam || !p.wallet), signer: 'team wallet', why: teamWhy(!terminal, yes, 'The covenant is wound down.') });
     }
+    // postReport has no state check: disclosure stays possible after wind-down (it is just no longer a heartbeat)
+    out.push({
+      tool: 'post_report',
+      available: isTeam || !p.wallet,
+      signer: 'team wallet',
+      why: teamWhy(true, `Posts the next period report pointer and hash${terminal ? ' (after wind-down it is no longer a heartbeat)' : ''}.`, ''),
+    });
   }
 
   const now = out.filter((a) => a.available);

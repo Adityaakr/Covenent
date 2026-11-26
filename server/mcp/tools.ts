@@ -11,7 +11,7 @@ import { settle } from '../src/covenant/math.js';
 import { CovenantService, type ResolvedCovenant } from '../src/covenant/read.js';
 import { errorAbi, NOT_SIMULATED, simulate } from '../src/covenant/simulate.js';
 import { TxBuilder } from '../src/covenant/tx.js';
-import { allowedChains, assertChainAllowed, assertValueWithinCap, maxValueWei, redactUrl, sanitizeText } from '../src/safety.js';
+import { allowedChains, assertChainAllowed, assertValueWithinCap, maxValueWei, redactSecrets, redactUrl, sanitizeText } from '../src/safety.js';
 import { Downside, PreparedTx, Simulation, type CovenantSheet, type CovenantSummary, type UnsignedTx } from '../src/schema.js';
 import { planActions } from './actions.js';
 import { registerPromptsAndResources } from './prompts.js';
@@ -43,7 +43,7 @@ const ok = (v: Record<string, unknown>) => ({ content: [{ type: 'text' as const,
 
 /** An error the agent can act on: what failed, and what to call next. */
 export function toolError(e: unknown) {
-  const msg = ((e as { shortMessage?: string }).shortMessage ?? (e as Error)?.message ?? String(e)).split('\n')[0]!.slice(0, 400);
+  const msg = redactSecrets(((e as { shortMessage?: string }).shortMessage ?? (e as Error)?.message ?? String(e)).split('\n')[0]!).slice(0, 400);
   let next = 'Check the arguments against the tool schema and try again.';
   if (/not a Covenant vault|not a 0x address/i.test(msg)) next = 'Call list_covenants for valid covenant addresses (vault, token, launcher or pool all work).';
   else if (/HTTP request failed|fetch failed|ECONNREFUSED|timed? ?out|ENOTFOUND|socket/i.test(msg)) next = 'The chain RPC did not answer. Call get_network to see which RPC this server uses; retry shortly.';
@@ -107,6 +107,7 @@ export const INSTRUCTIONS = [
   'Send each prerequisite first, then the transaction, from the wallet named in `from`, with `gas` when it is set (finalize). Re-check with simulate_transaction if time passed.',
   'Units: *_bnb arguments are decimal BNB strings ("0.5"); *_wei and tokens_wei are base-10 integer strings (18 decimals); per-token prices are BNB per token x 1e18; times are unix seconds (chain time).',
   'claim_tap, heartbeat, lower_tap, post_report and wind_down must be signed by the team wallet.',
+  'Provenance: this server only answers for covenants its deployment factories created; sign only transactions whose `to` is an address get_covenant or list_covenants returned (or the covenant token, for an approval). Get the user’s confirmation before any signature.',
   UNTRUSTED_NOTE,
 ].join(' ');
 
@@ -173,7 +174,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       unsignedTransaction: tx,
       simulation,
       howToSend:
-        'This server holds no keys and sends nothing. Sign and send with the wallet that should act' +
+        'This server holds no keys and sends nothing. Show the user what it does and get their confirmation, then sign and send with the wallet that should act' +
         (tx.from ? ` (expected signer ${tx.from})` : '') +
         (tx.gas ? `, with gas limit ${tx.gas}` : '') +
         (pending ? `; send each of the ${pending} prerequisite transaction(s) first, in order.` : '.'),
@@ -193,8 +194,10 @@ export function createMcpServer(deps: McpDeps): McpServer {
     };
 
   const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
-  // A write tool builds and simulates a transaction; it changes nothing itself.
-  const build = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+  // A write tool changes nothing itself, but its output is a transaction for someone to sign: never a read-only tool,
+  // so clients that auto-approve read-only tools still ask. The irreversible ones are marked destructive.
+  const build = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
+  const DESTRUCTIVE = new Set(['lower_tap', 'wind_down', 'declare_abandoned', 'redeem']);
 
   /* ---------------- read tools ---------------- */
 
@@ -510,7 +513,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
         return ok({ onchain, coinmarketcap: null, note: `Chain ${cfg.chainId} is not BNB Chain mainnet, so CoinMarketCap has no data for this pair. On-chain reserves shown.` });
       }
       const quote = await cmc.call(CMC_ROUTES.find((r) => r.name === 'pair-quote')!, { network_id: '14', contract_address: s.pool.pair });
-      return ok({ onchain, coinmarketcap: { mode: quote.mode, status: quote.status, body: quote.body }, untrustedFields: ['coinmarketcap.body'] });
+      return ok({ onchain, coinmarketcap: { mode: quote.mode, status: quote.status, untrusted: quote.body }, untrustedFields: ['coinmarketcap.untrusted'] });
     }),
   );
 
@@ -533,7 +536,11 @@ export function createMcpServer(deps: McpDeps): McpServer {
       else if (r.launcher) await svc.index.sync([{ address: r.launcher, abi: svc.abis.launcher, contract: 'launcher' }]);
       const events = (r.vault ? svc.events(ref) : svc.index.events(r.launcher!, 'launcher')).filter((e) => !kind || e.kind === kind);
       const n = limit ?? 25;
-      return ok({ covenant: r, total: events.length, events: events.slice(-n).reverse(), untrustedFields: ['events[].args'] });
+      const clean = events
+        .slice(-n)
+        .reverse()
+        .map((e) => ({ ...e, args: Object.fromEntries(Object.entries(e.args).map(([k, v]) => [k, typeof v === 'string' && !/^(0x[0-9a-fA-F]*|-?\d+)$/.test(v) ? sanitizeText(v, 300) : v])) }));
+      return ok({ covenant: r, total: events.length, events: clean, untrustedFields: ['events[].args'] });
     }),
   );
 
@@ -568,7 +575,13 @@ export function createMcpServer(deps: McpDeps): McpServer {
   const writeTool = <S extends z.ZodRawShape>(name: string, title: string, description: string, inputSchema: S, handler: (a: z.infer<z.ZodObject<S>>) => Promise<ReturnType<typeof ok>>) =>
     server.registerTool(
       name,
-      { title, description: `${description} Returns an unsigned transaction and its simulation; nothing is signed or sent.`, inputSchema, outputSchema: PreparedTx, annotations: build },
+      {
+        title,
+        description: `${description} Returns an unsigned transaction and its simulation; nothing is signed or sent. Show it to the user and get their confirmation before anyone signs.`,
+        inputSchema,
+        outputSchema: PreparedTx,
+        annotations: { ...build, destructiveHint: DESTRUCTIVE.has(name) },
+      },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       run(handler as any) as any,
     );
@@ -588,12 +601,16 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const li = await svc.launcherInfo(r.launcher);
       const signer = from ? getAddress(from) : null;
       let note: string | undefined;
-      const open = li?.state === 'RAISING';
+      const now = (await svc.chainNow()).timestamp;
+      const open = li?.state === 'RAISING' && (li.deadline === null || now < li.deadline);
       const preview = signer && open ? await svc.tryRead<readonly [bigint, bigint, bigint]>(r.launcher, svc.abis.launcher, 'previewCommit', [signer, amount]) : null;
       if (!open) {
-        note = `The raise is closed (launcher state ${li?.state ?? 'unknown'}): commitments are no longer accepted. Look for open raises in list_covenants.`;
+        note = `The raise is closed (${li?.state === 'RAISING' ? 'the sale deadline has passed; it waits for finalize' : `launcher state ${li?.state ?? 'unknown'}`}): commitments are no longer accepted. Look for open raises in list_covenants.`;
       } else if (preview) {
-        note = `If the raise closed now, this wallet's total commitment would keep ${formatEther(preview[0])} BNB in the raise for ${formatEther(preview[1])} tokens and get ${formatEther(preview[2])} BNB back (CovenantLauncher.previewCommit).`;
+        const below = li?.minRaiseWei && li.committedWei && BigInt(li.committedWei) + amount < BigInt(li.minRaiseWei);
+        note = below
+          ? `With this commitment the raise would hold ${formatEther(BigInt(li!.committedWei!) + amount)} BNB, below its ${formatEther(BigInt(li!.minRaiseWei!))} BNB minimum: if it closed now it would fail and every commitment would be refunded in full.`
+          : `If the raise closed now, this wallet's total commitment would keep ${formatEther(preview[0])} BNB in the raise for ${formatEther(preview[1])} tokens and get ${formatEther(preview[2])} BNB back (CovenantLauncher.previewCommit).`;
       } else if (li?.committedWei && li.capWei) {
         const total = BigInt(li.committedWei) + amount;
         const s = settle(amount, total, BigInt(li.capWei), 0n);
