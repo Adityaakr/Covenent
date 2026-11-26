@@ -45,6 +45,19 @@ function bigintQuery(c: Context, name: string, opts: { ether?: boolean } = {}): 
   }
 }
 
+/**
+ * The caller's IP for rate limits: the socket's peer address, or the first X-Forwarded-For hop when the server sits
+ * behind a proxy that sets it (FAUCET_TRUST_PROXY=1; otherwise the header is ignored, since anyone can send it).
+ */
+function clientIp(c: Context): string | undefined {
+  if (process.env.FAUCET_TRUST_PROXY === '1') {
+    const fwd = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
+    if (fwd) return fwd;
+  }
+  const env = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;
+  return env?.incoming?.socket?.remoteAddress ?? undefined;
+}
+
 export function createApp(deps: AppDeps) {
   const { cfg } = deps;
   const svc = deps.svc ?? new CovenantService({ cfg });
@@ -66,7 +79,7 @@ export function createApp(deps: AppDeps) {
   app.use('*', cors({ origin: (o) => (cfg.corsOrigins.includes('*') || cfg.corsOrigins.includes(o) ? o : null) }));
   app.onError((err, c) => {
     if (err instanceof HttpError) return c.json({ error: err.message }, err.status as 400);
-    if (err instanceof FaucetError) return c.json({ error: err.message }, err.status as 400);
+    if (err instanceof FaucetError) return c.json({ error: err.message, ...err.extra }, err.status as 400);
     return c.json({ error: 'internal error', detail: err.message }, 500);
   });
 
@@ -185,11 +198,12 @@ export function createApp(deps: AppDeps) {
     return c.json(body);
   });
 
-  // Local test funds (dev chain only): GET says whether it is on and what it pays, POST {address} pays out.
-  app.get('/api/faucet', (c) => c.json(faucet.status()));
+  // Test funds (dev chain, or the BNB testnet drip): GET says whether it is on, what it pays and whether ?address can
+  // be paid now; POST {address} pays out. The caller's IP feeds the testnet drip's once-a-day limit.
+  app.get('/api/faucet', async (c) => c.json(await faucet.status(c.req.query('address'), clientIp(c))));
   app.post('/api/faucet', async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { address?: string };
-    return c.json(await faucet.send(body.address ?? c.req.query('address') ?? ''));
+    return c.json(await faucet.send(body.address ?? c.req.query('address') ?? '', clientIp(c)));
   });
 
   // The Four.meme path (Covenant Lite): ForwardVault params encoded exactly as the live ForwardVault decodes them,
