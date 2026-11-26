@@ -88,7 +88,7 @@ export class InvestorAgent {
         ...base,
         action: 'redeemed',
         txs,
-        reason: `Exit round open. Redeemed ${formatEther(BigInt(d.tokensWei))} tokens for about ${formatEther(redeem)} BNB at book, ${edgePct === Infinity ? 'with no pool bid' : `${edgePct.toFixed(1)}% more than the ${formatEther(sell)} BNB the pool would pay`}.`,
+        reason: `${base.state === 'WIND_DOWN' ? 'Wound down: redemption open with no fee.' : 'Exit round open.'} Redeemed ${formatEther(BigInt(d.tokensWei))} tokens for about ${formatEther(redeem)} BNB at book, ${edgePct === Infinity ? 'with no pool bid' : `${edgePct.toFixed(1)}% more than the ${formatEther(sell)} BNB the pool would pay`}.`,
       });
     }
     for (const o of out) this.log(`${o.symbol ?? o.vault}: ${o.action}. ${o.reason}`);

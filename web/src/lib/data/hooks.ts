@@ -77,7 +77,13 @@ function useLiveCovenants(src: SourceStatus, account?: Address) {
     refetchInterval: 6_000,
     queryFn: async () => {
       const launchers = src.launchers ?? launchersOf(src.payload!.deployment!);
-      return Promise.all(launchers.map((l) => readCovenant({ client: src.client!, payload: src.payload!, account }, l)));
+      const views = await Promise.all(launchers.map((l) => readCovenant({ client: src.client!, payload: src.payload!, account }, l)));
+      // An agent's record spans its covenants: show every outcome written for the same ERC-8004 id on each sheet.
+      return views.map((v) => {
+        if (!v.issuer.agentId) return v;
+        const all = views.filter((x) => x.issuer.agentId === v.issuer.agentId).flatMap((x) => x.issuer.outcomes);
+        return { ...v, issuer: { ...v.issuer, outcomes: all.sort((p, q) => q.at - p.at) } };
+      });
     },
   });
 }

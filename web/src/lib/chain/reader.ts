@@ -171,6 +171,8 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   const events: FeedEvent[] = [];
   const history: PricePoint[] = [];
   const deposited = new Set<string>();
+  // ERC-8004 outcomes this vault wrote to the agent's reputation record (OutcomeRecorded mirrors giveFeedback)
+  const outcomes: CovenantView["issuer"]["outcomes"] = [];
   const fromBlock = BigInt(d.startBlock ?? 0);
   const tsCache = new Map<bigint, number>();
   const ts = async (bn: bigint) => { if (!tsCache.has(bn)) tsCache.set(bn, Number((await client.getBlock({ blockNumber: bn })).timestamp)); return tsCache.get(bn)!; };
@@ -191,6 +193,15 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
         case "RevenueDeposited": deposited.add(l.transactionHash); break;
         case "TapClaimed": ledger.push({ kind: "tap", at, amount: -amount("amount", "value"), tx: l.transactionHash, note: "Tap claimed by the team wallet" }); break;
         case "Redeemed": ledger.push({ kind: "redeem", at, amount: -amount("bnbOut", "out", "amountOut"), tx: l.transactionHash, note: `${(amount("tokens", "got", "amount") / 1e6).toFixed(2)}M tokens burned at book` }); break;
+        case "OutcomeRecorded": {
+          const kind = String(a.outcome ?? "");
+          outcomes.push({
+            covenant: terms.symbol, vault, at,
+            outcome: (["abandoned", "wound-down", "unlocked", "failed"].includes(kind) ? kind : "active") as CovenantView["issuer"]["outcomes"][number]["outcome"],
+            detail: `value ${String(a.value ?? "")}${a.ok === false ? " · registry refused, kept on the vault" : " · written to ERC-8004"}`,
+          });
+          break;
+        }
         case "Observed": history.push({ t: at, price: amount("twapBnb", "twap", "price"), book: amount("bookValue", "book") }); break;
       }
       events.push({ at, name: l.eventName, detail: Object.entries(a).slice(0, 3).map(([k, v]) => `${k} ${typeof v === "bigint" ? (v > 10n ** 12n ? Number(formatEther(v)).toLocaleString("en-US", { maximumFractionDigits: 6 }) : v.toString()) : String(v)}`).join(" · "), tx: l.transactionHash });
@@ -215,7 +226,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     launchBlock: d.startBlock,
     state,
     terms,
-    issuer: { kind: terms.agentId > 0 ? "agent" : "human", teamWallet: terms.teamWallet, agentId: terms.agentId || undefined, outcomes: [] },
+    issuer: { kind: terms.agentId > 0 ? "agent" : "human", teamWallet: terms.teamWallet, agentId: terms.agentId || undefined, outcomes },
     raise: { committed, contributors: num(await call(ctx, launcher, L, pickFn(L, "contributorCount", "contributors"))), deadline: num(deadlineRaw), finalized: state !== "RAISING" },
     treasury,
     owedTeam,
