@@ -5,6 +5,10 @@
 #   scripts/dev-demo.sh <scene>        one scene: create raise finalize claim trade tap revenue report slide
 #                                      poke poke-noatlas redeem heartbeat abandon redeem-after status
 #   scripts/dev-demo.sh advance <s>    move the dev chain's clock forward <s> seconds
+#   scripts/dev-demo.sh use <launcher> point the scenes at another covenant (one created in the web app, say):
+#                                      later scenes (trade, slide, poke, redeem, abandon...) act on it
+#   scripts/dev-demo.sh live           seed a second covenant and leave it ACTIVE with trading under way, for the
+#                                      issuer agent and a hand-driven walk (DEMO_NAME / DEMO_SYMBOL name it)
 #
 # The demo factory runs the same rules in minutes: sale 2 min, exit streak 3 min, round 5 min, cooldown 2 min,
 # heartbeat 10 min, at most 1 min per poke, pokes 20 s apart.
@@ -64,8 +68,44 @@ story() {
   scene status
 }
 
+use() {
+  local l="$1" v t p proc
+  v="$(cast call --rpc-url "$RPC" "$l" 'vault()(address)')"
+  t="$(cast call --rpc-url "$RPC" "$l" 'token()(address)')"
+  p="$(cast call --rpc-url "$RPC" "$l" 'pool()(address)')"
+  proc=0x0000000000000000000000000000000000000000
+  if [ "$t" != "$proc" ]; then
+    if [ "$MODE" = "mock" ]; then
+      proc="$(cast call --rpc-url "$RPC" "$(jq -r .addresses.portal "$C/deployments/local.json")" 'taxProcessorOf(address)(address)' "$t")"
+    else
+      proc="$(cast call --rpc-url "$RPC" "$t" 'taxProcessor()(address)')"
+    fi
+  fi
+  local tmp; tmp="$(mktemp)"
+  jq --arg l "$l" --arg v "$v" --arg t "$t" --arg p "$p" --arg x "$proc" \
+    '.demo.launcher=$l | .demo.vault=$v | .demo.token=$t | .demo.pair=$p | .demo.taxProcessor=$x' \
+    "$C/deployments/local.json" >"$tmp" && mv "$tmp" "$C/deployments/local.json"
+  say "scenes now act on launcher $l (vault $v)"
+}
+
+# A second covenant that stays ACTIVE: raised, launched, claimed, traded. The issuer agent runs it from here.
+live() {
+  export DEMO_NAME="${DEMO_NAME:-Lumen Agent}" DEMO_SYMBOL="${DEMO_SYMBOL:-LUMEN}"
+  scene create
+  scene raise
+  advance 121
+  scene finalize
+  scene claim
+  # Flap's anti-sniper window on the fork; the agent checks in half way so its 10-minute heartbeat never lapses
+  if [ "$MODE" = "fork" ]; then advance 300; scene heartbeat; advance 301; else advance 30; fi
+  scene trade
+  scene heartbeat
+}
+
 case "${1:-story}" in
   story) story ;;
+  live) live ;;
+  use) use "${2:?launcher address}" ;;
   advance) advance "${2:?seconds}" ;;
   *) scene "$1" ;;
 esac

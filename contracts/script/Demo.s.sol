@@ -89,7 +89,10 @@ contract Demo is Script, StackBuilder, LocalJson {
         vm.stopBroadcast();
 
         bytes32 salt = _mineSalt(L.a.portal, L.a.tokenImpl, keccak256(abi.encode("covenant-demo", block.timestamp)));
-        Terms memory t = CovenantProfiles.demoTerms("Covenant Agent", "CVNA", salt, team);
+        // DEMO_NAME / DEMO_SYMBOL let scripts/dev-all.sh seed a second, still-running covenant beside the story's
+        Terms memory t = CovenantProfiles.demoTerms(
+            vm.envOr("DEMO_NAME", string("Covenant Agent")), vm.envOr("DEMO_SYMBOL", string("CVNA")), salt, team
+        );
         t.meta = "ipfs://covenant-demo/token.json";
         t.agentId = agentId;
         t.reportRelayer = _addr(IDX_RELAYER);
