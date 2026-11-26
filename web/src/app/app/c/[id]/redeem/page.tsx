@@ -7,7 +7,7 @@ import { Icon } from "@/components/app/icons";
 import { BnbCoin } from "@/components/app/bnb";
 import { ThinkingMark } from "@/components/app/mark";
 import { Stat, Tiny } from "@/components/app/story";
-import { Meter, Ticker, TokenAvatar, cx, seedOf, useCountdown } from "@/components/app/ui";
+import { Empty, Meter, Ticker, TokenAvatar, cx, seedOf, useCountdown } from "@/components/app/ui";
 import { useWallet } from "@/components/providers";
 import { explorerAddress } from "@/lib/chain/chains";
 import type { Derived } from "@/lib/covenant/derive";
@@ -73,6 +73,18 @@ function Redeem({ v, d }: { v: CovenantView; d: Derived }) {
     : tooMuch ? <>More than your balance</>
     : <><Icon name="redeem" size={16} />Burn {tokens(amount)} {sym} for {amt(q.out)} BNB</>;
   const disabled = connected && (!open || bal <= 0 || amount <= 0 || tooMuch || busy);
+
+  if (v.state === "RAISING" || v.state === "FAILED") {
+    const failed = v.state === "FAILED";
+    return (
+      <div className="card">
+        <Empty title={failed ? "Nothing to redeem: the raise failed" : "Redemption starts after launch"} icon={failed ? "info" : "clock"}
+          action={<Link className="btn btn-primary btn-sm" href={`/app/c/${v.id}/${failed ? "settle" : "raise"}`}>{failed ? "Claim your refund" : "Back to the raise"}</Link>}>
+          {failed ? "Nothing launched, so there is no token or treasury. Every commitment refunds in full on the Settlement tab." : `There is no ${sym} or treasury yet. Once the raise settles, holders can redeem at book value in an exit round or at wind-down.`}
+        </Empty>
+      </div>
+    );
+  }
 
   return (
     <div className="grid-side" style={{ columnGap: 28 }}>
@@ -158,7 +170,7 @@ function Redeem({ v, d }: { v: CovenantView; d: Derived }) {
           <h3 className="h-card">For everyone who stays</h3>
           <div className="grid2" style={{ gap: 14 }}>
             <Stat k="Book value now" v={<Tiny n={d.book} />} s="BNB per token" />
-            <Stat k="After this" v={<Tiny n={after} />} s={<span className="up">{after >= d.book ? "+" : ""}{((after / Math.max(d.book, 1e-30) - 1) * 100).toFixed(4)}%</span>} />
+            <Stat k="After this" v={<Tiny n={after} />} s={d.book > 0 ? <span className="up">{after >= d.book ? "+" : ""}{((after / d.book - 1) * 100).toFixed(4)}%</span> : "–"} />
           </div>
           <p className="t-xs muted w5">A redemption never lowers book value for the holders who remain.{wind ? "" : " The exit fee stays in the vault, so it rises slightly."}</p>
         </div>

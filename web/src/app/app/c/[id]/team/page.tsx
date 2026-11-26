@@ -26,7 +26,7 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
   const { list } = useCovenants();
   const agent = v.issuer.kind === "agent";
   const [newTap, setNewTap] = useState("");
-  const [rev, setRev] = useState("0.25");
+  const [rev, setRev] = useState("");
   const [confirmWind, setConfirmWind] = useState(false);
   const isTeam = Boolean(w.address && w.address.toLowerCase() === v.terms.teamWallet.toLowerCase());
   const ended = v.state === "WIND_DOWN" || v.state === "FAILED" || v.state === "RAISING";
@@ -63,7 +63,7 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
       <Ctl icon="bolt" title={agent ? "Route revenue" : "Send revenue"} tag="Raises book value">
         <p className="t-xs muted w5">{agent ? "An agent paid on-chain sends what it earns straight to the vault, and every holder's book value rises with it." : "BNB sent to the vault is recognised as revenue and raises book value for every holder."}</p>
         <div className="row" style={{ gap: 8 }}>
-          <div className="ig grow"><input className="field" inputMode="decimal" value={rev} onChange={(e) => setRev(e.target.value.replace(/[^0-9.]/g, ""))} aria-label="Revenue in BNB" /><span className="unit">BNB</span></div>
+          <div className="ig grow"><input className="field" inputMode="decimal" placeholder="0" value={rev} onChange={(e) => setRev(e.target.value.replace(/[^0-9.]/g, ""))} aria-label="Revenue in BNB" /><span className="unit">BNB</span></div>
           <button className="btn btn-primary" disabled={ended || !(Number(rev) > 0)} onClick={() => void run("revenue", Number(rev))}>Send</button>
         </div>
       </Ctl>
@@ -111,6 +111,9 @@ function Console({ v, d }: { v: CovenantView; d: Derived }) {
         <span className="chip-stat hide-sm"><Icon name="doc" size={14} />Report <b>{v.disclosure.nextDueAt ? relative(v.disclosure.nextDueAt, v.now) : "–"}</b></span>
         {!isTeam ? <span className="badge warn lg">Read only: connect the team wallet</span> : <span className="badge good lg">Team wallet connected</span>}
       </div>
+
+      {v.state === "RAISING" ? <Note tone="accent" icon="clock"><b>No vault yet.</b> The {agent ? "agent" : "team"}&apos;s controls (tap, heartbeat, reports, revenue, tranches, wind-down) act on the vault, which the raise creates when it settles. Until then nothing here can be sent.</Note>
+        : v.state === "FAILED" ? <Note icon="info"><b>The raise failed.</b> No vault was created, so there is nothing to run. Backers claim their refunds on Settlement.</Note> : null}
 
       {launched ? (
         <Story id="health" title="Health" sub={`The treasury if the ${agent ? "agent" : "team"} draws its full limit, what it holds, and the rules on spending it.`}>
