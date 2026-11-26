@@ -64,9 +64,10 @@ contract CovenantLauncher is LauncherBase, Initializable, ReentrancyGuard {
     uint256 public poolQuote; // Q_pool (0 unless launched)
     uint256 public treasuryForwarded; // T0
 
-    /// @notice Gas `finalize` needs before it tries the launch: several times what a Pool Launch costs (measured
-    ///         at about 3-4M on a fork), so the try/catch can tell a refused launch from a starved one.
-    uint256 public constant LAUNCH_GAS_FLOOR = 12_000_000;
+    /// @notice Gas `finalize` needs before it tries the launch: about twice what a Pool Launch costs (the whole
+    ///         finalize measured 6.96M gas against Flap's live Portal on a BNB Chain fork), so the try/catch can
+    ///         tell a refused launch from a starved one.
+    uint256 public constant LAUNCH_GAS_FLOOR = 15_000_000;
 
     /// @notice True only while the Portal launch call runs. The paired vault factory reads it.
     bool public launching;

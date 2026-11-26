@@ -1,0 +1,863 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "hub_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "guardian_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "vaultFactory_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "identityRegistry_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "profile_",
+        "type": "tuple",
+        "internalType": "struct Profile",
+        "components": [
+          {
+            "name": "minSaleDuration",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxSaleDuration",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minExitStreak",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxExitStreak",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minRoundLength",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minCooldown",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minHeartbeat",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxHeartbeat",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minUnlockWindow",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxCliff",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minPokeGap",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxStep",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "staleAfter",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "antiFarmerDuration",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minPoolQuote",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "profileName_",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "allLaunchers",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "beacon",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "beaconImplementation",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "checkTerms",
+    "inputs": [
+      {
+        "name": "t",
+        "type": "tuple",
+        "internalType": "struct Terms",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "meta",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "totalSupply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "saleBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "poolBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "trancheBps",
+            "type": "uint16[]",
+            "internalType": "uint16[]"
+          },
+          {
+            "name": "trancheMultiple",
+            "type": "uint16[]",
+            "internalType": "uint16[]"
+          },
+          {
+            "name": "minRaise",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "cap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "saleDuration",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "buyTaxBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "sellTaxBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "taxDuration",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "teamWallet",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tapUsdPer30d",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "tapCapBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "cliff",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "unlockWindow",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "exitStreak",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "roundLength",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "cooldown",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "exitFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "heartbeat",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "agentId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "reportRelayer",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "factorySpecVersion",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "guardian",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hub",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "identityRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isLauncher",
+    "inputs": [
+      {
+        "name": "launcher",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launcherAt",
+    "inputs": [
+      {
+        "name": "i",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launcherCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launcherDataSchema",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "schema",
+        "type": "tuple",
+        "internalType": "struct LauncherDataSchema",
+        "components": [
+          {
+            "name": "description",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "fields",
+            "type": "tuple[]",
+            "internalType": "struct FieldDescriptor[]",
+            "components": [
+              {
+                "name": "name",
+                "type": "string",
+                "internalType": "string"
+              },
+              {
+                "name": "fieldType",
+                "type": "string",
+                "internalType": "string"
+              },
+              {
+                "name": "description",
+                "type": "string",
+                "internalType": "string"
+              },
+              {
+                "name": "decimals",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "isArray",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "newLauncher",
+    "inputs": [
+      {
+        "name": "creator",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "launcher",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "pairedVaultFactory",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "profile",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct Profile",
+        "components": [
+          {
+            "name": "minSaleDuration",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxSaleDuration",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minExitStreak",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxExitStreak",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minRoundLength",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minCooldown",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minHeartbeat",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxHeartbeat",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minUnlockWindow",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxCliff",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minPokeGap",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxStep",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "staleAfter",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "antiFarmerDuration",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minPoolQuote",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "profileName",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "upgradeVaultImplementation",
+    "inputs": [
+      {
+        "name": "newImplementation",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "CovenantCreated",
+    "inputs": [
+      {
+        "name": "launcher",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "teamWallet",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "agentId",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "salt",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FlapLauncherImplementationUpgraded",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AgentNotFound",
+    "inputs": [
+      {
+        "name": "agentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AgentNotOwnedByTeam",
+    "inputs": [
+      {
+        "name": "agentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "teamWallet",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AgentRegistryMissing",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadExit",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadHeartbeat",
+    "inputs": [
+      {
+        "name": "got",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BadRaise",
+    "inputs": [
+      {
+        "name": "minRaise",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BadSaleDuration",
+    "inputs": [
+      {
+        "name": "got",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BadSplit",
+    "inputs": [
+      {
+        "name": "saleBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "poolBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "teamBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BadSupply",
+    "inputs": [
+      {
+        "name": "supply",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BadTap",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadTax",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadTeamWallet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadText",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadTranches",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadUnlock",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotGuardian",
+    "inputs": [
+      {
+        "name": "caller",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotHub",
+    "inputs": [
+      {
+        "name": "caller",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotPaired",
+    "inputs": [
+      {
+        "name": "vaultFactory",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PoolSeedBelowFloor",
+    "inputs": [
+      {
+        "name": "seed",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "floor",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  }
+]
