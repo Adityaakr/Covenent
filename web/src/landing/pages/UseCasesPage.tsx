@@ -5,6 +5,7 @@ import {
   FeaturedUseCase,
   UseCaseStats,
   AllUseCases,
+  UseCaseBlocks,
   QuoteWall,
 } from "../sections/usecases/UseCasesSections";
 
@@ -16,6 +17,7 @@ export function UseCasesPage() {
       <FeaturedUseCase />
       <UseCaseStats />
       <AllUseCases />
+      <UseCaseBlocks />
       <QuoteWall />
       <PageCTA
         heading="Raise under rules. Exit at book."

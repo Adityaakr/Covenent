@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../meta";
 import { notFound } from "next/navigation";
 import { useCases } from "../content/useCases";
 import { UseCasePage, useCaseSlugs } from "./UseCasePage";
@@ -13,7 +14,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const item = useCases.find((x) => x.slug === slug);
-  return item ? { title: item.name, description: item.headline } : {};
+  return item ? pageMetadata(item.name, item.headline, `/use-cases/${slug}`) : {};
 }
 
 export default async function Page({ params }: Props) {

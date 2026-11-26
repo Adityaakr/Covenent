@@ -11,18 +11,17 @@ import s from "./hero/HomeHero.module.css";
    Copy and sources: docs/landing/content/home-a.md. */
 
 /* Integrations Covenant is built on (DESIGN.md "Summary", "Sponsor integrations"), not customers.
-   The marks are the projects' own logos (web/public/landing/logos/SOURCES.md). ERC-8004 has no published mark,
-   so it shows its name alone. Heights are optical: wide marks sit lower, round and sparse marks a little taller. */
-const logo = (file: string, ratio: number, height: number) => ({ src: `/landing/logos/${file}.svg`, ratio, height });
+   Each mark is the project's own logo, made monochrome in the ticker grey: web/public/landing/logos/SOURCES.md.
+   `scale` evens out optical size, since a square mark and a wide one look different at the same height. */
 const builtOn: TickerItem[] = [
-  { name: "Flap", logo: logo("flap", 28.676 / 23.63, 18) },
-  { name: "Atlas", logo: logo("atlas", 47.602 / 42.257, 19) },
-  { name: "CoinMarketCap", logo: logo("coinmarketcap", 23.645 / 24, 21) },
-  { name: "BNB Chain", logo: logo("bnb-chain", 20.745 / 24, 21) },
-  { name: "OpenFour", logo: logo("four-meme", 21.431 / 23.43, 22) },
-  { name: "PancakeSwap", logo: logo("pancakeswap", 191.252 / 198.607, 20) },
-  { name: "ERC-8004" },
-  { name: "Cournot", logo: logo("cournot", 33 / 43, 21) },
+  { name: "Flap", logo: "/landing/logos/flap.svg", scale: 0.9 },
+  { name: "Atlas", logo: "/landing/logos/atlas.svg", scale: 0.9 },
+  { name: "CoinMarketCap", logo: "/landing/logos/coinmarketcap.svg" },
+  { name: "PancakeSwap", logo: "/landing/logos/pancakeswap.svg" },
+  { name: "Four.meme", logo: "/landing/logos/four-meme.svg" },
+  { name: "ERC-8004", logo: "/landing/logos/erc-8004.svg", scale: 1.1 },
+  { name: "Cournot", logo: "/landing/logos/cournot.svg", scale: 1.05 },
+  { name: "BNB Chain", logo: "/landing/logos/bnb-chain.svg" },
 ];
 
 export function HomeHero() {

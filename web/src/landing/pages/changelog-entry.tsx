@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../meta";
 import { notFound } from "next/navigation";
 import { milestones } from "../content/milestones";
 import { ChangelogEntryPage, changelogSlugs } from "./ChangelogEntryPage";
@@ -13,7 +14,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const item = milestones.find((x) => x.slug === slug);
-  return item ? { title: item.title, description: item.summary } : {};
+  return item ? pageMetadata(item.title, item.summary, `/changelog/${slug}`) : {};
 }
 
 export default async function Page({ params }: Props) {

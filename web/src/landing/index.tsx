@@ -9,6 +9,9 @@
 import { Landing } from "./pages/Landing";
 
 export default Landing;
+/** Home page metadata and Open Graph: re-export from app/page.tsx (`export { default, metadata } from "@/landing"`). */
+export { homeMetadata as metadata } from "./meta";
+export { SITE_HEADLINE, SITE_SUBLINE, SITE_TITLE, pageMetadata } from "./meta";
 export { Landing };
 export { FeaturesPage } from "./pages/FeaturesPage";
 export { PricingPage } from "./pages/PricingPage";

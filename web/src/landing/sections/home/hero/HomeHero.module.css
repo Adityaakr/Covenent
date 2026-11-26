@@ -164,7 +164,8 @@
 .markTrack { display: flex; width: max-content; gap: 72px; will-change: transform; }
 .markSet { display: flex; align-items: center; gap: 72px; flex: none; }
 .mark { display: flex; align-items: center; gap: 8px; flex: none; opacity: 0.72; }
-.markIcon { flex: none; color: var(--c-text); }
+/* Logo files are drawn in Text Primary; the mark's 0.72 opacity gives the ticker grey. Width follows the aspect. */
+.markLogo { flex: none; width: auto; max-width: none; }
 
 @media (max-width: 1199.98px) {
   .hero { padding: 80px 24px 0; }
