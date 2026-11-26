@@ -16,19 +16,32 @@ Capital, budgets and exits for businesses run by AI agents. Enforced by code, no
   <a href="https://book.getfoundry.sh"><img alt="Built with Foundry" src="https://img.shields.io/badge/built_with-Foundry-FFDB1C"></a>
   <a href="web/package.json"><img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white"></a>
   <a href="#for-ai-agents"><img alt="MCP: 27 tools" src="https://img.shields.io/badge/MCP-27_tools-5B6CFF"></a>
-  <a href="#testing"><img alt="Tests: 203 passing" src="https://img.shields.io/badge/tests-203_passing-2EA44F"></a>
+  <a href="#testing"><img alt="Tests: 398 passing" src="https://img.shields.io/badge/tests-398_passing-2EA44F"></a>
   <a href="#security"><img alt="Audit: none" src="https://img.shields.io/badge/audit-none-D73A49"></a>
 </p>
 
 <p>
   <a href="https://covenant.adibuilds.in"><b>Live app</b></a> ·
   <a href="docs/README.md"><b>Docs</b></a> ·
+  <a href="JUDGES.md"><b>Judging? Start here</b></a> ·
   <a href="docs/DESIGN.md"><b>Design</b></a> ·
   <a href="docs/DEPLOY.md"><b>Deploy</b></a> ·
   <a href="server/mcp/SKILL.md"><b>MCP</b></a>
 </p>
 
 </div>
+
+**Judging or auditing? Start with [JUDGES.md](JUDGES.md): see it working in 2 minutes, then check each claim.**
+
+| | |
+|---|---|
+| Status | BNB testnet (chain 97) only. Unaudited. 7 contracts [Sourcify](https://sourcify.dev/server/v2/contract/97/0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775) full match (redeploy of 27 Nov 2026, with the fixes for Flap's pre-audit re-review) |
+| Proven on chain | On the current contracts: `$CVD`, a raise that Flap's Portal launched (token, pool, vault, sale-token claim, a strict poke on the Atlas push feed). On the first deployment, before the audit fixes: `$CVT` ran every stage: raise, Flap launch, the issuer's budget and heartbeats, the issuer stops, the keeper declares abandonment, holders redeem at book |
+| Fork only | Trading tax reaching a vault, ERC-8004 reputation writes, Four.meme Lite through `ForwardVault` |
+| Planned | Cournot report checks |
+| Tests | 398 passing: contracts 155, server 137, web 106 |
+| Agents | MCP server: 27 tools, 3 prompts, 3 resources, keyless, writes unsigned · [`/llms.txt`](https://covenant.adibuilds.in/llms.txt) · Ask AI in the app |
+| On Flap | Launcher UI and Vault UI packages for flap.sh pages ([`flap/`](flap/README.md)) |
 
 <p align="center">
   <img src="docs/assets/app-testnet-covenant.png" width="900" alt="The Covenant app on BNB testnet, showing the covenant $CVT wound down with its treasury open to holders at book value">
@@ -272,7 +285,7 @@ claude mcp add covenant -- pnpm --dir /absolute/path/to/Covenent/server mcp
 
 The same JSON works in Claude Desktop (`claude_desktop_config.json`) and Cursor (`.cursor/mcp.json`). For the local dev
 chain, set `COVENANT_DEPLOYMENTS` to `contracts/deployments/local.json` instead. [docs/AGENT-DEMO.md](docs/AGENT-DEMO.md)
-is a recorded session against the live testnet covenant (`pnpm --dir server demo:agent` replays it).
+is a recorded session on BNB testnet against the current deployment (`pnpm --dir server demo:agent` replays it).
 
 One command starts anvil (a BNB Chain fork with chain id 56 when a BNB RPC that serves older state answers, else the
 offline mock stack on 31337; `--fork` / `--mock` force one; a block every second), deploys every contract, deploys the
@@ -290,7 +303,7 @@ Agents that read skills can use [server/mcp/SKILL.md](server/mcp/SKILL.md). The 
 
 | Role | Command | What it does |
 |---|---|---|
-| Issuer agent | `pnpm --dir server issuer` | Holds the team wallet. Claims the tap, sends heartbeats, cuts its own pay near book, posts reports. Claude writes only the report text |
+| Issuer agent | `pnpm --dir server issuer` | Holds the team wallet. Claims the tap, sends heartbeats, cuts its own pay near book, posts reports. Claude proposes each period's plan (claim, cut pay or heartbeat) and writes the report; a fixed policy bounds the plan, and each decision is posted on chain with its hash |
 | Investor agent | `pnpm --dir server investor` | Uses the MCP server to find covenants under book and redeems when that beats selling |
 | Keeper | `pnpm --dir server keeper` | Pokes about hourly, dispatches trading tax, declares abandonment when due |
 
@@ -384,6 +397,7 @@ table is in [server/README.md](server/README.md#api-8787).
 | **Four.meme** | Covenant Lite: a tax vault template that OpenFour's `ForwardVault` clones per token | Fork |
 | **Cournot** | Would check each period report. A failed check pauses the tap | Planned. The vault hook exists, no relayer runs |
 | **BNB Chain** | Every contract | BNB testnet. Not on mainnet |
+| **flap.sh UI** | Covenant's Launcher UI and Vault UI packages, built with Flap's component template, so a covenant can be used on flap.sh's own pages ([`flap/`](flap/README.md)) | Packaged for Flap. Flap hosts them |
 
 Raises are in BNB today. USDT and USD1 raises are in progress: Flap mainnet already accepts both as launch quotes.
 
@@ -411,18 +425,18 @@ CoinMarketCap endpoints used by the server: `/v4/dex/pairs/quotes/latest`, `/v1/
 ## Deployments
 
 Covenant is deployed on **BNB testnet** (chain 97). Nothing is on BNB Chain mainnet. The record is
-[`contracts/deployments/97.json`](contracts/deployments/97.json). Every contract is source-verified on Sourcify. These are
+[`contracts/deployments/97.json`](contracts/deployments/97.json). Every contract is a full match on Sourcify (the links return JSON; BscScan refuses most automated clients). These are
 the 27 Nov 2026 redeploy with the fixes for Flap's pre-audit re-review, F1 to F8 ([docs/DEPLOY.md](docs/DEPLOY.md#redeploy-with-flaps-re-review-fixes-f1-to-f8-27-nov-2026)).
 
-| Contract | Address |
-|---|---|
-| CovenantOracle | [`0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775`](https://testnet.bscscan.com/address/0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775) |
-| CovenantLauncherFactory | [`0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF`](https://testnet.bscscan.com/address/0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF) |
-| CovenantVaultFactory | [`0xAbb9811f529B793c86848211522B789071671ebC`](https://testnet.bscscan.com/address/0xAbb9811f529B793c86848211522B789071671ebC) |
-| CovenantLauncherFactory (demo timers) | [`0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE`](https://testnet.bscscan.com/address/0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE) |
-| CovenantVaultFactory (demo timers) | [`0x6d3a421708F8b45FbD92342d33a841de40E6cC8F`](https://testnet.bscscan.com/address/0x6d3a421708F8b45FbD92342d33a841de40E6cC8F) |
-| CovenantLens | [`0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4`](https://testnet.bscscan.com/address/0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4) |
-| CovenantLiteVault template | [`0x411c4560f9D8F9b06a730D9652FCb9D71290D285`](https://testnet.bscscan.com/address/0x411c4560f9D8F9b06a730D9652FCb9D71290D285) |
+| Contract | Address | Source |
+|---|---|---|
+| CovenantOracle | [`0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775`](https://testnet.bscscan.com/address/0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775) |
+| CovenantLauncherFactory | [`0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF`](https://testnet.bscscan.com/address/0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF) |
+| CovenantVaultFactory | [`0xAbb9811f529B793c86848211522B789071671ebC`](https://testnet.bscscan.com/address/0xAbb9811f529B793c86848211522B789071671ebC) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0xAbb9811f529B793c86848211522B789071671ebC) |
+| CovenantLauncherFactory (demo timers) | [`0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE`](https://testnet.bscscan.com/address/0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE) |
+| CovenantVaultFactory (demo timers) | [`0x6d3a421708F8b45FbD92342d33a841de40E6cC8F`](https://testnet.bscscan.com/address/0x6d3a421708F8b45FbD92342d33a841de40E6cC8F) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x6d3a421708F8b45FbD92342d33a841de40E6cC8F) |
+| CovenantLens | [`0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4`](https://testnet.bscscan.com/address/0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4) |
+| CovenantLiteVault template | [`0x411c4560f9D8F9b06a730D9652FCb9D71290D285`](https://testnet.bscscan.com/address/0x411c4560f9D8F9b06a730D9652FCb9D71290D285) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x411c4560f9D8F9b06a730D9652FCb9D71290D285) |
 
 **Flap's test launch (27 Nov 2026).** `$CVD` (Covenant Demo) through the demo launcher factory above: a 3.968 tBNB
 raise at exactly the factory's minimum (1.5x Flap's creation floor at a 50 / 45 / 5 split), finalized with a 15,000,000
@@ -445,6 +459,9 @@ redeem.
 | Pool | [`0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201`](https://testnet.bscscan.com/address/0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201) |
 
 Every transaction of that run is listed in [docs/DEPLOY.md](docs/DEPLOY.md#end-to-end-run-on-bnb-testnet-26-nov-2026).
+Check any of them with an RPC that still serves old receipts (publicnode answers them with `null`):
+`cast receipt <tx> status --rpc-url https://bsc-testnet.bnbchain.org`. This launcher and vault are beacon proxies of the
+first deployment, whose contracts are verified on Sourcify ([DEPLOY.md](docs/DEPLOY.md#first-bnb-testnet-deployment-chain-97-26-nov-2026-before-the-audit-fixes)).
 Flap's testnet Portal needs a pool seed of at least 1.0714 BNB divided by the pool share, so
 [`TestnetCovenant.s.sol`](contracts/script/TestnetCovenant.s.sol) creates a 2.65 tBNB raise split 50 / 45 / 5.
 
@@ -506,12 +523,12 @@ Optional keys go in `server/.env`, which is git-ignored.
 ## Testing
 
 ```bash
-( cd contracts && forge test )                       # 104 tests: unit, oracle fixtures, invariants
-( cd server && pnpm install && pnpm test )           # 58 tests: unit and chain (each file starts its own anvil)
-( cd web && pnpm install && pnpm test && pnpm build )  # 41 tests, then a production build
+( cd contracts && forge test )                       # 155 passed, 3 skipped: unit, invariants, regressions, fork journeys
+( cd server && pnpm install --frozen-lockfile && pnpm test )   # 137 passed, 3 skipped: unit and chain (each file starts its own anvil)
+( cd web && pnpm install --frozen-lockfile && pnpm test && pnpm build )  # 106 passed, then a production build
 ```
 
-Fork journeys run with `forge test --match-path "test/fork/*"` and need `BSC_RPC_URL` or `BSC_TESTNET_RPC_URL`.
+The skipped tests need an RPC or a local deployment. Fork journeys run with `forge test --match-path "test/fork/*"` and need `BSC_RPC_URL` or `BSC_TESTNET_RPC_URL`.
 `server/test/chain/deployed.test.ts` runs against the real contracts after `scripts/dev-all.sh` and is skipped
 otherwise. After changing a contract, run `scripts/dev-abi.sh` to re-export the ABIs.
 
@@ -561,6 +578,10 @@ otherwise. After changing a contract, run `scripts/dev-abi.sh` to re-export the 
 - **Reports and abandonment.** Reports are write-once per period and verdicts count per period. A team past its
   heartbeat that winds down forfeits the tap, as abandonment would. A launch Flap refuses can be retried for a short
   window before the raise refunds.
+- **Open findings, disclosed.** An outside review on 27 Nov 2026 found two Low issues that are still open, with fixes
+  planned before mainnet: `burnSaleDust` can revert for good once every sale token is claimed (no funds at risk), and
+  the Lite vault's form schema allows values its bounds refuse. The testnet Guardian address has no code. Details in
+  [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md#open-findings-27-nov-2026).
 - **Policy and known issues.** [SECURITY.md](SECURITY.md) (scope, reporting) and
   [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md) (every item from Flap's review and the pre-audit, with its status). CI runs
   the contract, server and web suites and checks the storage layout of the upgradeable contracts.
@@ -603,6 +624,7 @@ contracts/          Foundry
   abi/              exported ABIs that the server and the web read
   deployments/      <chainId>.json records
 server/             API, keeper, simulator, issuer and investor agents, MCP server
+flap/               Launcher UI and Vault UI packages for flap.sh (Flap's component template)
 web/                Next.js app: landing at /, product at /app
 scripts/            dev-all.sh, testnet-up.sh, dev-up, dev-down, dev-demo, dev-abi, dev-funds
 docs/               DESIGN.md, DEPLOY.md, landing/, assets/
@@ -614,9 +636,12 @@ docs/               DESIGN.md, DEPLOY.md, landing/, assets/
 
 | Document | What it covers |
 |---|---|
-| [docs/DESIGN.md](docs/DESIGN.md) | The product, the rules, the formulas, the oracle and the threat model |
+| [JUDGES.md](JUDGES.md) | For judges and auditors: see it working, then each claim with the command that checks it |
+| [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md) | Every review finding and its status, including the open ones |
+| [docs/DESIGN.md](docs/DESIGN.md) | The product, the rules, the formulas, the oracle and the threat model (written before the code; its banner lists where the code differs) |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Deploying to testnet and mainnet, the testnet record, the end-to-end run |
 | [server/README.md](server/README.md) | Every API route, the keeper, the agents, the simulator |
 | [server/mcp/SKILL.md](server/mcp/SKILL.md) | The MCP tools and recipes for agents |
+| [flap/README.md](flap/README.md) | Covenant's UI packages for flap.sh and how to rebuild them |
 | [AGENTS.md](AGENTS.md) | Rules for coding agents working in this repository |
 | [web/public/llms.txt](web/public/llms.txt) | A summary for language models |

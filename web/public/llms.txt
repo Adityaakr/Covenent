@@ -4,6 +4,17 @@
 
 Covenant is a launcher and a vault for token raises on BNB Chain, built on Flap Pool Launch. Buyers commit BNB to a capped raise. The treasury sits in a vault under five fixed rules, and anyone can trigger them. The same contracts bind a human team or an AI agent. Covenant is deployed on BNB testnet (chain 97). Nothing is deployed on BNB Chain mainnet, and the contracts are not audited.
 
+## Status and evidence
+
+- Chain 97 only, unaudited. The 7 contracts of the 27 Nov 2026 redeploy (addresses below; the fixes for Flap's pre-audit re-review) are a Sourcify full match: https://sourcify.dev/server/v2/contract/97/<address>.
+- On chain, current contracts: CVD (Covenant Demo), launched by Flap's Portal through the demo pair (raise, finalize with a 15M gas limit, token, pool, vault, sale-token claim, a strict poke on the Atlas push feed).
+- On chain, first deployment (before the audit fixes): CVT went through every stage: create, commit, Flap launch, claim, pokes, issuer heartbeat and tap, abandonment declared by the keeper, redeem at book. Its vault reads state() = 5 (WIND_DOWN). Every transaction of both: docs/DEPLOY.md.
+- Fork only: trading tax reaching a vault (testnet volume stayed under Flap's processing threshold), ERC-8004 reputation writes, and Four.meme Lite through ForwardVault. Planned: Cournot report checks.
+- Verify receipts with https://bsc-testnet.bnbchain.org (publicnode answers older receipts with null; BscScan refuses most bots), e.g. `cast receipt 0xa41449d924c01b477e16562c3e0eb9212dda1e42b1a4d9b27b47c5f43c0399be status --rpc-url https://bsc-testnet.bnbchain.org` prints true (the finalize where Flap launched CVT).
+- Tests: 398 passing (contracts 155, server 137, web 106). MCP: 27 tools, keyless, writes return unsigned transactions.
+- Flap-native UI: Launcher UI and Vault UI packages for flap.sh pages, in flap/ of the repository.
+- Judging or auditing? Every claim with the command that checks it: https://github.com/Adityaakr/Covenent/blob/main/JUDGES.md
+
 The five rules:
 
 1. Tap: the team draws a dollar budget per 30 days, paid in BNB at the Atlas BNB/USD rate and capped as a share of the treasury (default 4%). It can only be lowered.
@@ -32,12 +43,15 @@ There is no hosted public API or hosted MCP endpoint yet. Run the MCP server fro
 
 ## Docs
 
+- [Judge guide](https://github.com/Adityaakr/Covenent/blob/main/JUDGES.md): see it working in 2 minutes, then check each claim
 - [README](https://github.com/Adityaakr/Covenent/blob/main/README.md): what Covenant is, the architecture, integrations, quickstart, testnet addresses
 - [Full agent reference](https://covenant.adibuilds.in/llms-full.txt): every MCP tool with its arguments and units, generated from the server
 - [Skill file](https://github.com/Adityaakr/Covenent/blob/main/server/mcp/SKILL.md): connecting Claude Code, Claude Desktop or Cursor, the MCP tools, and recipes for funding, holding through a slide, and acting as an issuer
-- [Recorded agent session](https://github.com/Adityaakr/Covenent/blob/main/docs/AGENT-DEMO.md): every read tool and two simulated writes against the live BNB testnet covenant
+- [Recorded agent session](https://github.com/Adityaakr/Covenent/blob/main/docs/AGENT-DEMO.md): every read tool and two simulated writes on BNB testnet against the current deployment
 - [Server and API](https://github.com/Adityaakr/Covenent/blob/main/server/README.md): every route, the keeper, the issuer and investor agents
-- [Design document](https://github.com/Adityaakr/Covenent/blob/main/docs/DESIGN.md): the rules, the formulas, the oracle design and the threat model
+- [Design document](https://github.com/Adityaakr/Covenent/blob/main/docs/DESIGN.md): the rules, the formulas, the oracle design and the threat model (written before the code; its banner lists where the code differs)
+- [Known issues](https://github.com/Adityaakr/Covenent/blob/main/docs/KNOWN-ISSUES.md): every review finding and its status, including the open ones
+- [Flap UI packages](https://github.com/Adityaakr/Covenent/blob/main/flap/README.md): Covenant's Launcher UI and Vault UI for flap.sh
 - [Deploy runbook](https://github.com/Adityaakr/Covenent/blob/main/docs/DEPLOY.md): the BNB testnet deployment and its addresses
 
 ## BNB testnet (chain 97)

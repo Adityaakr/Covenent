@@ -6,7 +6,7 @@ reviewers can check the fix or the reasoning instead of re-raising it.
 
 Status: **Fixed** (code changed, regression test named), **Disclosed** (kept by design, documented on-chain and in the
 app), **Accepted** (a known limit with a stated reason), **Server** (fixed in the server by the agentic review, not in
-this list's contracts).
+this list's contracts), **Open** (found, not fixed yet; the fix is planned before mainnet).
 
 ## Flap pre-audit re-review (F1 to F8)
 
@@ -84,6 +84,21 @@ for) and a fork test against Flap's live Portal on BNB Chain and BNB testnet (`t
 | L-10 | Loopback URIs written on chain | Server |
 | L-13 | MCP transaction builders marked `readOnlyHint` | Server |
 | L-14 | Raw untrusted text to MCP clients; investor agent signs unchecked transactions | Server |
+
+## Open findings (27 Nov 2026)
+
+Found by a multi-agent review of the repository and the live testnet deployment (`aa061af`), and stated here so a
+reviewer finds them disclosed, not hidden. R-1 and R-2 were fixed in the 27 Nov redeploy; R-3 and R-4 are open. None of
+them moves funds.
+
+| ID | Severity | Item | Status | Where |
+|---|---|---|---|---|
+| R-1 | Medium (mainnet) | Anyone could delay team unlocks indefinitely with a bare `poke` once per unlock window: with no Atlas push feed (BNB Chain mainnet), a poke without a signed report reset every tranche counter | Fixed by F4 and F5 (above): a reportless poke resets only the counters whose multiple it misses at the last verified rate, and it cannot block the keeper's report | `CovenantVault._observeTranches`, `CovenantOracle._observe`; `test_F4_*`, `test_F5_*` |
+| R-2 | Low | Flap's vault panel listed a `tapAccrued` view the vault does not have, so that row on flap.sh failed to read | Fixed (the "UI" row above): the schema names `owedTeam` | `test_vaultUISchema_everyViewItNamesExists` |
+| R-3 | Low | `burnSaleDust` counts stray tokens in `saleDustBurned`; once every sale token is claimed, `saleAmount - gone` underflows and the call reverts for good. No funds are at risk: it only stops the dust sweep | Open. Track stray burns separately; add the call to the invariant handler | `CovenantVault.burnSaleDust`, `CovenantVaultDisplay` |
+| R-4 | Low | The Lite vault's form schema (what Four.meme's create page reads) allows `tapBps` up to 5000 and `tapPeriod` from 1 day, while the contract enforces at most 1000 and at least 30 days, so values the form accepts revert at creation | Open. Build the schema strings from the constants (needs a new template deploy) | `CovenantLiteVault.moduleEncodeSchema` |
+| R-5 | Info | `CovenantVault` has 173 bytes of EIP-170 headroom (24,403 of 24,576, the `size` profile). The testnet Guardian address `0x00004d58290854c5E9880F4b5B1993c6Ad8b0000` has no code on chain 97, so no Guardian call can happen there today | Disclosed | `forge build --sizes`; `contracts/deployments/97.json` `guardian` |
+| R-6 | Low (server) | The MCP server returned no events, and no token or pool, for the first testnet covenant CVT, and refused its token address: a covenant named in the deployment record never learned its token and pool, and publicnode answers log ranges older than a few hours with an empty list | Fixed: testnet logs come from a full-history RPC (`LOG_RPC_URL`), and known covenants read their token and pool from the launcher | `server/src/covenant/read.ts`; `server/test/unit/legacy-covenant.test.ts` |
 
 ## Other
 

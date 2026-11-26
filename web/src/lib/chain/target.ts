@@ -22,7 +22,8 @@ export const TESTNET_RPCS = [
   process.env.NEXT_PUBLIC_BSC_TESTNET_RPC,
   "https://bsc-testnet-rpc.publicnode.com",
   "https://data-seed-prebsc-1-s1.bnbchain.org:8545",
-  "https://bsc-testnet.public.blastapi.io",
+  // BNB Chain's own endpoint; it also serves older receipts that publicnode answers with null. (Blast API shut down.)
+  "https://bsc-testnet.bnbchain.org",
 ].filter((u): u is string => Boolean(u));
 
 /** The baked BNB testnet deployment, in the same shape /api/deployment serves for a local chain. */

@@ -63,7 +63,7 @@ async function main() {
   const { prompts } = await mcp.listPrompts();
   const { resources } = await mcp.listResources();
   say(`# Covenant MCP: a recorded agent session on BNB testnet\n`);
-  say(`Recorded ${new Date().toISOString()} with \`pnpm --dir server demo:agent\` (server/scripts/agent-demo.ts). Every value below came from BNB testnet (chain 97) through the public RPC at the time of the run; nothing was signed or sent.\n`);
+  say(`Recorded ${new Date().toISOString()} with \`pnpm --dir server demo:agent\` (server/scripts/agent-demo.ts). Every value below came from BNB testnet (chain 97) through the public RPC at the time of the run; nothing was signed or sent. \`get_network\` shows the deployment record (contracts/deployments/97.json) as it stood then; a later redeploy supersedes it.\n`);
   say(`The server lists ${tools.length} tools (${tools.map((t) => `\`${t.name}\``).join(', ')}), ${prompts.length} prompts (${prompts.map((p) => `\`${p.name}\``).join(', ')}) and ${resources.length} resources (${resources.map((r) => `\`${r.uri}\``).join(', ')}).`);
 
   const net = await call('get_network', {}, 'which chain and which contracts');

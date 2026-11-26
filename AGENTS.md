@@ -21,6 +21,7 @@ contracts/   Foundry (Solidity 0.8.26). src/{launcher,vault,oracle,lens,openfour
              UNCHANGED (contracts/VENDORED.md); src/mocks are local-chain stand-ins only; abi/ is exported; deployments/
 server/      TypeScript, Node 22, pnpm, viem, Hono. src/{api,keeper,covenant,atlas,sim,abi}, agents/{issuer,investor}, mcp/
 web/         Next.js 16 app router, React 19, Tailwind 4, wagmi + viem, Privy. Landing at / (src/landing), app at /app
+flap/        Covenant's Launcher UI and Vault UI packages for flap.sh, on Flap's component template (flap/README.md)
 scripts/     dev-all.sh (whole local stack), dev-up/dev-down (chain + deploy), dev-demo (scenes), dev-abi, dev-funds
 docs/        DESIGN.md, DEPLOY.md, landing/, assets/ (README images)
 ```

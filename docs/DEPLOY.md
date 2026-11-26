@@ -30,6 +30,9 @@ server keep reading them. Re-add those keys after a redeploy: `Deploy.s.sol` rew
 | CovenantLens | [`0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4`](https://testnet.bscscan.com/address/0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4) |
 | CovenantLiteVault template | [`0x411c4560f9D8F9b06a730D9652FCb9D71290D285`](https://testnet.bscscan.com/address/0x411c4560f9D8F9b06a730D9652FCb9D71290D285) |
 
+Check the source of any of them without BscScan (which refuses most automated clients):
+`curl https://sourcify.dev/server/v2/contract/97/<address>` returns `"match":"match"` for each one (checked 27 Nov 2026).
+
 Read back on chain 97 after the deploy: both factories hold Flap's Portal, the testnet Guardian and Flap's testnet name
 screen (`0x5CfbE713d070e87F67D1bc84312B7eB8Fe4F2B5E`), and `FLOOR_MARGIN_BPS` = 15000. `minRaiseFor(1e27, 6000, 1500)`
 answers 85.71 BNB on the production factory (1.5 x the $10,000 graduation floor at the Portal's $700) and 42.86 BNB on
@@ -119,6 +122,9 @@ One covenant through every stage on chain 97, with the platform running (`script
 pool [`0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201`](https://testnet.bscscan.com/address/0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201), vault [`0x524059B1424101D4CAFD33B9a1A8D332dD71193D`](https://testnet.bscscan.com/address/0x524059B1424101D4CAFD33B9a1A8D332dD71193D).
 The keeper poked 14 times and dispatched tax 14 times on its own; the issuer agent sent heartbeats and claimed the tap.
 
+Check any transaction below with `cast receipt <tx> status --rpc-url https://bsc-testnet.bnbchain.org` (prints `true`).
+publicnode, the app's first RPC, answers receipts this old with `null`, and BscScan refuses most automated clients.
+
 | Step | Tx |
 |---|---|
 | Create (team = issuer agent wallet, demo factory, 2.65 tBNB at 50/45/5) | [`0x6176d4d1…`](https://testnet.bscscan.com/tx/0x6176d4d188fc535a2ce8eb712dd62abd57b88d21018655a2f69015b3ac36a737) |
@@ -145,7 +151,7 @@ a fork of chain 97 one 5 BNB round trip (9.6 BNB of volume) crossed it and the v
 environment variables: `pnpm build` runs `scripts/bake-testnet.mjs`, which bakes `contracts/deployments/97.json`, the
 Atlas push feeds and the public ABIs into `web/src/generated/testnet.json` (committed) and the simulator's last result
 into `web/public/data/`. The app reads every covenant straight from chain 97 through public RPCs (publicnode, then
-bnbchain.org, then blastapi) and needs no Covenant server. Nothing about a local chain appears unless a developer opts
+the two bnbchain.org endpoints) and needs no Covenant server. Nothing about a local chain appears unless a developer opts
 in with `NEXT_PUBLIC_CHAIN_ID=31337` (or 56 for a fork), which `scripts/dev-all.sh` sets.
 
 | Variable | Needed | What it does |

@@ -2,7 +2,7 @@
 
 > The operating stack for autonomous ventures. Capital, budgets and exits for businesses run by AI agents, enforced by contracts on BNB Chain. Deployed on BNB testnet (chain 97); nothing on mainnet; not audited.
 
-This file is generated from the Covenant MCP server itself (server/mcp/reference.ts, `pnpm --dir server gen:llms`). The short version is /llms.txt. A recorded agent session on BNB testnet is docs/AGENT-DEMO.md in the repository: https://github.com/Adityaakr/Covenent/blob/main/docs/AGENT-DEMO.md
+This file is generated from the Covenant MCP server itself (server/mcp/reference.ts, `pnpm --dir server gen:llms`). The short version is /llms.txt. A recorded agent session on BNB testnet is docs/AGENT-DEMO.md in the repository: https://github.com/Adityaakr/Covenent/blob/main/docs/AGENT-DEMO.md. Every claim with the command that checks it: https://github.com/Adityaakr/Covenent/blob/main/JUDGES.md
 
 ## Server instructions (sent to every MCP client)
 
@@ -384,7 +384,7 @@ Arguments:
 
 ## BNB testnet deployment (contracts/deployments/97.json)
 
-Chain id 97. Explorer https://testnet.bscscan.com. Public RPC https://bsc-testnet-rpc.publicnode.com.
+Chain id 97. Explorer https://testnet.bscscan.com (it refuses most automated clients). Contracts: Sourcify full match, https://sourcify.dev/server/v2/contract/97/<address>. Public RPC https://bsc-testnet-rpc.publicnode.com for current state; it drops logs older than a few hours and answers older receipts with null, so verify transactions with https://bsc-testnet.bnbchain.org (for example `cast receipt <tx> status --rpc-url https://bsc-testnet.bnbchain.org`) and read history with https://bsc-prebsc-dataseed.bnbchain.org (eth_getLogs, 5,000-block ranges).
 
 - atlasSigner: 0x59eD4701224fD9e2a85Ef2946c2ab828C1dDC600
 - demoLauncherFactory: 0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE
@@ -416,4 +416,4 @@ Chain id 97. Explorer https://testnet.bscscan.com. Public RPC https://bsc-testne
 - vaultDisplayLibrary: 0x92918A39161BCB6793871a25eC4635DbC1A946b3
 - vaultFactory: 0xAbb9811f529B793c86848211522B789071671ebC
 
-Launched covenants are discovered from launcherFactory.allLaunchers() and demoLauncherFactory.allLaunchers() (then launcher.vault()); list_covenants returns them live. The first testnet covenant, CVT (demo factory, taken through every stage and now wound down): token 0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777, launcher 0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E, vault 0x524059B1424101D4CAFD33B9a1A8D332dD71193D.
+Launched covenants are discovered from launcherFactory.allLaunchers() and demoLauncherFactory.allLaunchers() (then launcher.vault()); list_covenants returns them live. The first testnet covenant, CVT (the demo factory of the first deployment, before the audit fixes; taken through every stage and now wound down; 97.json legacyCovenantVault): token 0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777, launcher 0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E, vault 0x524059B1424101D4CAFD33B9a1A8D332dD71193D.
