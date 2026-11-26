@@ -231,6 +231,16 @@ export class CovenantService {
       owedTeamWei: str(owed),
       salePriceWei: str(salePrice),
       floorShareOfSale: book !== null && salePrice ? Number(book) / Number(salePrice) : null,
+      terms: {
+        exitStreakSeconds: target,
+        roundLengthSeconds: num(r.roundLength),
+        cooldownSeconds: num(r.cooldown),
+        exitFeeBps: num(r.exitFeeBps),
+        heartbeatSeconds: hbWindow,
+        tapUsdPer30d: toNum(big(r.tapUsdPer30d)),
+        tapCapBps: capBps,
+        unlockWindowSeconds: num(r.unlockWindow),
+      },
       exit: {
         rule: 'decaying-streak-onchain',
         streakSeconds: streak,

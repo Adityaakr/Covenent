@@ -9,6 +9,8 @@ export interface SampledPool {
 
 export interface MarketSource {
   name: string;
+  /** how the headline names the sample, e.g. "actively traded BNB Chain launches" */
+  sampleLabel: string;
   sampleDescription: string;
   candleDescription: string;
   notes: string[];
@@ -39,8 +41,9 @@ async function getJson(url: string, init: RequestInit = {}, tries = 4): Promise<
  */
 export class GeckoTerminalSource implements MarketSource {
   name = 'geckoterminal';
+  sampleLabel = 'actively traded BNB Chain launches';
   sampleDescription =
-    'GeckoTerminal /networks/bsc/dexes/pancakeswap_v2/pools (sort h24_tx_count_desc and h24_volume_usd_desc, pages 1-10), WBNB-quoted pools created inside the age window';
+    'GeckoTerminal pool listings for BNB Chain: /dexes/pancakeswap_v2/pools (sort h24_tx_count_desc, h24_volume_usd_desc), /pools (sort h24_tx_count_desc) and /trending_pools, pages 1-10 each; WBNB-quoted pools created inside the age window';
   candleDescription = 'GeckoTerminal /networks/bsc/pools/{pool}/ohlcv/day?currency=token&token=base (price in WBNB per token)';
   notes = [
     'No CoinMarketCap API key was available, so this run uses GeckoTerminal as the stated fallback (the keyless CMC /public-api route answered with an anonymous-access limit).',
@@ -63,11 +66,22 @@ export class GeckoTerminalSource implements MarketSource {
   async sample(opts: { maxPools: number; minAgeDays: number; maxAgeDays: number }): Promise<SampledPool[]> {
     const now = Date.now() / 1000;
     const seen = new Map<string, SampledPool>();
-    for (const sort of ['h24_tx_count_desc', 'h24_volume_usd_desc']) {
+    const lists = [
+      (page: number) => `/networks/bsc/dexes/pancakeswap_v2/pools?page=${page}&sort=h24_tx_count_desc`,
+      (page: number) => `/networks/bsc/dexes/pancakeswap_v2/pools?page=${page}&sort=h24_volume_usd_desc`,
+      (page: number) => `/networks/bsc/pools?page=${page}&sort=h24_tx_count_desc`,
+      (page: number) => `/networks/bsc/trending_pools?page=${page}`,
+    ];
+    for (const list of lists) {
       for (let page = 1; page <= 10 && seen.size < opts.maxPools; page++) {
-        const j = (await this.call(`/networks/bsc/dexes/pancakeswap_v2/pools?page=${page}&sort=${sort}`)) as {
+        let j: {
           data?: { attributes: { address: string; name: string; pool_created_at: string | null }; relationships: { base_token: { data: { id: string } }; quote_token: { data: { id: string } } } }[];
         };
+        try {
+          j = (await this.call(list(page))) as typeof j;
+        } catch {
+          break; // a listing that refuses a page ends that listing, the others still run
+        }
         for (const p of j.data ?? []) {
           const quote = p.relationships.quote_token.data.id.replace(/^bsc_/, '').toLowerCase();
           if (quote !== WBNB) continue;
@@ -110,6 +124,7 @@ export class GeckoTerminalSource implements MarketSource {
  */
 export class CmcSource implements MarketSource {
   name = 'coinmarketcap';
+  sampleLabel = 'new BNB Chain launches';
   sampleDescription = 'CoinMarketCap POST /v1/dex/new/list (BNB Chain)';
   candleDescription = 'CoinMarketCap GET /v1/k-line/candles (interval 1d)';
   notes = ['Sample and candles from the CoinMarketCap DEX API with a server-side key.'];

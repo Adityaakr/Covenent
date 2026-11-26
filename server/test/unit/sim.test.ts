@@ -49,6 +49,7 @@ describe('replay of default covenant terms', () => {
 describe('simulation job', () => {
   const fake = (n: number): MarketSource => ({
     name: 'fake',
+    sampleLabel: 'recent BNB Chain launches',
     sampleDescription: 'fake',
     candleDescription: 'fake',
     notes: [],

@@ -85,7 +85,7 @@ export async function runSimulation(source: MarketSource, opts: SimOptions): Pro
     },
     headline: enough
       ? {
-          text: `${head.triggered} of ${tokens.length} recent BNB Chain launches (${pct}%) would have opened a Covenant exit round${
+          text: `${head.triggered} of ${tokens.length} ${source.sampleLabel} (${pct}%) would have opened a Covenant exit round${
             head.medianDaysToTrigger !== null ? `, a median ${Math.round(head.medianDaysToTrigger)} days after launch` : ''
           }, with ${head.medianRedeemableShareOfRaise !== null ? `${Math.round(head.medianRedeemableShareOfRaise * 100)}%` : 'n/a'} of the raise still in the treasury for holders.`,
           rule: head.rule,

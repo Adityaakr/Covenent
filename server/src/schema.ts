@@ -120,6 +120,17 @@ export const CovenantSheet = CovenantSummary.extend({
   salePriceWei: Wei.nullable(),
   /** book value / sale price */
   floorShareOfSale: z.number().nullable(),
+  /** fixed at creation (only the tap can be lowered) */
+  terms: z.object({
+    exitStreakSeconds: z.number().nullable(),
+    roundLengthSeconds: z.number().nullable(),
+    cooldownSeconds: z.number().nullable(),
+    exitFeeBps: z.number().nullable(),
+    heartbeatSeconds: z.number().nullable(),
+    tapUsdPer30d: z.number().nullable(),
+    tapCapBps: z.number().nullable(),
+    unlockWindowSeconds: z.number().nullable(),
+  }),
   exit: ExitStatus,
   tap: TapStatus,
   tranches: z.array(Tranche),
