@@ -130,6 +130,14 @@ server_env() {
 
 start_issuer() {
   stop_one issuer
+  # The issuer writes report URIs on chain; holders cannot open http://127.0.0.1 (the agent refuses to start with it).
+  case "$API_BASE_URL" in
+    https://*) ;;
+    *) if [ "${COVENANT_ALLOW_LOOPBACK_URIS:-}" != "1" ]; then
+         say "issuer agent not started: API_BASE_URL is $API_BASE_URL, which holders cannot open; set API_BASE_URL to the public https URL that serves this API (or COVENANT_ALLOW_LOOPBACK_URIS=1 to post unreachable report URIs on purpose)"
+         return 0
+       fi ;;
+  esac
   local team
   team="$(cast wallet address "$ISSUER_PRIVATE_KEY")"
   # the issuer agent runs a covenant whose team wallet is its own; until one exists there is nothing to run

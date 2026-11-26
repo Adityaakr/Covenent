@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { encodeFunctionData, keccak256, parseEther, toBytes, type Address, type Hex, type WalletClient } from 'viem';
 import { hasFunction } from '../../src/abi/index.js';
-import { assertSigningAllowed, walletClient } from '../../src/chain.js';
+import { assertLocalNodeIfLoopback, assertSigningAllowed, isLoopbackRpc, walletClient } from '../../src/chain.js';
 import type { ServerConfig } from '../../src/config.js';
 import { CovenantService } from '../../src/covenant/read.js';
 import { revertReason } from '../../src/keeper/keeper.js';
@@ -19,6 +19,13 @@ export interface IssuerPolicy {
   payCutBelowPremiumPct: number;
   /** each pay cut lowers the tap by this share */
   payCutShare: number;
+  /** the pay-cut condition must hold on this many consecutive ticks (spot can be pushed for one block, not for many) */
+  payCutConfirmTicks: number;
+  /**
+   * Allow the irreversible pay cut without a person. Default: on for a loopback (local) RPC, off on a public chain, where
+   * the agent records that a cut is due and a person sends lower_tap. ISSUER_AUTO_PAY_CUT=1 turns it on.
+   */
+  autoPayCut?: boolean;
   /** never cut below this many dollars per 30 days */
   minTapUsdPer30d: bigint;
   /** a balance increase at least this large between ticks is revenue to forward */
@@ -33,6 +40,7 @@ export const DEFAULT_POLICY: IssuerPolicy = {
   heartbeatEverySeconds: 7 * 86_400,
   payCutBelowPremiumPct: 10,
   payCutShare: 0.2,
+  payCutConfirmTicks: 3,
   minTapUsdPer30d: parseEther('5000'),
   minRevenueWei: parseEther('0.001'),
   gasReserveWei: parseEther('0.05'),
@@ -44,6 +52,10 @@ interface IssuerState {
   periodStartedAt: number;
   lastActionAt: number;
   lastPayCutPeriod: number;
+  /** consecutive ticks on which the pay-cut condition held */
+  payCutStreak?: number;
+  /** the period in which a "cut due, needs a person" note was last written */
+  payCutNotedPeriod?: number;
   recordedBalance: string | null;
   ledger: LedgerEntry[];
   reports: { period: number; uri: string; hash: Hex; author: PeriodReport['author']; tx?: Hex }[];
@@ -95,6 +107,18 @@ export class IssuerAgent {
     this.log = opts.log ?? ((m) => console.log(`[issuer ${new Date().toISOString()}] ${m}`));
   }
 
+  /** Premium to book of the oracle's last observed TWAP: the vault's lastTwap() when it has one, else the last Observed event. */
+  private async twapPremiumPct(s: CovenantSheet): Promise<number | null> {
+    const book = s.bookValueWei ? BigInt(s.bookValueWei) : 0n;
+    if (book === 0n) return null;
+    let twap = await this.svc.tryRead<bigint>(this.vault, this.svc.abis.vault, 'lastTwap');
+    if (!twap) {
+      const obs = this.svc.events({ vault: this.vault, launcher: s.launcher ?? undefined }).filter((e) => e.event === 'Observed').pop();
+      twap = obs && typeof obs.args.twapBnb === 'string' ? BigInt(obs.args.twapBnb) : null;
+    }
+    return twap ? (Number(twap) / Number(book) - 1) * 100 : null;
+  }
+
   get address(): Address {
     return this.wallet.account!.address;
   }
@@ -120,7 +144,11 @@ export class IssuerAgent {
     this.log(`${e.kind}${e.amountWei ? ` ${e.amountWei} wei` : ''}: ${e.reason}${e.tx ? ` (${e.tx})` : ''}`);
   }
 
+  private nodeChecked?: Promise<void>;
+
   async tick(): Promise<TickOutcome> {
+    this.nodeChecked ??= assertLocalNodeIfLoopback(this.svc.client, this.cfg.chainId, this.cfg.rpcUrl);
+    await this.nodeChecked;
     const { timestamp: now } = await this.svc.chainNow();
     const st = this.store.get();
     if (!st.periodStartedAt) this.store.update((d) => (d.periodStartedAt = now));
@@ -175,27 +203,45 @@ export class IssuerAgent {
       }
     }
 
-    // 3. a pay cut when the pool trades close to book (once per period)
+    // 3. a pay cut when the pool trades close to book (once per period). The pool spot alone can be pushed for a block,
+    // so the oracle-observed TWAP must agree, on several consecutive ticks; on a public chain a person confirms.
     const cur = s.tap.tapUsdPer30d === null ? null : parseEther(String(s.tap.tapUsdPer30d));
-    if (
-      s.state === 'ACTIVE' &&
-      cur !== null &&
-      s.premiumToBookPct !== null &&
-      s.premiumToBookPct <= this.policy.payCutBelowPremiumPct &&
-      this.store.get().lastPayCutPeriod < this.store.get().period
-    ) {
-      const target = (cur * BigInt(Math.round((1 - this.policy.payCutShare) * 10_000))) / 10_000n;
+    const twapPremium = await this.twapPremiumPct(s);
+    const near = (p: number | null) => p !== null && p <= this.policy.payCutBelowPremiumPct;
+    const condition =
+      s.state === 'ACTIVE' && cur !== null && near(s.premiumToBookPct) && near(twapPremium) && this.store.get().lastPayCutPeriod < this.store.get().period;
+    this.store.update((d) => {
+      d.payCutStreak = condition ? (d.payCutStreak ?? 0) + 1 : 0;
+    });
+    if (condition && (this.store.get().payCutStreak ?? 0) >= this.policy.payCutConfirmTicks) {
+      const target = (cur! * BigInt(Math.round((1 - this.policy.payCutShare) * 10_000))) / 10_000n;
       const next = target < this.policy.minTapUsdPer30d ? this.policy.minTapUsdPer30d : target;
-      if (next < cur) {
+      const why = `Pool spot ${s.premiumToBookPct!.toFixed(1)}% and observed TWAP ${twapPremium!.toFixed(1)}% vs book for ${this.store.get().payCutStreak} ticks (rule: cut at or below ${this.policy.payCutBelowPremiumPct}%)`;
+      const auto = this.policy.autoPayCut ?? isLoopbackRpc(this.cfg.rpcUrl);
+      if (next < cur! && !auto) {
+        if (this.store.get().payCutNotedPeriod !== this.store.get().period) {
+          this.store.update((d) => {
+            d.payCutNotedPeriod = d.period;
+          });
+          this.record({
+            at: now,
+            kind: 'note',
+            reason: `${why}. A pay cut to $${Number(next / 10n ** 18n)} per 30 days is due, but it is irreversible and this is a public chain: not sent. A person sends lower_tap, or sets ISSUER_AUTO_PAY_CUT=1.`,
+          });
+        }
+      } else if (next < cur!) {
         try {
           const tx = await this.call('lowerTap', [next]);
-          this.store.update((d) => (d.lastPayCutPeriod = d.period));
+          this.store.update((d) => {
+            d.lastPayCutPeriod = d.period;
+            d.payCutStreak = 0;
+          });
           this.record({
             at: now,
             kind: 'tap-lowered',
             usdPer30d: next.toString(),
             tx,
-            reason: `Pool is ${s.premiumToBookPct.toFixed(1)}% vs book (rule: cut at or below ${this.policy.payCutBelowPremiumPct}%). Lowered the tap from $${Number(cur / 10n ** 18n)} to $${Number(next / 10n ** 18n)} per 30 days to protect the floor; it can never be raised again.`,
+            reason: `${why}. Lowered the tap from $${Number(cur! / 10n ** 18n)} to $${Number(next / 10n ** 18n)} per 30 days to protect the floor; it can never be raised again.`,
           });
         } catch (e) {
           this.record({ at: now, kind: 'note', reason: `lowerTap failed: ${revertReason(e)}` });

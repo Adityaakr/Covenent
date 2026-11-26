@@ -65,15 +65,20 @@ describe('issuer agent', () => {
     expect((await agent.tick()).actions.find((a) => a.kind === 'revenue-forwarded')).toBeUndefined();
   });
 
-  it('cuts its own pay when the pool trades close to book', async () => {
+  it('cuts its own pay only when spot and the observed TWAP stay close to book for several ticks', async () => {
     const s = await agent.svc.sheet(fx.vault);
     const book = BigInt(s.bookValueWei!);
-    // put the pool at about 5% over book
+    // a one-block push of the pool spot near book, with no observation of it: no cut
     await fx.setPrice(POOL, (POOL * book * 105n) / (100n * E18));
     await fx.warp(2);
-    const o = await agent.tick();
+    expect((await agent.tick()).actions.find((a) => a.kind === 'tap-lowered')).toBeUndefined();
+    // the oracle observes it (TWAP near book too) and it holds: the third consecutive tick cuts
+    await pokeFor(60);
+    let o = await agent.tick();
+    for (let i = 0; i < 3 && !o.actions.some((a) => a.kind === 'tap-lowered'); i++) o = await agent.tick();
     const cut = o.actions.find((a) => a.kind === 'tap-lowered')!;
     expect(cut).toBeDefined();
+    expect(cut.reason).toMatch(/observed TWAP/);
     expect(cut.usdPer30d).toBe((24_000n * E18).toString());
     expect((await agent.svc.sheet(fx.vault)).tap.tapUsdPer30d).toBe(24_000);
     // once per period only

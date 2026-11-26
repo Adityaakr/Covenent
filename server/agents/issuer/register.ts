@@ -1,5 +1,6 @@
 import { getAddress, isAddress, type Address, type Hex } from 'viem';
-import { assertSigningAllowed, publicClient, walletClient } from '../../src/chain.js';
+import { assertLocalNodeIfLoopback, assertSigningAllowed, publicClient, walletClient } from '../../src/chain.js';
+import { assertPublicUriBase } from '../../src/safety.js';
 import { loadConfig } from '../../src/config.js';
 import { registerAgent, registrationFile, writeRegistrationFile } from './identity.js';
 
@@ -17,6 +18,9 @@ if (!key) {
   process.exit(2);
 }
 assertSigningAllowed(cfg.chainId, cfg.rpcUrl);
+await assertLocalNodeIfLoopback(publicClient(cfg), cfg.chainId, cfg.rpcUrl);
+// the agentURI goes on chain: it must resolve for everyone
+assertPublicUriBase(cfg.chainId, cfg.rpcUrl, cfg.apiBaseUrl, 'API_BASE_URL (the base of the ERC-8004 agentURI)');
 const wallet = walletClient(cfg, key);
 const owner = wallet.account!.address;
 const vaults: Address[] = (process.env.ISSUER_VAULTS ?? '').split(',').filter((v) => isAddress(v.trim())).map((v) => getAddress(v.trim()));

@@ -3,6 +3,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { loadConfig } from '../../src/config.js';
 import { CovenantService } from '../../src/covenant/read.js';
 import { IssuerAgent, type IssuerPolicy } from './issuer.js';
+import { assertPublicUriBase } from '../../src/safety.js';
 
 const cfg = loadConfig();
 const key = process.env.ISSUER_PRIVATE_KEY as Hex | undefined;
@@ -40,9 +41,13 @@ const policy: Partial<IssuerPolicy> = Object.fromEntries(
     payCutBelowPremiumPct: process.env.ISSUER_PAY_CUT_BELOW_PREMIUM_PCT ? num('ISSUER_PAY_CUT_BELOW_PREMIUM_PCT', 0) : undefined,
     periodSeconds: process.env.ISSUER_PERIOD_SECONDS ? num('ISSUER_PERIOD_SECONDS', 0) : undefined,
     gasReserveWei: eth('ISSUER_GAS_RESERVE_BNB'),
+    payCutConfirmTicks: process.env.ISSUER_PAY_CUT_CONFIRM_TICKS ? num('ISSUER_PAY_CUT_CONFIRM_TICKS', 3) : undefined,
+    autoPayCut: process.env.ISSUER_AUTO_PAY_CUT === undefined ? undefined : process.env.ISSUER_AUTO_PAY_CUT === '1',
   }).filter(([, v]) => v !== undefined),
 );
 
+// Report URIs go on chain: on a public chain they must be reachable by holders, not 127.0.0.1.
+assertPublicUriBase(cfg.chainId, cfg.rpcUrl, cfg.apiBaseUrl, 'API_BASE_URL (the base of the report URIs posted on chain)');
 const agent = new IssuerAgent(cfg, vault, { privateKey: key, svc, policy });
 const tickSeconds = num('ISSUER_TICK_SECONDS', 120);
 console.log(
