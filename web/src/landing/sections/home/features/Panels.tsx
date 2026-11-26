@@ -1,6 +1,7 @@
 import { ScrollLift } from "../../../components/ScrollLift";
 import { Icon } from "../hero/icons";
 import s from "./HomeFeatures.module.css";
+import { bnb } from "../../../components/Bnb";
 
 /* The four product panels of the Home "Features" section. Each panel carries the template's
    styleTransformEffect: in view (viewport end), spring stiffness 500 damping 60 mass 1, from y 40px scale 0.98.
@@ -53,18 +54,18 @@ export function RaisePanel() {
           <div key={r.title} className={s.request}>
             <div className={s.votes}>
               <Icon name={r.up ? "caretUp" : "caretDown"} size={12} className={r.iconTone === "accent" ? s.iconAccent : s.iconMuted} />
-              <span className="t-small">{r.amount}</span>
+              <span className="t-small">{bnb(r.amount)}</span>
             </div>
             <div className={s.requestText}>
-              <p className={cx("t-label", s.trunc)}>{r.title}</p>
-              <p className={cx("t-small", "c-text-2", s.trunc)}>{r.detail}</p>
+              <p className={cx("t-label", s.trunc)}>{bnb(r.title)}</p>
+              <p className={cx("t-small", "c-text-2", s.trunc)}>{bnb(r.detail)}</p>
             </div>
             <span className={s.source}>
-              <span className="t-small c-text-2">{r.where}</span>
+              <span className="t-small c-text-2">{bnb(r.where)}</span>
             </span>
             <div className={s.status110}>
               <Dot tone={r.tone} />
-              <span className="t-small">{r.status}</span>
+              <span className="t-small">{bnb(r.status)}</span>
             </div>
           </div>
         ))}
@@ -80,7 +81,7 @@ const board: { title: string; cards: RuleCard[]; phoneHidden?: boolean }[] = [
     title: "Team",
     cards: [
       /* 4.1 BNB claimable of the 15 BNB month-one cap = 27.3% */
-      { title: "Tap", mark: "1", owner: "Claimable", due: "4.1 BNB", fill: 27.3 },
+      { title: "Tap", mark: "1", owner: "Accrued", due: "4.1 BNB", fill: 27.3 },
       /* 2x tranche, 11 of 30 trusted days = 36.7% */
       { title: "Performance unlock", mark: "2", owner: "2x", due: "11 of 30", fill: 36.7 },
     ],
@@ -119,18 +120,18 @@ export function SheetPanel() {
         {board.map((col) => (
           <div key={col.title} className={cx(s.column, col.phoneHidden && s.phoneHidden)}>
             <div className={s.columnHeader}>
-              <p className="t-label">{col.title}</p>
-              <span className="t-small c-text-2">{col.cards.length}</span>
+              <p className="t-label">{bnb(col.title)}</p>
+              <span className="t-small c-text-2">{bnb(col.cards.length)}</span>
             </div>
             {col.cards.map((c) => (
               <div key={c.title} className={s.ruleCard}>
-                <p className="t-label">{c.title}</p>
+                <p className="t-label">{bnb(c.title)}</p>
                 <div className={s.cardMeta}>
                   <span className={s.avatar20}>
                     <span className="t-small c-bg">{c.mark}</span>
                   </span>
-                  <span className={cx("t-small", "c-text-2", s.trunc)}>{c.owner}</span>
-                  <span className="t-small c-text-2">{c.due}</span>
+                  <span className={cx("t-small", "c-text-2", s.trunc)}>{bnb(c.owner)}</span>
+                  <span className="t-small c-text-2">{bnb(c.due)}</span>
                 </div>
                 <span className={s.progress4}>
                   {c.fill > 0 ? <span className={s.progress4Fill} style={{ width: `${c.fill}%` }} /> : null}
@@ -165,15 +166,15 @@ export function TeamPanel() {
         {tasks.map((t) => (
           <div key={t.title} className={s.task}>
             <Icon name={t.done ? "checkCircle" : "circle"} size={16} className={t.done ? s.iconAccent : s.iconMuted} />
-            <p className={cx("t-label", t.done && "c-text-2", s.trunc)}>{t.title}</p>
+            <p className={cx("t-label", t.done && "c-text-2", s.trunc)}>{bnb(t.title)}</p>
             <span className={cx(s.source, s.phoneHidden)}>
-              <span className="t-small c-text-2">{t.area}</span>
+              <span className="t-small c-text-2">{bnb(t.area)}</span>
             </span>
             <div className={s.status96}>
               <Dot tone={t.tone} />
-              <span className="t-small">{t.status}</span>
+              <span className="t-small">{bnb(t.status)}</span>
             </div>
-            <span className={cx("t-small", "c-text-2", s.phoneHidden)}>{t.due}</span>
+            <span className={cx("t-small", "c-text-2", s.phoneHidden)}>{bnb(t.due)}</span>
           </div>
         ))}
       </div>
@@ -194,7 +195,7 @@ export function TeamPanel() {
           <span className={s.progress6}>
             <span className={s.progress6Fill} style={{ width: "4%" }} />
           </span>
-          <p className="t-small c-text-2">of treasury per 30 days {" · "}15 BNB in month one</p>
+          <p className="t-small c-text-2">{bnb("of treasury per 30 days · 15 BNB in month one")}</p>
         </div>
       </div>
     </ScrollLift>
@@ -231,12 +232,12 @@ export function ExitPanel() {
           <div key={g.tag} className={s.releaseGroup}>
             <div className={s.releaseTag}>
               <Dot tone={g.tone} size={6} />
-              <span className="t-small">{g.tag}</span>
+              <span className="t-small">{bnb(g.tag)}</span>
             </div>
             {g.items.map((it) => (
               <p key={it} className="t-body">
                 {"–  "}
-                {it}
+                {bnb(it)}
               </p>
             ))}
           </div>
@@ -244,7 +245,7 @@ export function ExitPanel() {
       </div>
       <div className={s.toast}>
         <Icon name="checkCircle" size={16} className={s.iconBg} />
-        <span className="t-small c-bg">Redeemed {" · "}2.534 BNB sent</span>
+        <span className="t-small c-bg">{bnb("Redeemed · 2.534 BNB sent")}</span>
       </div>
     </ScrollLift>
   );

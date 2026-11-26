@@ -4,6 +4,7 @@ import { Section } from "../../components/Section";
 import { ScrollLift } from "../../components/ScrollLift";
 import { IconKanban } from "./icons";
 import s from "./BoardShowcase.module.css";
+import { bnb } from "../../components/Bnb";
 
 /* Framer "Board Showcase" IpRueCYvh: gradient plate holding the board window (covenant lifecycle board).
    Columns are covenant states from DESIGN.md "States"; cards are events from "Lifecycle" and the rules. */
@@ -72,7 +73,7 @@ export function BoardShowcase() {
               <div key={col.state} className={s.column}>
                 <div className={s.head}>
                   <span className={`${s.dot} ${s[col.dot]}`} />
-                  <p className={`t-label ${s.headTitle}`}>{col.state}</p>
+                  <p className={`t-label ${s.headTitle}`}>{bnb(col.state)}</p>
                 </div>
                 {col.cards.map((card) => (
                   <motion.div
@@ -83,8 +84,8 @@ export function BoardShowcase() {
                     whileHover={cardHover}
                     transition={cardTransition}
                   >
-                    <p className="t-small">{card.title}</p>
-                    <p className="t-small c-text-2">{card.meta}</p>
+                    <p className="t-small">{bnb(card.title)}</p>
+                    <p className="t-small c-text-2">{bnb(card.meta)}</p>
                   </motion.div>
                 ))}
               </div>

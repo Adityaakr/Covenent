@@ -5,6 +5,8 @@ import { Section } from "../../components/Section";
 import { Eyebrow } from "../../components/Eyebrow";
 import { SplitHeading } from "../../components/SplitHeading";
 import { useCases } from "../../content/useCases";
+import { bnb } from "../../components/Bnb";
+import { Cover } from "../usecases/Cover";
 import s from "./HomeUseCases.module.css";
 
 const MotionLink = motion.create(Link);
@@ -25,9 +27,10 @@ const rest = { y: 0, scale: 1, boxShadow: "0px 24px 48px -24px rgba(21, 23, 28, 
 const hover = { y: -4, scale: 1.1, boxShadow: "0px 24px 48px -24px rgba(21, 23, 28, 0.25)" };
 const transition = { type: "spring", duration: 0.35, bounce: 0 } as const;
 
-/** Framer section "Stories" (PXR78n2mP): first 3 items of the Stories CMS, here content/useCases. */
+/** Framer section "Stories" (PXR78n2mP), here with all five use cases: two wide cards over three (desktop), one wide
+ *  over a 2 x 2 grid (tablet), a stack (phone). Same Story Card and hover as the template. */
 export function HomeUseCases() {
-  const items = useCases.slice(0, 3);
+  const items = useCases;
   return (
     <Section name="Stories">
       <div className={s.header}>
@@ -35,8 +38,8 @@ export function HomeUseCases() {
           <Eyebrow className={s.fill}>Use cases</Eyebrow>
           <SplitHeading
             className={s.heading}
-            first="One vault for every issuer."
-            second="AI agents, teams, machines and launchpads raise under the same five rules."
+            first="One vault, every issuer."
+            second="Agents, teams, machines and launchpads."
           />
         </div>
         <Link href="/use-cases" className={s.link}>
@@ -57,18 +60,20 @@ export function HomeUseCases() {
             transition={transition}
           >
             <div className={s.cover}>
-              <img src={u.cover} alt={u.name} width={600} height={440} loading="lazy" />
+              <Cover u={u} />
             </div>
             <div className={s.meta}>
               <div className={s.company}>
                 <span className={s.mark}>{u.mark}</span>
                 <p className={["t-label", s.companyName].join(" ")}>{u.name}</p>
-                <p className={["t-small c-text-2", s.industry].join(" ")}>{u.category}</p>
+                {u.category !== u.name ? (
+                  <p className={["t-small c-text-2", s.industry].join(" ")}>{u.category}</p>
+                ) : null}
               </div>
-              <h4 className={["t-h4", s.fill].join(" ")}>{u.headline}</h4>
+              <h4 className={["t-h4", s.fill].join(" ")}>{bnb(u.headline)}</h4>
               <div className={s.result}>
-                <h4 className={["t-h4 c-accent", s.resultValue].join(" ")}>{u.result}</h4>
-                <p className={["t-small c-text-2", s.resultLabel].join(" ")}>{u.resultLabel}</p>
+                <h4 className={["t-h4 c-accent", s.resultValue].join(" ")}>{bnb(u.result)}</h4>
+                <p className={["t-small c-text-2", s.resultLabel].join(" ")}>{bnb(u.resultLabel)}</p>
               </div>
             </div>
           </MotionLink>

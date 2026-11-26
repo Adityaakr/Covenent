@@ -47,7 +47,7 @@ export function HomeFeatures() {
           as="h2"
           className={s.heading}
           first="Five rules, fixed at launch."
-          second="Money goes in, rules hold it, and holders get it back when the price says the project failed."
+          second="Money goes in, rules hold it, holders get it back if it fails."
         />
       </div>
       <div className={s.body}>

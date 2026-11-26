@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { pageMetadata } from "../meta";
-import { PricingPage } from "./PricingPage";
+import { permanentRedirect } from "next/navigation";
 
-/** Re-export from the route file (`export { default, metadata } from ...`) for the page title. */
-export const metadata: Metadata = pageMetadata("Fees", "How Covenant is paid for: no fees for buyers or teams in v1, a Flap commission and an OpenFour template royalty.", "/pricing");
+/* /pricing is retired: the landing no longer has a fees page. The route still re-exports this module, so it
+   redirects home for good instead of serving a dead page. */
+export const metadata: Metadata = { title: "Covenant", robots: { index: false } };
 
 export default function Page() {
-  return <PricingPage />;
+  permanentRedirect("/");
 }

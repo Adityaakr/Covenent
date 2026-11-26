@@ -1,0 +1,140 @@
+/* Use-case cover: the hero's sky plate (same crop and vignette for all five) under one product card in the hero App
+   Window's style (Background fill, radius 14, the window shadow, the grey title bar with three dots). Everything
+   inside scales with the cover's width through container query units, with floors that keep it legible on phones. */
+.cover {
+  position: relative;
+  container-type: inline-size;
+  width: 100%;
+  height: 100%;
+  overflow: clip;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-surface);
+}
+.plate {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: 50% 38%;
+  z-index: -2;
+}
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(120% 90% at 50% 45%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 55%),
+    radial-gradient(140% 120% at 50% 50%, rgba(21, 23, 28, 0) 55%, rgba(21, 23, 28, 0.16) 100%);
+}
+
+.window {
+  width: min(76cqw, 560px);
+  display: flex;
+  flex-direction: column;
+  border-radius: clamp(10px, 2.4cqw, 14px);
+  overflow: clip;
+  background: var(--c-bg);
+  box-shadow: var(--shadow-window);
+  font-family: var(--font-ui);
+  color: var(--c-text);
+  text-align: left;
+}
+.bar {
+  display: flex;
+  gap: clamp(4px, 1cqw, 6px);
+  padding: clamp(6px, 1.6cqw, 10px) clamp(10px, 2.6cqw, 16px);
+  background: var(--c-surface);
+  box-shadow: inset 0 -1px 0 var(--c-border);
+}
+.bar > span { width: clamp(5px, 1.3cqw, 8px); height: clamp(5px, 1.3cqw, 8px); border-radius: 50%; background: var(--c-border); }
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.8cqw, 12px);
+  padding: clamp(10px, 3.4cqw, 24px) clamp(12px, 3.8cqw, 26px) clamp(12px, 3.6cqw, 24px);
+}
+
+.head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.title {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  font-size: clamp(11.5px, 3cqw, 16px);
+  line-height: 1.25;
+}
+.chip {
+  flex: none;
+  padding: 0.25em 0.6em;
+  border-radius: 6px;
+  background: var(--c-surface);
+  color: var(--c-text-2);
+  font-weight: 500;
+  font-size: clamp(9px, 2.1cqw, 12px);
+  letter-spacing: 0.02em;
+}
+
+.key { display: flex; flex-direction: column; gap: clamp(1px, 0.5cqw, 4px); }
+.label,
+.note { color: var(--c-text-2); font-weight: 500; font-size: clamp(10.5px, 2.6cqw, 14px); line-height: 1.3; }
+.value {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 32;
+  font-weight: 600;
+  font-size: clamp(22px, 7.6cqw, 44px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.meter { position: relative; height: clamp(5px, 1.3cqw, 8px); border-radius: 99px; background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
+.meterFill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: var(--c-accent); }
+.meterMark { position: absolute; top: -40%; bottom: -40%; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--c-text); }
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: clamp(5px, 1.5cqw, 10px);
+  box-shadow: inset 0 1px 0 var(--c-border);
+  font-weight: 500;
+  font-size: clamp(10.5px, 2.7cqw, 15px);
+  line-height: 1.3;
+}
+.rowLabel { display: inline-flex; align-items: center; gap: 0.45em; color: var(--c-text-2); min-width: 0; }
+.rowValue { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.accent { color: var(--c-accent); }
+.dot { width: 0.5em; height: 0.5em; border-radius: 50%; flex: none; }
+.dotOk { background: rgb(31, 157, 85); }
+.dotAccent { background: var(--c-accent); }
+
+/* Launch list: four rows, three columns. */
+.table { display: flex; flex-direction: column; font-size: clamp(10.5px, 2.7cqw, 15px); font-weight: 500; }
+.tr {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr 0.6fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: clamp(5px, 1.5cqw, 10px) 0;
+  box-shadow: inset 0 1px 0 var(--c-border);
+}
+.tr > :last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.th { color: var(--c-text-2); font-size: 0.86em; box-shadow: none; padding-top: 0; }
+.trOff { color: var(--c-text-2); }
+.token { font-weight: 600; letter-spacing: 0.01em; }
+.yes { color: var(--c-accent); }
+.no { color: var(--c-text-2); }
+
+/* Small covers (home 3-up cards, phones): drop the window bar and tighten so the key number stays large. */
+@container (max-width: 380px) {
+  .bar { display: none; }
+  .window { width: 84cqw; }
+}

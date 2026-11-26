@@ -227,3 +227,6 @@ body:has(.landing-root) {
 }
 .link-footer:hover,
 .link-footer[aria-current="page"] { color: var(--c-text); }
+
+/* In-page anchors land below the 64px sticky navigation. */
+.landing-root section[id] { scroll-margin-top: 64px; }

@@ -7,7 +7,7 @@ import s from "./ContactPromises.module.css";
 const promises: { icon: ReactNode; title: string; body: string }[] = [
   { icon: <IconKey size={20} />, title: "No admin keys", body: "No owner, no pause and no fee switch on any covenant." },
   { icon: <IconShieldCheck size={20} />, title: "Rules fixed at launch", body: "No proposals and no votes in v1. Nobody can raise the tap." },
-  { icon: <IconHandHeart size={20} />, title: "No fees in v1", body: "Covenant adds no fee for buyers or teams in v1." },
+  { icon: <IconHandHeart size={20} />, title: "An exit without a vote", body: "Three days below book value open a round where any holder can redeem at book." },
 ];
 
 /** Contact Promises (AAAHVbPKY): top border, three columns with 1px left dividers, padding 40 / 32 24 / 24 20. */

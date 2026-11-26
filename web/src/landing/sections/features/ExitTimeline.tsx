@@ -4,6 +4,7 @@ import { SplitHeading } from "../../components/SplitHeading";
 import { ScrollLift } from "../../components/ScrollLift";
 import { IconBell, IconCheckCircle } from "./icons";
 import s from "./ExitTimeline.module.css";
+import { bnb } from "../../components/Bnb";
 
 /* Framer "Dependencies" BFBxV929S: two columns, text with a check list, and a Surface panel of timeline bars
    with a dark note bar (scroll lift y 32, scale 0.98). Content: the exit round timeline (DESIGN.md "Rule 3"). */
@@ -35,7 +36,7 @@ export function ExitTimeline() {
           {points.map((p) => (
             <div key={p} className={s.point}>
               <IconCheckCircle size={18} className={s.pointIcon} />
-              <p className={`t-label ${s.pointText}`}>{p}</p>
+              <p className={`t-label ${s.pointText}`}>{bnb(p)}</p>
             </div>
           ))}
         </div>
@@ -44,13 +45,13 @@ export function ExitTimeline() {
             <div key={b.label} className={s.row}>
               <div className={s.offset} style={{ width: b.offset }} />
               <div className={`${s.bar} ${b.accent ? s.barAccent : ""}`} style={{ width: b.width }}>
-                <p className={`t-small ${b.accent ? "c-bg" : ""} ${s.barText}`}>{b.label}</p>
+                <p className={`t-small ${b.accent ? "c-bg" : ""} ${s.barText}`}>{bnb(b.label)}</p>
               </div>
             </div>
           ))}
           <div className={s.note}>
             <IconBell size={16} className={s.noteIcon} />
-            <p className={`t-small c-bg ${s.noteText}`}>Round open. A holder redeemed 6,000,000 tokens for 2.534 BNB.</p>
+            <p className={`t-small c-bg ${s.noteText}`}>{bnb("Round open. A holder redeemed 6,000,000 tokens for 2.534 BNB.")}</p>
           </div>
         </ScrollLift>
       </div>

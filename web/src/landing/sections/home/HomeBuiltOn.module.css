@@ -1,0 +1,149 @@
+/* "How it's built" on the Surface band: heading group, then the diagram (a white plate, radius 20, like the Features
+   panels) beside a detail card. Nodes are the template's pill chips; the vault is a Text-filled card. */
+.headingGroup { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; width: 100%; }
+.heading { width: 100%; max-width: 860px; }
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.diagram {
+  position: relative;
+  min-height: 460px;
+  border-radius: 20px;
+  background: var(--c-bg);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+  overflow: clip;
+}
+/* The chain is the frame everything sits in. */
+.frame {
+  position: absolute;
+  inset: 11% 5% 5%;
+  border-radius: 16px;
+  border: 1px dashed var(--c-border);
+  transition: border-color 0.3s var(--ease-framer), background-color 0.3s var(--ease-framer);
+}
+.frameOn { border-color: #f0b90b; background: rgba(240, 185, 11, 0.05); }
+
+.wires { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wire { stroke: var(--c-border); stroke-width: 1.5; transition: stroke 0.3s var(--ease-framer); }
+.wirePlanned { stroke-dasharray: 4 5; }
+.wireOn { stroke: var(--c-accent); stroke-width: 2; }
+.pulse {
+  stroke: var(--c-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 2 14;
+  animation: flow 1s linear infinite;
+  opacity: 0.85;
+}
+@keyframes flow {
+  to { stroke-dashoffset: -16; }
+}
+
+.vault {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--c-text);
+  color: var(--c-bg);
+  text-align: center;
+  box-shadow: var(--shadow-card-photo);
+  z-index: 2;
+}
+.vaultName { font-family: var(--font-display); font-weight: 500; font-size: 17px; letter-spacing: -0.01em; line-height: 1.2; white-space: nowrap; }
+.vaultSub { font-size: 12px; font-weight: 500; opacity: 0.7; white-space: nowrap; }
+
+.node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 10px;
+  border-radius: 999px;
+  background: var(--c-bg);
+  box-shadow: inset 0 0 0 1px var(--c-border), 0 8px 16px -10px rgba(21, 23, 28, 0.2);
+  color: var(--c-text-2);
+  transition: box-shadow 0.25s var(--ease-framer), color 0.25s var(--ease-framer), transform 0.25s var(--ease-framer);
+}
+.node:hover { color: var(--c-text); }
+.node:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+.nodeOn {
+  color: var(--c-text);
+  box-shadow: inset 0 0 0 1.5px var(--c-accent), 0 12px 24px -12px rgba(43, 89, 255, 0.45);
+  transform: translate(-50%, -50%) scale(1.06);
+}
+.nodePlanned { background: var(--c-surface); }
+.nodeChain { padding-right: 14px; }
+.logo { height: 16px; width: auto; max-width: none; opacity: 0.85; }
+.nodeOn .logo { opacity: 1; }
+.nodeName { font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; }
+.flow {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--c-accent);
+  color: var(--c-bg);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 32px;
+  border-radius: 20px;
+  background: var(--c-bg);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+}
+.detailInner { display: flex; flex-direction: column; gap: 22px; }
+.detailHead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--c-border); }
+.detailLogo { height: 22px; width: auto; max-width: none; }
+.status {
+  flex-basis: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-text-2);
+}
+.statusDot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.status_live .statusDot { background: rgb(31, 157, 85); }
+.status_test .statusDot { background: #f0b90b; }
+.status_planned .statusDot { background: var(--c-text-2); }
+.block { display: flex; flex-direction: column; gap: 6px; }
+.dots { display: flex; gap: 6px; }
+.dot { width: 22px; height: 4px; border-radius: 2px; background: var(--c-border); transition: background-color 0.2s var(--ease-framer); }
+.dot:hover { background: var(--c-text-2); }
+.dotOn { background: var(--c-text); }
+
+@media (max-width: 1199.98px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .diagram { min-height: 440px; }
+}
+/* Phone: nodes show the logo only; the detail card names the active one. */
+@media (max-width: 809.98px) {
+  .diagram { min-height: 340px; }
+  .nodeName { display: none; }
+  .node { padding: 9px; }
+  .logo { height: 18px; }
+  .vault { padding: 10px 12px; }
+  .vaultName { font-size: 14px; }
+  .vaultSub { display: none; }
+  .flow { display: none; }
+  .detail { padding: 24px 20px; }
+}

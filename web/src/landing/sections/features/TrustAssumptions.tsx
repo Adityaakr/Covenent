@@ -3,6 +3,7 @@ import { Eyebrow } from "../../components/Eyebrow";
 import { SplitHeading } from "../../components/SplitHeading";
 import { IconKey, IconLock, IconScales, IconShieldCheck } from "./icons";
 import s from "./TrustAssumptions.module.css";
+import { bnb } from "../../components/Bnb";
 
 /* Framer "Security" LNQvhFLFo: Surface band, heading group, four items with a 2px Accent left border.
    Content: trust assumptions (DESIGN.md "Trust assumptions, all shown on the covenant sheet"). */
@@ -29,8 +30,8 @@ export function TrustAssumptions() {
         {items.map((it) => (
           <div key={it.title} className={s.item}>
             <span className={s.icon}>{it.icon}</span>
-            <h4 className={`t-h4 ${s.title}`}>{it.title}</h4>
-            <p className={`t-body ${s.body}`}>{it.body}</p>
+            <h4 className={`t-h4 ${s.title}`}>{bnb(it.title)}</h4>
+            <p className={`t-body ${s.body}`}>{bnb(it.body)}</p>
           </div>
         ))}
       </div>

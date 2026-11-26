@@ -4,6 +4,7 @@ import { Eyebrow } from "../../components/Eyebrow";
 import { SplitHeading } from "../../components/SplitHeading";
 import { ScrollLift } from "../../components/ScrollLift";
 import s from "./HomeAgentLayer.module.css";
+import { bnb } from "../../components/Bnb";
 
 /* Phosphor regular (Framer icon set "Phosphor", width 1.5 = stroke 16 on the 256 grid). */
 function Svg({ children, size = 16 }: { children: ReactNode; size?: number }) {
@@ -57,7 +58,7 @@ const calls = ["claimTap()", "heartbeat()", "postReport()"];
 /** Framer section "Weekly Update" (b_FQIsQ8W), rebuilt as the agent layer. */
 export function HomeAgentLayer() {
   return (
-    <Section name="Weekly Update" contentClassName={s.content}>
+    <Section name="Weekly Update" id="agent-layer" contentClassName={s.content}>
       <div className={s.columns}>
         <div className={s.text}>
           <Eyebrow className={s.fill}>Agent layer</Eyebrow>
@@ -72,8 +73,8 @@ export function HomeAgentLayer() {
               <div key={p.title} className={s.point}>
                 <div className={s.iconBox}>{p.icon}</div>
                 <div className={s.pointText}>
-                  <p className="t-label">{p.title}</p>
-                  <p className="t-body">{p.body}</p>
+                  <p className="t-label">{bnb(p.title)}</p>
+                  <p className="t-body">{bnb(p.body)}</p>
                 </div>
               </div>
             ))}
@@ -95,15 +96,15 @@ export function HomeAgentLayer() {
               <div key={l.tag} className={s.line}>
                 <div className={s.tag}>
                   <span className={[s.dot, l.dot].join(" ")} />
-                  <p className="t-small">{l.tag}</p>
+                  <p className="t-small">{bnb(l.tag)}</p>
                 </div>
-                <p className={["t-small c-text-2", s.lineText].join(" ")}>{l.text}</p>
+                <p className={["t-small c-text-2", s.lineText].join(" ")}>{bnb(l.text)}</p>
               </div>
             ))}
             <div className={s.reactions}>
               {calls.map((c) => (
                 <div key={c} className={s.reaction}>
-                  <p className="t-small">{c}</p>
+                  <p className="t-small">{bnb(c)}</p>
                 </div>
               ))}
             </div>

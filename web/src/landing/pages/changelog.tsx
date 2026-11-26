@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { pageMetadata } from "../meta";
-import { ChangelogPage } from "./ChangelogPage";
+import { permanentRedirect } from "next/navigation";
 
-/** Re-export from the route file (`export { default, metadata } from ...`) for the page title. */
-export const metadata: Metadata = pageMetadata("Milestones", "Covenant’s build milestones at BNB Hack Bangkok, gate by gate.", "/changelog");
+/* /changelog is retired: the landing no longer has a milestones page. The route still re-exports this module, so it
+   redirects home for good instead of serving a dead page. */
+export const metadata: Metadata = { title: "Covenant", robots: { index: false } };
 
 export default function Page() {
-  return <ChangelogPage />;
+  permanentRedirect("/");
 }

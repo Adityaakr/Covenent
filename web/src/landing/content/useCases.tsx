@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Mark } from "../sections/usecases/marks";
+import { IconHandCoins, IconPlugsConnected, IconRobot, IconRocketLaunch, IconDatabase } from "../sections/features/icons";
 import type { Source } from "./problem";
 
 /** Owner: landing. Rendered by the home use-case cards and quote, /use-cases and /use-cases/[slug].
@@ -8,7 +8,8 @@ import type { Source } from "./problem";
  *  The five cases are the owner's list. Rule behaviour is from docs/DESIGN.md (defaults in Appendix A); facts about
  *  the world are linked (docs/landing/sources.md). Every number on a `sheet` is ILLUSTRATIVE: a worked example with
  *  the default terms (60/15/25 split, so treasury = 75% of the accepted raise and the tap cap = 4% of it).
- *  `mark` is an 18px stroke icon; `cover` is a 1600px wide photo from the template. */
+ *  `mark` is a Phosphor icon from the template's set (consumers size the svg). Covers are live components drawn from
+ *  each case's numbers (sections/usecases/Cover.tsx), not images. */
 
 export type RuleName = "Tap" | "Performance unlock" | "Book-value exit" | "Abandonment switch" | "Disclosure";
 export type SheetRow = { label: string; value: string };
@@ -25,7 +26,6 @@ export type UseCase = {
   quote: string;
   quoteAuthor: string;
   quoteRole: string;
-  cover: string;
   mark: ReactNode;
   featured: boolean;
   /** The situation, in one paragraph. */
@@ -44,7 +44,7 @@ export type UseCase = {
 export const useCases: UseCase[] = [
   {
     slug: "ai-agent-working-capital",
-    name: "AI agent",
+    name: "Working capital",
     headline: "An AI agent raises working capital it can be held to.",
     summary:
       "An agent with on-chain revenue raises a treasury, draws a capped monthly budget for compute and data, and reports every period. Its key reaches the accrued budget and nothing else.",
@@ -53,10 +53,9 @@ export const useCases: UseCase[] = [
     result: "4%",
     resultLabel: "of the treasury per 30 days, the most its key can ever reach",
     quote: "ClawPump lets an agent launch a token. Covenant lets an agent raise a budget it can be held to.",
-    quoteAuthor: "Pitch line",
-    quoteRole: "Agent layer",
-    cover: "/landing/usecases/cover-1.jpg",
-    mark: <Mark kind="circle" />,
+    quoteAuthor: "Covenant",
+    quoteRole: "The pitch in one line",
+    mark: <IconRobot />,
     featured: true,
     situation:
       "An agent sells a service on-chain: research, signals, data. Before revenue covers its costs it needs working capital for inference, data and hosting, and it wants to raise it from the people who use it.",
@@ -105,8 +104,7 @@ export const useCases: UseCase[] = [
     quote: "As a team, I want to raise in public and show buyers exactly what I can and cannot do with their money.",
     quoteAuthor: "Job to be done",
     quoteRole: "Team",
-    cover: "/landing/usecases/cover-2.jpg",
-    mark: <Mark kind="triangle" />,
+    mark: <IconHandCoins />,
     featured: false,
     situation:
       "A five-person team has users and a roadmap. It wants to raise from the people who use the product, without a venture round and without being priced like every other launch.",
@@ -149,8 +147,7 @@ export const useCases: UseCase[] = [
     quote: "As an agent, I want a compute budget I can be trusted with, and revenue that makes my holders whole.",
     quoteAuthor: "Job to be done",
     quoteRole: "Inference agent",
-    cover: "/landing/usecases/cover-3.jpg",
-    mark: <Mark kind="hexagon" />,
+    mark: <IconDatabase />,
     featured: false,
     situation:
       "An agent serves model inference to apps and other agents and is paid per request on-chain. To grow it needs more GPU capacity than its revenue buys today, so it raises capital to buy compute ahead of demand.",
@@ -196,8 +193,7 @@ export const useCases: UseCase[] = [
     quote: "As a user of the network, I want my money to fund the machines, and to come back to me if they go dark.",
     quoteAuthor: "Job to be done",
     quoteRole: "Holder",
-    cover: "/landing/usecases/cover-4.jpg",
-    mark: <Mark kind="sun" />,
+    mark: <IconPlugsConnected />,
     featured: false,
     situation:
       "A network of EV chargers sells power for crypto. An agent holds the wallet, books the maintenance and decides where the next charger goes. The network raises from its own users to grow.",
@@ -228,7 +224,7 @@ export const useCases: UseCase[] = [
   },
   {
     slug: "launchpad-protected-tier",
-    name: "Launchpad",
+    name: "Protected tier",
     headline: "A launchpad offers a protected tier without vouching for teams.",
     summary:
       "A launchpad lists covenant launches as their own tier: every raise under the same five rules, each readable on one sheet, earning through fee paths that already exist.",
@@ -239,8 +235,7 @@ export const useCases: UseCase[] = [
     quote: "As a launchpad, I want launches I can feature without vouching for the team myself.",
     quoteAuthor: "Job to be done",
     quoteRole: "Launchpad",
-    cover: "/landing/usecases/cover-5.jpg",
-    mark: <Mark kind="diamond" />,
+    mark: <IconRocketLaunch />,
     featured: false,
     situation:
       "A launchpad wants serious teams and fewer rugs on its front page, without hiring a review team or putting its own name behind each launch.",

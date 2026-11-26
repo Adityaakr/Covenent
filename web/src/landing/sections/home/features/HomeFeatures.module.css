@@ -273,7 +273,7 @@
   .intro { padding: 96px 48px 72px; }
   .indexColumn { display: none; }
   .blocks { box-shadow: none; padding: 56px 48px 96px; }
-  /* Narrow tablet: "Claimable 4.1 BNB" was 6px too wide for the rule card and ellipsised; a 4px gap fits it. */
+  /* Narrow tablet: the rule card meta ("Accrued [mark] 4.1 BNB") is tight; a 4px gap fits it. */
   .cardMeta { gap: 4px; }
 }
 @media (max-width: 809.98px) {

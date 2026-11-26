@@ -1,5 +1,6 @@
 import { Icon, type IconName } from "./icons";
 import s from "./AppWindow.module.css";
+import { bnb } from "../../../components/Bnb";
 
 /* Hero "App Window" (LKGAwSLlP) rebuilt as the covenant sheet. Every number is from docs/DESIGN.md
    ("Rule card" table, "Rule 1: tap"); sources are listed in docs/landing/content/home-a.md. */
@@ -81,7 +82,7 @@ export function AppWindow() {
           {nav.map((n) => (
             <div key={n.label} className={[s.navItem, n.active ? s.navActive : ""].join(" ")}>
               <Icon name={n.icon} size={15} className={n.active ? s.iconStrong : s.iconMuted} />
-              <p className={["t-small", n.active ? "" : "c-text-2", s.grow].join(" ")}>{n.label}</p>
+              <p className={["t-small", n.active ? "" : "c-text-2", s.grow].join(" ")}>{bnb(n.label)}</p>
             </div>
           ))}
           <span className={s.gap14} />
@@ -90,7 +91,7 @@ export function AppWindow() {
           {covenants.map((c) => (
             <div key={c.label} className={s.project}>
               <span className={[s.projectDot, s[`tone_${c.dot}`]].join(" ")} />
-              <p className={["t-small", s.grow].join(" ")}>{c.label}</p>
+              <p className={["t-small", s.grow].join(" ")}>{bnb(c.label)}</p>
             </div>
           ))}
         </aside>
@@ -107,7 +108,7 @@ export function AppWindow() {
               <div className={s.avatars}>
                 {avatars.map((a) => (
                   <span key={a.initials} className={[s.avatar, s[`tone_${a.tone}`]].join(" ")} title={a.title}>
-                    <span className="t-small c-bg">{a.initials}</span>
+                    <span className="t-small c-bg">{bnb(a.initials)}</span>
                   </span>
                 ))}
               </div>
@@ -120,7 +121,7 @@ export function AppWindow() {
           <div className={s.tabs}>
             {tabs.map((t, i) => (
               <div key={t} className={s.tab}>
-                <p className={["t-small", i === 0 ? "" : "c-text-2"].join(" ")}>{t}</p>
+                <p className={["t-small", i === 0 ? "" : "c-text-2"].join(" ")}>{bnb(t)}</p>
                 <span className={[s.underline, i === 0 ? s.underlineOn : ""].join(" ")} />
               </div>
             ))}
@@ -131,19 +132,19 @@ export function AppWindow() {
               <span className={s.labelCol} />
               {columns.map((m) => (
                 <div key={m} className={s.month}>
-                  <p className="t-small c-text-2">{m}</p>
+                  <p className="t-small c-text-2">{bnb(m)}</p>
                 </div>
               ))}
             </div>
             {rows.map((r) => (
               <div key={r.name} className={s.row}>
                 <div className={s.rowLabel}>
-                  <p className={["t-small", s.trunc].join(" ")}>{r.name}</p>
+                  <p className={["t-small", s.trunc].join(" ")}>{bnb(r.name)}</p>
                 </div>
                 <div className={s.track}>
                   {r.offset > 0 ? <span className={s.offset} style={{ width: r.offset }} /> : null}
                   <span className={[s.timeBar, s[`bar_${r.bar}`]].join(" ")} style={{ width: r.width }}>
-                    <span className={["t-small", s.trunc].join(" ")}>{r.label}</span>
+                    <span className={["t-small", s.trunc].join(" ")}>{bnb(r.label)}</span>
                   </span>
                 </div>
               </div>
@@ -158,8 +159,8 @@ export function AppWindow() {
             {rows.map((r) => (
               <div key={r.name} className={s.phoneRow}>
                 <div className={s.phoneTop}>
-                  <p className={["t-small", s.grow].join(" ")}>{r.name}</p>
-                  <p className="t-small c-text-2">{r.due}</p>
+                  <p className={["t-small", s.grow].join(" ")}>{bnb(r.name)}</p>
+                  <p className="t-small c-text-2">{bnb(r.due)}</p>
                 </div>
                 <span className={s.phoneTrack}>
                   {r.fill > 0 ? (

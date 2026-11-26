@@ -10,8 +10,8 @@ export function NotFound() {
       <h1 className={["t-h1", s.title].join(" ")}>This page left in an exit round.</h1>
       <p className={["t-lead", s.body].join(" ")}>The link may be old. The rules are still where you left them.</p>
       <div className={s.actions}>
-        <Button variant="secondary" href="/changelog">
-          Read the milestones
+        <Button variant="secondary" href="/use-cases">
+          See the use cases
         </Button>
         <Button variant="primary" href="/">
           Back to home

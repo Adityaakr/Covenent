@@ -9,7 +9,9 @@ import { HoverCard } from "./HoverCard";
 import { ArrowRight } from "./marks";
 import { RuleList } from "./RuleList";
 import { SheetCard } from "./SheetCard";
+import { Cover } from "./Cover";
 import s from "./UseCases.module.css";
+import { bnb } from "../../components/Bnb";
 
 const href = (u: UseCase) => `/use-cases/${u.slug}`;
 
@@ -36,17 +38,19 @@ export function FeaturedUseCase() {
     <Section name="Featured Story" noBorder contentClassName={s.featuredContent}>
       <ScrollLift>
         <HoverCard href={href(u)} kind="featured" className={s.featuredCard}>
-          <img className={s.featuredCover} src={u.cover} alt="" width={1600} height={1066} />
+          <div className={s.featuredCover}>
+            <Cover u={u} />
+          </div>
           <div className={s.featuredText}>
             <div className={s.company}>
               <span className={s.featuredMarkWrap}>{u.mark}</span>
-              <p className="t-label">{u.name}</p>
+              <p className="t-label">{bnb(u.name)}</p>
             </div>
-            <h2 className="t-h2">{u.headline}</h2>
-            <p className="t-lead">{u.summary}</p>
+            <h2 className="t-h2">{bnb(u.headline)}</h2>
+            <p className="t-lead">{bnb(u.summary)}</p>
             <div className={s.result}>
-              <h2 className={["t-h2 c-accent", s.resultValue].join(" ")}>{u.result}</h2>
-              <p className="t-body">{u.resultLabel}</p>
+              <h2 className={["t-h2 c-accent", s.resultValue].join(" ")}>{bnb(u.result)}</h2>
+              <p className="t-body">{bnb(u.resultLabel)}</p>
             </div>
             <span className={s.read}>
               <span className="t-label">Read the use case</span>
@@ -72,8 +76,8 @@ export function UseCaseStats() {
       <div className={s.statsRow}>
         {stats.map((st) => (
           <div key={st.value} className={s.stat}>
-            <h2 className="t-h2">{st.value}</h2>
-            <p className="t-body">{st.label}</p>
+            <h2 className="t-h2">{bnb(st.value)}</h2>
+            <p className="t-body">{bnb(st.label)}</p>
           </div>
         ))}
       </div>
@@ -81,10 +85,11 @@ export function UseCaseStats() {
   );
 }
 
-/** All Stories (AZfREECh_): heading group + grid of every CMS item. */
+/** All Stories (AZfREECh_): the heading group, then jump links to the five blocks below (the blocks replace the
+ *  template's card grid, which would repeat them). Links are the template's pill style. */
 export function AllUseCases() {
   return (
-    <Section name="All Stories">
+    <Section name="All Stories" contentClassName={s.indexContent}>
       <div className={s.headingGroup}>
         <Eyebrow>Use cases</Eyebrow>
         <SplitHeading
@@ -93,22 +98,15 @@ export function AllUseCases() {
           second="Five ways to put them to work."
         />
       </div>
-      <div className={s.storiesGrid}>
-        {useCases.map((u) => (
-          <HoverCard key={u.slug} href={href(u)} kind="story" className={s.storyCard}>
-            <img className={s.storyCover} src={u.cover} alt="" width={1600} height={1067} loading="lazy" />
-            <div className={s.storyMeta}>
-              <div className={s.company}>
-                <span className={s.storyMarkWrap}>{u.mark}</span>
-                <p className="t-label">{u.name}</p>
-                <p className={["t-small c-text-2", s.storyIndustry].join(" ")}>{u.category}</p>
-              </div>
-              <h4 className="t-h4">{u.headline}</h4>
-              <p className="t-body">{u.summary}</p>
-            </div>
-          </HoverCard>
+      <nav className={s.jump} aria-label="Use cases on this page">
+        {useCases.map((u, i) => (
+          <a key={u.slug} href={`#${u.slug}`} className={s.jumpLink}>
+            <span className="t-small c-text-2">{String(i + 1).padStart(2, "0")}</span>
+            <span className={s.jumpMark}>{u.mark}</span>
+            <span className="t-label">{u.name}</span>
+          </a>
         ))}
-      </div>
+      </nav>
     </Section>
   );
 }
@@ -124,23 +122,23 @@ export function UseCaseBlocks() {
             <div className={s.blockText}>
               <div className={s.company}>
                 <span className={s.storyMarkWrap}>{u.mark}</span>
-                <p className="t-label">{u.name}</p>
+                <p className="t-label">{bnb(u.name)}</p>
                 <p className={["t-small c-text-2", s.storyIndustry].join(" ")}>
                   {String(i + 1).padStart(2, "0")} / {String(useCases.length).padStart(2, "0")}
                 </p>
               </div>
-              <h2 className="t-h3">{u.headline}</h2>
+              <h2 className="t-h3">{bnb(u.headline)}</h2>
               <div className={s.para}>
                 <p className="t-label">The situation</p>
-                <p className="t-body">{u.situation}</p>
+                <p className="t-body">{bnb(u.situation)}</p>
               </div>
               <div className={s.para}>
                 <p className="t-label">What goes wrong today</p>
-                <p className="t-body">{u.today}</p>
+                <p className="t-body">{bnb(u.today)}</p>
                 <div className={s.sources}>
                   {u.todaySources.map((src) => (
                     <SourceLink key={src.href} href={src.href}>
-                      {src.label}
+                      {bnb(src.label)}
                     </SourceLink>
                   ))}
                 </div>
@@ -151,7 +149,7 @@ export function UseCaseBlocks() {
               </div>
               <p className="t-small c-text-2">
                 <span className="c-text">The limit. </span>
-                {u.limit}
+                {bnb(u.limit)}
               </p>
               <Link href={href(u)} className={[s.read, "link-nav"].join(" ")}>
                 <span className="t-label">Read the use case</span>
@@ -183,10 +181,10 @@ export function QuoteWall() {
       <div className={s.quotesGrid}>
         {useCases.slice(1, 4).map((u) => (
           <div key={u.slug} className={s.quoteCard}>
-            <p className="t-lead c-text">{u.quote}</p>
+            <p className="t-lead c-text">{bnb(u.quote)}</p>
             <div className={s.quoteAuthor}>
-              <p className="t-label">{u.quoteAuthor}</p>
-              <p className="t-small c-text-2">{u.quoteRole}</p>
+              <p className="t-label">{bnb(u.quoteAuthor)}</p>
+              <p className="t-small c-text-2">{bnb(u.quoteRole)}</p>
             </div>
           </div>
         ))}

@@ -1,6 +1,7 @@
 import type { RuleName, UseCase } from "../../content/useCases";
 import { IconDoorOpen, IconFileText, IconHandCoins, IconHeartbeat, IconLockOpen } from "../features/icons";
 import s from "./RuleList.module.css";
+import { bnb } from "../../components/Bnb";
 
 const icons: Record<RuleName, React.ReactNode> = {
   Tap: <IconHandCoins size={16} />,
@@ -21,8 +22,8 @@ export function RuleList({ u }: { u: UseCase }) {
             {icons[r.rule]}
           </span>
           <div className={s.text}>
-            <p className="t-label">{r.rule}</p>
-            <p className="t-body">{r.how}</p>
+            <p className="t-label">{bnb(r.rule)}</p>
+            <p className="t-body">{bnb(r.how)}</p>
           </div>
         </li>
       ))}

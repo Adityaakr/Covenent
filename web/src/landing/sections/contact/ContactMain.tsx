@@ -7,6 +7,7 @@ import { Eyebrow } from "../../components/Eyebrow";
 import { ContactForm } from "./ContactForm";
 import { IconFlag, IconRocketLaunch, IconShieldCheck } from "./icons";
 import s from "./ContactMain.module.css";
+import { bnb } from "../../components/Bnb";
 
 const MotionLink = motion.create(Link);
 
@@ -14,7 +15,7 @@ const MotionLink = motion.create(Link);
 const channels: { icon: ReactNode; title: string; note: string; href: string }[] = [
   { icon: <IconRocketLaunch size={18} />, title: "App", note: "Launch the app", href: "/app" },
   { icon: <IconShieldCheck size={18} />, title: "Rules", note: "Read the five rules", href: "/features" },
-  { icon: <IconFlag size={18} />, title: "Milestones", note: "Follow the gates", href: "/changelog" },
+  { icon: <IconFlag size={18} />, title: "Use cases", note: "Five ways to raise under rules", href: "/use-cases" },
 ];
 
 /** Contact Main (EX2bP05WH): two columns, intro + channel links left, form card right. */
@@ -28,7 +29,7 @@ export function ContactMain() {
             <span className="c-text">Talk to the team.</span> <span className="c-text-2">Raise with rules.</span>
           </h1>
           <p className={["t-lead", s.full].join(" ")}>
-            Tell us what you are raising for. Covenant runs on Flap Pool Launch on BNB Chain.
+            {bnb("Tell us what you are raising for. Covenant runs on Flap Pool Launch on BNB Chain.")}
           </p>
           <div className={s.channels} data-framer-name="Contact Channels">
             {channels.map((c) => (
@@ -41,8 +42,8 @@ export function ContactMain() {
                 transition={{ type: "spring", duration: 0.3, bounce: 0 }}
               >
                 <span className={["c-text", s.channelIcon].join(" ")}>{c.icon}</span>
-                <span className={["t-label", s.channelTitle].join(" ")}>{c.title}</span>
-                <span className="t-label c-text-2">{c.note}</span>
+                <span className={["t-label", s.channelTitle].join(" ")}>{bnb(c.title)}</span>
+                <span className="t-label c-text-2">{bnb(c.note)}</span>
               </MotionLink>
             ))}
           </div>

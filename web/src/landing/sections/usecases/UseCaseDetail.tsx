@@ -6,7 +6,9 @@ import { SourceLink } from "../../components/SourceLink";
 import { ArrowLeft, Quotes } from "./marks";
 import { RuleList } from "./RuleList";
 import { SheetCard } from "./SheetCard";
+import { Cover } from "./Cover";
 import s from "./UseCaseDetail.module.css";
+import { bnb } from "../../components/Bnb";
 
 /** Story Header (vqGTbvIk6): back link, mark + name, H1 title (max 960), Lead summary (max 640). */
 export function UseCaseHeader({ u }: { u: UseCase }) {
@@ -18,10 +20,10 @@ export function UseCaseHeader({ u }: { u: UseCase }) {
       </BackLink>
       <div className={s.company}>
         <span className={s.markWrap}>{u.mark}</span>
-        <h4 className="t-h4">{u.name}</h4>
+        <h4 className="t-h4">{bnb(u.name)}</h4>
       </div>
-      <h1 className={["t-h1", s.title].join(" ")}>{u.headline}</h1>
-      <p className={["t-lead", s.summary].join(" ")}>{u.summary}</p>
+      <h1 className={["t-h1", s.title].join(" ")}>{bnb(u.headline)}</h1>
+      <p className={["t-lead", s.summary].join(" ")}>{bnb(u.summary)}</p>
     </Section>
   );
 }
@@ -31,7 +33,9 @@ export function UseCaseCover({ u }: { u: UseCase }) {
   return (
     <Section name="Story Cover Section" noBorder contentClassName={s.coverContent}>
       <ScrollLift className={s.coverLift}>
-        <img className={s.cover} src={u.cover} alt="" width={1600} height={1067} />
+        <div className={s.cover}>
+          <Cover u={u} />
+        </div>
       </ScrollLift>
     </Section>
   );
@@ -46,27 +50,27 @@ export function UseCaseBody({ u }: { u: UseCase }) {
         <div className={s.facts}>
           <div className={s.fact}>
             <p className="t-small c-text-2">Category</p>
-            <p className="t-label">{u.category}</p>
+            <p className="t-label">{bnb(u.category)}</p>
           </div>
           <div className={s.fact}>
             <p className="t-small c-text-2">Who</p>
-            <p className="t-label">{u.who}</p>
+            <p className="t-label">{bnb(u.who)}</p>
           </div>
           <div className={s.fact}>
             <p className="t-small c-text-2">Key term</p>
-            <h4 className="t-h4 c-accent">{u.result}</h4>
+            <h4 className="t-h4 c-accent">{bnb(u.result)}</h4>
           </div>
-          <p className="t-small c-text-2">{u.resultLabel}</p>
+          <p className="t-small c-text-2">{bnb(u.resultLabel)}</p>
         </div>
         <div className={s.rich}>
           <h2 className="t-h3">The situation</h2>
-          <p className="t-lead">{u.situation}</p>
+          <p className="t-lead">{bnb(u.situation)}</p>
           <h2 className="t-h3">What goes wrong today</h2>
-          <p className="t-lead">{u.today}</p>
+          <p className="t-lead">{bnb(u.today)}</p>
           <div className={s.sources}>
             {u.todaySources.map((src) => (
               <SourceLink key={src.href} href={src.href}>
-                {src.label}
+                {bnb(src.label)}
               </SourceLink>
             ))}
           </div>
@@ -79,7 +83,7 @@ export function UseCaseBody({ u }: { u: UseCase }) {
             <SheetCard u={u} />
           </div>
           <h2 className="t-h3">What it does not do</h2>
-          <p className="t-lead">{u.limit}</p>
+          <p className="t-lead">{bnb(u.limit)}</p>
         </div>
       </div>
     </Section>
@@ -91,10 +95,10 @@ export function UseCaseQuote({ u }: { u: UseCase }) {
   return (
     <Section name="Story Quote" surface contentClassName={s.quoteContent}>
       <Quotes size={28} className={s.quoteMark} />
-      <h2 className={["t-h2", s.quoteText].join(" ")}>{u.quote}</h2>
+      <h2 className={["t-h2", s.quoteText].join(" ")}>{bnb(u.quote)}</h2>
       <div className={s.quoteAuthor}>
-        <p className="t-label">{u.quoteAuthor}</p>
-        <p className="t-label c-text-2">{u.quoteRole}</p>
+        <p className="t-label">{bnb(u.quoteAuthor)}</p>
+        <p className="t-label c-text-2">{bnb(u.quoteRole)}</p>
       </div>
     </Section>
   );

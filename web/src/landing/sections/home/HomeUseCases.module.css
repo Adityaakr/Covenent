@@ -15,7 +15,7 @@
   gap: 20px;
 }
 .fill { width: 100%; }
-.heading { width: 100%; max-width: 760px; }
+.heading { width: 100%; max-width: 900px; text-wrap: balance; }
 .link {
   flex: none;
   display: flex;
@@ -26,13 +26,17 @@
   color: var(--c-text);
   white-space: nowrap;
 }
+/* Two wide cards over three: a 6-column grid, cards 1-2 span 3, cards 3-5 span 2. */
 .list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 20px;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
 }
+.list > :nth-child(-n + 2) { grid-column: span 3; }
+.list > :nth-child(n + 3) { grid-column: span 2; }
+.list > :nth-child(-n + 2) .cover { height: 300px; }
 .card {
   position: relative;
   display: flex;
@@ -60,6 +64,7 @@
   object-fit: cover;
 }
 .meta {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -92,6 +97,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--c-border);
 }
@@ -99,11 +105,16 @@
 .resultLabel { flex: 1 0 0; min-width: 0; }
 
 @media (max-width: 1199.98px) {
-  .list { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+  .list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .list > :nth-child(n) { grid-column: span 1; }
+  .list > :first-child { grid-column: span 2; }
+  .list > :nth-child(-n + 2) .cover { height: 220px; }
+  .list > :first-child .cover { height: 320px; }
 }
 @media (max-width: 809.98px) {
   .header { flex-direction: column; align-items: flex-start; gap: 20px; }
   .headingGroup { flex: none; width: 100%; }
   .list { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
   .card { width: 100%; }
+  .list > :first-child .cover { height: 220px; }
 }

@@ -1,6 +1,6 @@
 "use client";
 import { ScrollLift } from "../../components/ScrollLift";
-import { SubmitButton, useFakeSubmit } from "../changelog/SubmitButton";
+import { SubmitButton, useFakeSubmit } from "./SubmitButton";
 import s from "./ContactMain.module.css";
 
 const roles = ["Team", "Buyer", "Launchpad", "Agent builder"];

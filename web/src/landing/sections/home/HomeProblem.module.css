@@ -1,52 +1,128 @@
-/* "The problem today", grown from the template's "Stats" (s8Ki2GStV). Content has no padding; the intro, the
-   group heads and the cells carry it. Cell padding and borders are the Stats values. */
-.content.content {
-  padding: 0;
-  gap: 0;
-}
+/* "The problem today": a stepped story grown from the template's "Stats" (s8Ki2GStV). Content has no padding; the
+   intro, story head, chart and step cells carry it. Step cells keep the Stats cell padding and hairlines. */
+.content.content { padding: 0; gap: 0; }
 .intro {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 20px;
-  padding: 120px 64px 72px;
+  padding: 120px 64px 64px;
 }
 .heading { width: 100%; max-width: 1040px; }
 
-/* Group head: Text/H4 title and Body note, the Compare group row with the section's top rule. */
-.group { box-shadow: inset 0 1px 0 var(--c-border); }
-.groupHead {
+.story { box-shadow: inset 0 1px 0 var(--c-border); }
+.storyHead {
   display: flex;
-  flex-direction: row;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 24px;
-  padding: 28px 40px 0;
+  padding: 28px 40px 8px;
 }
-.groupHead > h3 { flex: none; width: 260px; }
-.groupNote { flex: 1 1 0; min-width: 0; max-width: 560px; }
+/* Track switcher: the template's filter pills (Features "Requests" panel): 1px Border ring, active filled in Text. */
+.tracks { display: flex; flex-wrap: wrap; gap: 8px; }
+.trackBtn {
+  display: inline-flex;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: var(--c-text);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+  transition: background-color 0.2s var(--ease-framer), color 0.2s var(--ease-framer);
+}
+.trackBtn:hover { background: var(--c-surface); }
+.trackOn,
+.trackOn:hover { background: var(--c-text); color: var(--c-bg); box-shadow: none; }
+.trackBtn > span { color: inherit; }
+.note { max-width: 520px; text-align: right; }
 
-/* Desktop: horizontal row of four 1fr cells, left border on cells 2-4 (Stats). */
-.row {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  width: 100%;
+/* Chart: illustrative curve, markers over the four column centres. */
+.chart {
+  position: relative;
+  height: 168px;
+  margin: 24px 0 0;
 }
-.stat {
-  flex: 1 0 0;
-  min-width: 0;
+.svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.guide { stroke: var(--c-border); stroke-width: 1; stroke-dasharray: 3 4; }
+.curveBase { fill: none; stroke: var(--c-border); stroke-width: 2; }
+.curve { fill: none; stroke: var(--c-accent); stroke-width: 2.5; stroke-linecap: round; }
+.marker {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 50%;
+  background: var(--c-bg);
+  box-shadow: inset 0 0 0 2px var(--c-border);
+  transition: box-shadow 0.3s var(--ease-framer), transform 0.3s var(--ease-framer), background-color 0.3s var(--ease-framer);
+}
+.markerPast { box-shadow: inset 0 0 0 2px var(--c-accent); }
+.markerOn {
+  background: var(--c-accent);
+  box-shadow: 0 0 0 5px rgba(43, 89, 255, 0.16);
+  transform: scale(1.2);
+}
+.axis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 10px 0 0;
+}
+.axis > p { text-align: center; transition: color 0.2s var(--ease-framer); }
+
+/* Steps: the Stats row of four cells, each a button-backed story step. */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 20px;
+  box-shadow: inset 0 1px 0 var(--c-border);
+}
+.step {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
-  padding: 36px 40px 48px;
+  min-width: 0;
+  padding: 32px 40px 40px;
+  transition: background-color 0.25s var(--ease-framer);
 }
-.stat > * { width: 100%; }
-.stat + .stat { border-left: 1px solid var(--c-border); }
-.value { white-space: nowrap; }
-.source.source { width: auto; margin-top: auto; padding-top: 6px; }
+.step > * { width: 100%; }
+.step + .step { box-shadow: inset 1px 0 0 var(--c-border); }
+.step:hover { background: rgba(244, 245, 247, 0.6); }
+.stepOn,
+.stepOn:hover { background: var(--c-surface); }
+.stepHit { position: absolute; inset: 0; z-index: 0; cursor: pointer; }
+.stepHit:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -2px; }
+.stepBar { position: absolute; left: 0; right: 0; top: 0; height: 2px; overflow: hidden; pointer-events: none; }
+.stepFill {
+  display: block;
+  height: 100%;
+  background: var(--c-accent);
+  transform-origin: left center;
+  animation-name: fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.stepFillStatic { animation: none; }
+@keyframes fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.stage { color: var(--c-text-2); }
+.stepOn .stage { color: var(--c-accent); }
+.stepNo { font-variant-numeric: tabular-nums; }
+.value { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.step > :not(.stepHit):not(.stepBar) { position: relative; z-index: 1; pointer-events: none; }
+.step > .source { pointer-events: auto; width: auto; margin-top: auto; padding-top: 6px; }
+.caption { padding: 0 40px 28px; }
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 
-/* Demand row: one wide cell, accent value beside a Lead line (Background fill; the next section is on Surface). */
+/* Demand row: one wide cell, accent value beside a Lead line. */
 .demand {
   display: flex;
   flex-direction: row;
@@ -58,38 +134,31 @@
 .demandValue { flex: none; white-space: nowrap; }
 .demandText { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; max-width: 760px; }
 
-/* Tablet: 2 x 2 grid, padding 36 32. Cell 2 left, cell 3 top, cell 4 left + top (Stats). */
+/* Tablet: 2 x 2 steps; the chart keeps four columns. */
 @media (max-width: 1199.98px) {
-  .intro { padding: 96px 48px 56px; }
-  .groupHead { padding: 28px 32px 0; flex-direction: column; gap: 6px; }
-  .groupHead > h3 { width: 100%; }
-  .groupNote { flex: none; width: 100%; }
-  .row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(50px, 1fr));
-    grid-auto-rows: auto;
-    align-items: stretch;
-  }
-  .stat { padding: 28px 32px 36px; }
-  .stat + .stat { border-left: 0; }
-  .stat:nth-child(2) { border-left: 1px solid var(--c-border); }
-  .stat:nth-child(3) { border-top: 1px solid var(--c-border); }
-  .stat:nth-child(4) { border-left: 1px solid var(--c-border); border-top: 1px solid var(--c-border); }
+  .intro { padding: 96px 48px 48px; }
+  .storyHead { flex-direction: column; align-items: flex-start; padding: 28px 32px 4px; gap: 12px; }
+  .note { text-align: left; }
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .step { padding: 28px 32px 36px; }
+  .step + .step { box-shadow: none; }
+  .step:nth-child(2n) { box-shadow: inset 1px 0 0 var(--c-border); }
+  .step:nth-child(n + 3) { box-shadow: inset 0 1px 0 var(--c-border); }
+  .step:nth-child(4) { box-shadow: inset 1px 0 0 var(--c-border), inset 0 1px 0 var(--c-border); }
+  .caption { padding: 0 32px 24px; }
   .demand { padding: 36px 32px; gap: 32px; }
 }
 
-/* Phone: vertical stack, padding 28 20, top border on cells 2-4 (Stats). */
+/* Phone: steps stack; the chart and axis stay as the story's map. */
 @media (max-width: 809.98px) {
   .intro { padding: 64px 20px 36px; }
-  .groupHead { padding: 24px 20px 0; }
-  .row {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .stat { width: 100%; flex: none; padding: 24px 20px 28px; }
-  .stat:nth-child(2) { border-left: 0; }
-  .stat:nth-child(4) { border-left: 0; }
-  .stat + .stat { border-top: 1px solid var(--c-border); }
+  .storyHead { padding: 24px 20px 0; }
+  .chart { height: 120px; margin-top: 20px; }
+  .axis > p { font-size: 11px; }
+  .steps { display: flex; flex-direction: column; }
+  .step { padding: 24px 20px 28px; }
+  .step:nth-child(n) { box-shadow: inset 0 1px 0 var(--c-border); }
+  .step:first-child { box-shadow: none; }
+  .caption { padding: 0 20px 24px; }
   .demand { flex-direction: column; align-items: flex-start; gap: 12px; padding: 28px 20px; }
 }

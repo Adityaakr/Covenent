@@ -1,6 +1,7 @@
 import { Section } from "../../components/Section";
 import { useCases } from "../../content/useCases";
 import s from "./HomeQuote.module.css";
+import { bnb } from "../../components/Bnb";
 
 /* Phosphor regular "Quotes", width 1.5, accent. */
 function IconQuotes() {
@@ -24,12 +25,11 @@ export function HomeQuote() {
             <span className={s.mark}>
               <IconQuotes />
             </span>
-            <blockquote className={["t-h2", s.text].join(" ")}>{u.quote}</blockquote>
+            <blockquote className={["t-h2", s.text].join(" ")}>{bnb(u.quote)}</blockquote>
             <figcaption className={s.author}>
-              <p className="t-label">{u.quoteAuthor}</p>
+              <p className="t-label">{bnb(u.quoteAuthor)}</p>
               <p className="t-label c-text-2">·</p>
-              <p className="t-label c-text-2">{u.quoteRole}</p>
-              <p className="t-label c-text-2">{u.name}</p>
+              <p className="t-label c-text-2">{bnb(u.quoteRole)}</p>
             </figcaption>
           </figure>
         ))}
