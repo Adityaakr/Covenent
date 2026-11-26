@@ -380,7 +380,7 @@ function history(v: CovenantView): { month: number; treasury: number; at?: numbe
   return rows.map((r, i) => { bal += r.amount; return { month: i, treasury: Math.max(0, bal), at: r.at }; });
 }
 
-function StepChart({ steps, labels = "month" }: { steps: { month: number; treasury: number; at?: number }[]; labels?: "month" | "date" }) {
+export function StepChart({ steps, labels = "month" }: { steps: { month: number; treasury: number; at?: number }[]; labels?: "month" | "date" }) {
   const W = 560, H = 170, L = 44, B = 22, T = 10, R = 8;
   const max = Math.max(1e-18, ...steps.map((s) => s.treasury));
   const x = (m: number) => L + (m / Math.max(1, steps.length - 1)) * (W - L - R);

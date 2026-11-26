@@ -9,6 +9,7 @@ import { ContractFunctionRevertedError, decodeEventLog, encodeAbiParameters, for
 import type { Config } from "wagmi";
 import { simulateContract, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import type { Address, Terms } from "@/lib/covenant/types";
+import type { ProfileBounds } from "@/lib/covenant/create-check";
 import { abiFor, addressOf, fn, type DeploymentPayload } from "./deployment";
 
 export type FactoryKind = "demo" | "production";
@@ -94,7 +95,73 @@ export function factoryReason(e: unknown): string | null {
   if (name === "PoolSeedBelowFlapFloor") return `At this pool share Flap's ${args[3] ? "graduation" : "launch"} floor needs a pool seed of ${b(args[1])} BNB, so the minimum raise must be at least ${b(args[2])} BNB (it seeds ${b(args[0])} BNB now).`;
   if (name === "BadTaxDuration") return "The tax must run from 30 days to 100 years.";
   if (name === "QuoteNotEnabled") return "Flap has not enabled BNB launches on this Portal.";
+  if (name === "NameScreenUnavailable") return "Flap's name screen did not answer; the factory refuses creation until it does. Try again in a moment.";
+  if (name === "AgentNotFound") return `Agent #${String(args[0])} is not registered in the ERC-8004 identity registry on this chain.`;
+  if (name === "AgentNotOwnedByTeam") return `Agent #${String(args[0])} belongs to ${String(args[1])}, not the team wallet. Make that wallet the team wallet, or register an agent from yours.`;
+  if (name === "AgentRegistryMissing") return "This factory has no ERC-8004 identity registry; create with a human issuer.";
+  if (name) return `The factory refuses the terms (${name}).`;
   return null;
+}
+
+/** A placeholder salt for checkTerms before mining: the factory only asks that it is not zero (the Portal checks it). */
+export const CHECK_SALT: Hex = "0x0000000000000000000000000000000000000000000000000000000000000001";
+
+/** Which field the factory's refusal belongs to, so the page can show it there. */
+export function factoryReasonField(e: unknown): "name" | "symbol" | "agentId" | "minRaise" | null {
+  const err = e as { walk?: (f: (x: unknown) => boolean) => unknown };
+  const found = (typeof err.walk === "function" ? err.walk((x) => x instanceof ContractFunctionRevertedError) : null) as ContractFunctionRevertedError | null;
+  const name = found?.data?.errorName;
+  if (name === "NameOrSymbolBlocked") return "name";
+  if (name === "AgentNotFound" || name === "AgentNotOwnedByTeam") return "agentId";
+  if (name === "PoolSeedBelowFlapFloor") return "minRaise";
+  return null;
+}
+
+/** The factory's verdict on the terms as they stand: ok, or its reason and the field it points at. */
+export async function factoryVerdict(client: PublicClient, tg: CreateTargets, t: Terms): Promise<{ ok: true } | { ok: false; reason: string; field: ReturnType<typeof factoryReasonField> }> {
+  if (!tg.factory || !tg.termsParam || !tg.factoryAbi) return { ok: false, reason: "The deployment names no launcher factory with checkTerms", field: null };
+  try {
+    await client.readContract({ address: tg.factory, abi: tg.factoryAbi, functionName: "checkTerms", args: [termsTuple(tg.termsParam, t, CHECK_SALT)] });
+    return { ok: true };
+  } catch (e) {
+    const named = factoryReason(e);
+    const m = (e as { shortMessage?: string; message?: string }).shortMessage ?? (e as Error).message;
+    return { ok: false, reason: named ?? m.split("\n")[0]!, field: factoryReasonField(e) };
+  }
+}
+
+const SCREEN: Abi = [
+  { type: "function", name: "nameScreen", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "isScamWord", stateMutability: "view", inputs: [{ name: "name", type: "string" }, { name: "symbol", type: "string" }], outputs: [{ name: "nameBlocked", type: "bool" }, { name: "symbolBlocked", type: "bool" }] },
+];
+
+/** Flap's name screen, through the factory's own pointer to it. null when there is none (local chains) or it did not answer. */
+export async function screenName(client: PublicClient, tg: CreateTargets, name: string, symbol: string): Promise<{ name: boolean; symbol: boolean } | null> {
+  if (!tg.factory) return null;
+  try {
+    const screen = (await client.readContract({ address: tg.factory, abi: SCREEN, functionName: "nameScreen" })) as Address;
+    if (!screen || screen === zeroAddress) return null;
+    const [n, s] = (await client.readContract({ address: screen, abi: SCREEN, functionName: "isScamWord", args: [name, symbol] })) as readonly [boolean, boolean];
+    return { name: n, symbol: s };
+  } catch {
+    return null;
+  }
+}
+
+/** The factory's time bounds (CovenantProfiles), read from the chain. null when the factory has no profile view. */
+export async function readProfile(client: PublicClient, tg: CreateTargets): Promise<ProfileBounds | null> {
+  if (!tg.factory || !tg.factoryAbi || !fn(tg.factoryAbi, "profile")) return null;
+  try {
+    const p = (await client.readContract({ address: tg.factory, abi: tg.factoryAbi, functionName: "profile" })) as Record<string, number | boolean>;
+    const n = (k: string) => Number(p[k]);
+    return {
+      minSaleDuration: n("minSaleDuration"), maxSaleDuration: n("maxSaleDuration"), minExitStreak: n("minExitStreak"), maxExitStreak: n("maxExitStreak"),
+      minRoundLength: n("minRoundLength"), minCooldown: n("minCooldown"), minHeartbeat: n("minHeartbeat"), maxHeartbeat: n("maxHeartbeat"),
+      minUnlockWindow: n("minUnlockWindow"), maxCliff: n("maxCliff"), antiFarmerDuration: n("antiFarmerDuration"), requireGraduation: Boolean(p.requireGraduation),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export interface FlapFloor {
