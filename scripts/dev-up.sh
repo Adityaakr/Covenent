@@ -9,6 +9,8 @@
 # Environment (all optional; contracts/.env is loaded if present):
 #   BSC_RPC_URL     fork source; must serve older state (archive). Default: a keyless public archive endpoint
 #   DEV_PORT        anvil port, default 8545
+#   DEV_BLOCK_TIME  seconds between blocks, default 1. Interval mining keeps chain time moving like a real chain;
+#                   with mine-on-transaction only, a keeper that waits for "due" in chain time would wait forever.
 #   DEV_CHAIN_ID    chain id of the offline chain, default 31337. A fork always reports 56: Flap's Portal and
 #                   Token Dock resolve their per-chain addresses from block.chainid and refuse other ids.
 #
@@ -33,6 +35,7 @@ for arg in "$@"; do
 done
 
 PORT="${DEV_PORT:-8545}"
+BLOCK_TIME="${DEV_BLOCK_TIME:-1}"
 RPC="http://127.0.0.1:$PORT"
 FORK_URL="${BSC_RPC_URL:-https://bsc-mainnet.public.blastapi.io}"
 STATE="$C/.anvil"
@@ -90,10 +93,10 @@ fi
 if [ "$MODE" = "fork" ]; then CHAIN_ID=56; else CHAIN_ID="${DEV_CHAIN_ID:-31337}"; fi
 say "starting anvil in $MODE mode on $RPC (chain id $CHAIN_ID)"
 if [ "$MODE" = "fork" ]; then
-  nohup anvil --fork-url "$FORK_URL" --port "$PORT" --chain-id "$CHAIN_ID" --gas-limit 100000000 \
+  nohup anvil --fork-url "$FORK_URL" --port "$PORT" --chain-id "$CHAIN_ID" --gas-limit 100000000 --block-time "$BLOCK_TIME" \
     >"$STATE/anvil.log" 2>&1 &
 else
-  nohup anvil --port "$PORT" --chain-id "$CHAIN_ID" --gas-limit 100000000 --code-size-limit 65536 \
+  nohup anvil --port "$PORT" --chain-id "$CHAIN_ID" --gas-limit 100000000 --code-size-limit 65536 --block-time "$BLOCK_TIME" \
     >"$STATE/anvil.log" 2>&1 &
 fi
 echo $! >"$STATE/anvil.pid"
