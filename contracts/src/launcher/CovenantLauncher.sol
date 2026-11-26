@@ -22,9 +22,9 @@ interface ICovenantVaultFunding {
 string constant COVENANT_TITLE_ZH = unicode"契约发射";
 string constant COVENANT_TITLE_EN = "Covenant raise";
 string constant COVENANT_SUMMARY_ZH =
-    unicode"公开募资，设有最低额与上限，超额部分按比例退还。未达最低额时全额退款。募集资金的大部分存入金库：团队每月只能领取有上限的预算；团队代币只在价格达到倍数后解锁；价格连续三天低于每枚代币的金库价值时，任何持有人都可以按该价值赎回；团队失联后金库向持有人开放。";
+    unicode"公开募资，设有最低额与上限，超额部分按比例退还。未达最低额时全额退款。募集资金的大部分存入金库：团队每月只能领取有上限的预算；团队代币只在价格达到倍数后解锁；价格连续三天低于每枚代币的金库价值时，任何持有人都可以按该价值赎回；团队或代理停止运作后金库向持有人开放。";
 string constant COVENANT_SUMMARY_EN =
-    "A capped public raise with pro rata refunds above the cap and full refunds below the minimum. Most of the raise sits in a vault under fixed rules: the team draws a capped monthly budget, team tokens unlock only at price multiples, any holder can redeem at treasury value per token once the price has been below it for three days, and the treasury opens to holders if the team stops.";
+    "A capped public raise with pro rata refunds above the cap and full refunds below the minimum. Most of the raise sits in a vault under fixed rules: the team draws a capped monthly budget, team tokens unlock only at price multiples, any holder can redeem at treasury value per token once the price has been below it for three days, and the treasury opens to holders if the team or agent stops.";
 
 /// @title CovenantLauncher
 /// @notice The raise half of a covenant. Holds commitments, settles pro rata, launches once on Flap's Pool Launch

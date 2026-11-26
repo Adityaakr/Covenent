@@ -127,7 +127,7 @@ library CovenantVaultDisplay {
     function schema() public pure returns (VaultUISchema memory s) {
         s.vaultType = "CovenantVault";
         s.description =
-            "Treasury of a Covenant raise. Claim your sale tokens, redeem at book value during an exit round or after wind-down, release unlocked team tokens, or declare abandonment once the team has been silent past its heartbeat.";
+            "Treasury of a Covenant raise. Claim your sale tokens, redeem at book value during an exit round or after wind-down, release unlocked team tokens, or declare abandonment once the team or agent has been silent past its heartbeat.";
         s.methods = new VaultMethodSchema[](10);
         s.methods[0] = _view("bookValue", "Treasury BNB per redeemable token (after tap owed to the team)", "bookValue", 18);
         s.methods[1] = _view("state", "0 RAISING, 1 FAILED, 2 ACTIVE, 3 EXIT_ROUND, 4 COOLDOWN, 5 WIND_DOWN", "state", 0);
@@ -148,7 +148,7 @@ library CovenantVaultDisplay {
         s.methods[6] = r;
 
         s.methods[7] = _write("releaseTeam", "Send unlocked team tranches to the team wallet.");
-        s.methods[8] = _write("declareAbandoned", "Open the treasury to holders once the team's heartbeat has lapsed.");
+        s.methods[8] = _write("declareAbandoned", "Open the treasury to holders once the team or agent has stopped (heartbeat lapsed).");
         s.methods[9] = _write("sync", "Recognize revenue that arrived without a call.");
     }
 
