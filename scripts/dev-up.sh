@@ -147,9 +147,12 @@ if [ "$MODE" = "fork" ]; then
   cast rpc --rpc-url "$RPC" anvil_stopImpersonatingAccount "$ADMIN" >/dev/null
 fi
 
+say "local test funds: Demo USDC and its pool on the local PancakeSwap"
+"$ROOT/scripts/dev-funds.sh"
+
 if [ "$SEED_DEMO" = "1" ]; then
-  say "seeding the demo story"
-  "$ROOT/scripts/dev-demo.sh" story
+  say "seeding covenants at every stage by real transactions (story, wound down, active, exit round, raising)"
+  "$ROOT/scripts/dev-demo.sh" seed
 fi
 
 say "ready"

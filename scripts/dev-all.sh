@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # The whole Covenant stack on this machine, one command:
 #
-#   scripts/dev-all.sh            chain (BNB Chain fork if reachable, else offline mock) + deploy + the demo story +
-#                                 a second live covenant, then the server API (:8787), keeper, issuer agent and the
-#                                 web app on http://localhost:8080
+#   scripts/dev-all.sh            chain (BNB Chain fork if reachable, else offline mock) + deploy + local test funds
+#                                 + covenants at every stage (raising, active, exit round, abandoned, wound down) by
+#                                 real transactions, then the server API (:8787), keeper, issuer agents and the web
+#                                 app on http://localhost:8080
 #   scripts/dev-all.sh --mock     offline chain (chain id 31337), no network needed
 #   scripts/dev-all.sh --fork     require the BNB Chain fork (chain id 56)
 #   scripts/dev-all.sh --prod     serve a production build of the web app instead of the dev server
@@ -42,7 +43,7 @@ stop_one() {
 }
 
 stop_all() {
-  for p in web issuer keeper api; do stop_one "$p"; done
+  for p in web issuer issuer-2 keeper api; do stop_one "$p"; done
 }
 
 # start <name> <dir> <command...>: in its own session (process group), so stop_one takes pnpm's children too.
@@ -55,7 +56,7 @@ start() {
 }
 
 status() {
-  for p in api keeper issuer web; do
+  for p in api keeper issuer issuer-2 web; do
     if [ -f "$RUN/$p.pid" ] && kill -0 "$(cat "$RUN/$p.pid")" 2>/dev/null; then
       printf '  %-7s running  pid %-6s log %s\n' "$p" "$(cat "$RUN/$p.pid")" "$RUN/$p.log"
     else
@@ -116,10 +117,8 @@ done
 stop_all
 
 if [ "$CHAIN" = "1" ]; then
-  say "chain, deployment and the demo story"
+  say "chain, deployment, local test funds and covenants at every stage"
   "$ROOT/scripts/dev-up.sh" ${UP_ARGS[@]+"${UP_ARGS[@]}"}
-  say "a second covenant that stays live (the issuer agent runs it)"
-  "$ROOT/scripts/dev-demo.sh" live
 fi
 
 DEPLOY="$ROOT/contracts/deployments/local.json"
@@ -136,8 +135,8 @@ export COVENANT_DATA_DIR="$RUN/server-data"
 export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:$WEB_PORT,http://127.0.0.1:$WEB_PORT,http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000}"
 rm -rf "$COVENANT_DATA_DIR" && mkdir -p "$COVENANT_DATA_DIR"
 
-say "server API on :8787"
-start api "$ROOT/server" pnpm api
+say "server API on :8787 (with the local test-funds faucet: anvil #0)"
+FAUCET_PRIVATE_KEY="$(key 0)" start api "$ROOT/server" pnpm api
 wait_http http://127.0.0.1:8787/health api
 
 say "keeper (anvil #$(jq -r .accounts.keeper.anvilIndex "$DEPLOY")), pokes every 20 s with the local Atlas test signer"
@@ -145,11 +144,22 @@ KEEPER_PRIVATE_KEY="$(key "$(jq -r .accounts.keeper.anvilIndex "$DEPLOY")")" \
 KEEPER_TICK_SECONDS=10 KEEPER_POKE_INTERVAL_SECONDS=20 \
   start keeper "$ROOT/server" pnpm keeper
 
-say "issuer agent (the team wallet, anvil #$(jq -r .accounts.team.anvilIndex "$DEPLOY")) on $(jq -r .demo.vault "$DEPLOY")"
-ISSUER_PRIVATE_KEY="$(key "$(jq -r .accounts.team.anvilIndex "$DEPLOY")")" \
-ISSUER_VAULT="$(jq -r .demo.vault "$DEPLOY")" \
-ISSUER_TICK_SECONDS=15 ISSUER_HEARTBEAT_EVERY_SECONDS=120 ISSUER_PERIOD_SECONDS=300 ISSUER_MIN_CLAIM_BNB=0.0001 \
-  start issuer "$ROOT/server" pnpm issuer
+# One issuer agent per live covenant (the team wallet, anvil #1): "issuer" runs the ACTIVE one (Lumen), the one
+# `stop-issuer` kills on stage; "issuer-2" keeps the exit-round covenant's team present.
+LIVE_VAULT="$(jq -r '.seeded.active.vault // .demo.vault' "$DEPLOY")"
+ROUND_VAULT="$(jq -r '.seeded.exitRound.vault // empty' "$DEPLOY")"
+TEAM_KEY="$(key "$(jq -r .accounts.team.anvilIndex "$DEPLOY")")"
+issuer() {
+  ISSUER_PRIVATE_KEY="$TEAM_KEY" ISSUER_VAULT="$2" \
+  ISSUER_TICK_SECONDS=15 ISSUER_HEARTBEAT_EVERY_SECONDS=120 ISSUER_PERIOD_SECONDS=300 ISSUER_MIN_CLAIM_BNB=0.0001 \
+    start "$1" "$ROOT/server" pnpm issuer
+}
+say "issuer agent on $LIVE_VAULT (the team wallet, anvil #$(jq -r .accounts.team.anvilIndex "$DEPLOY"))"
+issuer issuer "$LIVE_VAULT"
+if [ -n "$ROUND_VAULT" ]; then
+  say "second issuer agent on the exit-round covenant $ROUND_VAULT"
+  issuer issuer-2 "$ROUND_VAULT"
+fi
 
 if [ "$PROD" = "1" ]; then
   say "building the web app"
@@ -167,9 +177,9 @@ status
 cat <<EOF
 
   Wallets: Privy on :$WEB_PORT, or "Browser wallet" -> "Local test account #n" (anvil's public accounts, unlocked).
-  Story covenant (ended):  $(jq -r '.addresses.demoLauncherFactory' "$DEPLOY") factory, see /app
-  Live covenant:           launcher $(jq -r .demo.launcher "$DEPLOY")  vault $(jq -r .demo.vault "$DEPLOY")
-  Scenes on it:            scripts/dev-demo.sh slide | poke | redeem | abandon | advance <s>
-  Point scenes elsewhere:  scripts/dev-demo.sh use <launcher>
+  Seeded covenants (real transactions; launcher / vault):
+$(jq -r '.seeded // {} | to_entries[] | "    \(.key | ascii_downcase): \(.value.name)  \(.value.launcher)  \(.value.vault)"' "$DEPLOY")
+  Test funds:              http://localhost:$WEB_PORT/app/faucet (test BNB + Demo USDC, local chain only)
+  Scenes:                  scripts/dev-demo.sh use <launcher>, then slide | poke | redeem | abandon | advance <s>
   Stop the agent:          scripts/dev-all.sh stop-issuer      Stop all: scripts/dev-all.sh stop
 EOF

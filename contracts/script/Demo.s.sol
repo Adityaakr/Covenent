@@ -51,6 +51,8 @@ contract Demo is Script, StackBuilder, LocalJson {
         bytes32 s = keccak256(bytes(scene));
         if (s == keccak256("create")) _create();
         else if (s == keccak256("raise")) _raise();
+        else if (s == keccak256("raise-light")) _raiseLight();
+        else if (s == keccak256("winddown")) _windDown();
         else if (s == keccak256("finalize")) _finalize();
         else if (s == keccak256("claim")) _claim();
         else if (s == keccak256("trade")) _trade();
@@ -82,11 +84,15 @@ contract Demo is Script, StackBuilder, LocalJson {
     // ── scenes ─────────────────────────────────────────────────────────────
 
     /// @dev The issuer agent registers its ERC-8004 identity and opens a covenant on the demo factory.
+    ///      DEMO_AGENT=false opens it for a human team (no ERC-8004 id); DEMO_SALE_SECONDS sets the sale window.
     function _create() internal {
         address team = _addr(IDX_TEAM);
-        vm.startBroadcast(_key(IDX_TEAM));
-        uint256 agentId = IERC8004Identity(L.a.identityRegistry).register("ipfs://covenant-demo/issuer-agent.json");
-        vm.stopBroadcast();
+        uint256 agentId;
+        if (vm.envOr("DEMO_AGENT", true)) {
+            vm.startBroadcast(_key(IDX_TEAM));
+            agentId = IERC8004Identity(L.a.identityRegistry).register("ipfs://covenant-demo/issuer-agent.json");
+            vm.stopBroadcast();
+        }
 
         bytes32 salt = _mineSalt(L.a.portal, L.a.tokenImpl, keccak256(abi.encode("covenant-demo", block.timestamp)));
         // DEMO_NAME / DEMO_SYMBOL let scripts/dev-all.sh seed a second, still-running covenant beside the story's
@@ -94,6 +100,7 @@ contract Demo is Script, StackBuilder, LocalJson {
             vm.envOr("DEMO_NAME", string("Covenant Agent")), vm.envOr("DEMO_SYMBOL", string("CVNA")), salt, team
         );
         t.meta = "ipfs://covenant-demo/token.json";
+        t.saleDuration = uint32(vm.envOr("DEMO_SALE_SECONDS", uint256(t.saleDuration)));
         t.agentId = agentId;
         t.reportRelayer = _addr(IDX_RELAYER);
 
@@ -114,6 +121,21 @@ contract Demo is Script, StackBuilder, LocalJson {
         _contribute(l, IDX_BUYER3, 400 ether);
         _contribute(l, IDX_WHALE, 600 ether);
         console2.log("committed (BNB)", l.committed() / 1e18);
+    }
+
+    /// @dev A raise still under way: two buyers, below the minimum so far.
+    function _raiseLight() internal {
+        CovenantLauncher l = CovenantLauncher(payable(L.demo.launcher));
+        _contribute(l, IDX_BUYER1, 14 ether);
+        _contribute(l, IDX_BUYER2, 60 ether);
+        console2.log("committed (BNB)", l.committed() / 1e18);
+    }
+
+    /// @dev The team closes honestly: the tap ends, locked team tokens burn, redemption opens with no fee.
+    function _windDown() internal {
+        vm.startBroadcast(_key(IDX_TEAM));
+        CovenantVault(payable(L.demo.vault)).windDown{gas: 3_000_000}();
+        vm.stopBroadcast();
     }
 
     function _contribute(CovenantLauncher l, uint32 who, uint256 amount) internal {

@@ -17,6 +17,7 @@ const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = 
   { href: "/app/create", label: "Create", icon: "plus" },
   { href: "/app/simulator", label: "Simulator", icon: "flask" },
   { href: "/app/demo", label: "Demo", icon: "play" },
+  { href: "/app/faucet", label: "Get test funds", icon: "coins" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -98,6 +99,7 @@ function Crumbs() {
   let sub: string | null = null;
   if (parts[0] === "create") title = "Create a covenant";
   else if (parts[0] === "simulator") title = "Launch simulator";
+  else if (parts[0] === "faucet") title = "Get test funds";
   else if (parts[0] === "demo") title = "Demo";
   else if (parts[0] === "c") {
     const v = list.find((x) => x.id.toLowerCase() === (parts[1] ?? "").toLowerCase());

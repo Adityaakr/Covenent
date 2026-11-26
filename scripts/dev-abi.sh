@@ -29,6 +29,7 @@ ARTIFACTS=(
   MockV2.sol:MockWBNB
   MockERC8004.sol:MockIdentityRegistry
   MockERC8004.sol:MockReputationRegistry
+  DemoUSDC.sol:DemoUSDC
 )
 for a in "${ARTIFACTS[@]}"; do
   file="${a%%:*}"

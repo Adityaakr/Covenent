@@ -9,6 +9,9 @@
 #                                      later scenes (trade, slide, poke, redeem, abandon...) act on it
 #   scripts/dev-demo.sh live           seed a second covenant and leave it ACTIVE with trading under way, for the
 #                                      issuer agent and a hand-driven walk (DEMO_NAME / DEMO_SYMBOL name it)
+#   scripts/dev-demo.sh seed           the story plus one covenant at every other stage, by real transactions:
+#                                      wound down by its team, ACTIVE with tax and tap, exit round open, raising.
+#                                      Each is recorded under .seeded.<stage> in deployments/local.json.
 #
 # The demo factory runs the same rules in minutes: sale 2 min, exit streak 3 min, round 5 min, cooldown 2 min,
 # heartbeat 10 min, at most 1 min per poke, pokes 20 s apart.
@@ -36,10 +39,71 @@ scene() {
   sed -n '/== Logs ==/,/^$/p' "$log" | sed '1d'
 }
 
+# Vaults whose team stays present while the clock jumps: the demo factory's heartbeat window is 10 minutes and a
+# seed step can jump further, so the team wallet (anvil #1) heartbeats each of them between chunks of at most 280 s.
+KEEPALIVE="$C/.anvil/keepalive"
+keepalive_add() { mkdir -p "$C/.anvil"; jq -r .demo.vault "$C/deployments/local.json" >>"$KEEPALIVE"; }
+heartbeat_all() {
+  [ -s "$KEEPALIVE" ] || return 0
+  local key v st
+  key="$(cast wallet private-key "test test test test test test test test test test test junk" 1)"
+  while read -r v; do
+    [ -n "$v" ] || continue
+    st="$(cast call --rpc-url "$RPC" "$v" 'state()(uint8)' 2>/dev/null || echo 9)"
+    case "$st" in 2|3|4) cast send --rpc-url "$RPC" --private-key "$key" "$v" 'heartbeat()' >/dev/null 2>&1 || true ;; esac
+  done <"$KEEPALIVE"
+}
+
 advance() {
-  cast rpc --rpc-url "$RPC" evm_increaseTime "$1" >/dev/null
-  cast rpc --rpc-url "$RPC" evm_mine >/dev/null
+  local left="$1" step
+  while [ "$left" -gt 0 ]; do
+    step=$(( left > 280 ? 280 : left ))
+    heartbeat_all
+    cast rpc --rpc-url "$RPC" evm_increaseTime "$step" >/dev/null
+    cast rpc --rpc-url "$RPC" evm_mine >/dev/null
+    left=$(( left - step ))
+  done
+  heartbeat_all
   say "clock +$1 s"
+}
+
+# Record the covenant the scenes act on under .seeded.<stage> in deployments/local.json.
+record() {
+  local tmp; tmp="$(mktemp)"
+  jq --arg s "$1" --arg n "${DEMO_NAME:-Covenant Agent}" '.seeded[$s] = (.demo + {name: $n})' \
+    "$C/deployments/local.json" >"$tmp" && mv "$tmp" "$C/deployments/local.json"
+}
+
+# Flap's anti-sniper window on the fork: trading opens about 10 minutes after launch.
+trading_window() { if [ "$MODE" = "fork" ]; then advance 601; else advance 30; fi; }
+
+# The story plus one covenant at every other stage, all by real transactions on the dev chain.
+seed() {
+  rm -f "$KEEPALIVE"
+  story
+  record abandoned
+  # wound down by its own human team (no ERC-8004 id)
+  export DEMO_NAME="Harbor Labs" DEMO_SYMBOL="HRBR" DEMO_AGENT=false
+  scene create; scene raise; advance 121; scene finalize; scene claim; keepalive_add; trading_window
+  scene trade; scene tap; scene winddown
+  record woundDown
+  unset DEMO_AGENT
+  # ACTIVE with tax, tap, revenue and a report: the issuer agent runs it from here
+  export DEMO_NAME="Lumen Agent" DEMO_SYMBOL="LUMEN"
+  scene create; scene raise; advance 121; scene finalize; scene claim; keepalive_add; trading_window
+  scene trade; scene tap; scene revenue; scene report
+  record active
+  # an exit round open: a whale sells under book and three pokes count the streak
+  export DEMO_NAME="Scout Agent" DEMO_SYMBOL="SCOUT"
+  scene create; scene raise; advance 121; scene finalize; scene claim; keepalive_add; trading_window
+  scene trade; scene tap; scene slide
+  for _ in 1 2 3; do advance 61; scene poke; done
+  record exitRound
+  # a raise still under way: two days left, under the minimum so far
+  export DEMO_NAME="Fern Agent" DEMO_SYMBOL="FERN" DEMO_SALE_SECONDS=172800
+  scene create; scene raise-light
+  record raising
+  unset DEMO_SALE_SECONDS
 }
 
 story() {
@@ -106,6 +170,7 @@ live() {
 
 case "${1:-story}" in
   story) story ;;
+  seed) seed ;;
   live) live ;;
   use) use "${2:?launcher address}" ;;
   advance) advance "${2:?seconds}" ;;

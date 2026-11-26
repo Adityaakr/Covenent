@@ -11,6 +11,7 @@ import { TxBuilder } from '../covenant/tx.js';
 import { readAlerts } from '../keeper/alerts.js';
 import type { CovenantSheet, Health, PokeReport, SimulatorResult } from '../schema.js';
 import { CMC_ROUTES, CmcClient } from './cmc.js';
+import { Faucet, FaucetError } from './faucet.js';
 
 export interface AppDeps {
   cfg: ServerConfig;
@@ -58,10 +59,12 @@ export function createApp(deps: AppDeps) {
     return value;
   };
 
+  const faucet = new Faucet(cfg, svc.client);
   const app = new Hono();
   app.use('*', cors({ origin: (o) => (cfg.corsOrigins.includes('*') || cfg.corsOrigins.includes(o) ? o : null) }));
   app.onError((err, c) => {
     if (err instanceof HttpError) return c.json({ error: err.message }, err.status as 400);
+    if (err instanceof FaucetError) return c.json({ error: err.message }, err.status as 400);
     return c.json({ error: 'internal error', detail: err.message }, 500);
   });
 
@@ -171,6 +174,13 @@ export function createApp(deps: AppDeps) {
     if (!existsSync(cfg.simulatorFile)) return c.json({ error: 'simulator has not run yet: pnpm sim' }, 404);
     const body = JSON.parse(readFileSync(cfg.simulatorFile, 'utf8')) as SimulatorResult;
     return c.json(body);
+  });
+
+  // Local test funds (dev chain only): GET says whether it is on and what it pays, POST {address} pays out.
+  app.get('/api/faucet', (c) => c.json(faucet.status()));
+  app.post('/api/faucet', async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { address?: string };
+    return c.json(await faucet.send(body.address ?? c.req.query('address') ?? ''));
   });
 
   // The simulator's real launches with their daily candles, for the web app's "try other terms" replay.
