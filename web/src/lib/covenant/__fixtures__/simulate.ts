@@ -319,7 +319,7 @@ export function simulate(cfg: SimConfig, until: number): SimResult {
     exit: { streak, roundEndsAt: state === "EXIT_ROUND" ? roundEnd : null, cooldownEndsAt: state === "COOLDOWN" ? cooldownEnd : null },
     lastHeartbeat,
     disclosure: { passed: reports, due: reportsDue, nextDueAt: cfg.launch + (reportsDue + 1) * 30 * DAY + REPORT_GRACE, lastUri: lastReportUri },
-    trust: { lastPoke: now, atlasReportAge: lastStrict ? 74 : now - lastAtlas, bnbUsd: lastBnbUsd, exitGate, strictGate, poolOnlyMode: now - lastAtlas > 14 * DAY },
+    trust: { lastPoke: now, bnbUsd: lastBnbUsd, bnbUsdAt: lastAtlas, exitGate, strictGate, poolOnlyMode: now - lastAtlas > 14 * DAY },
     ledger,
     history,
     bands: bands.map((b) => ({ ...b, to: Math.min(b.to, now) })),

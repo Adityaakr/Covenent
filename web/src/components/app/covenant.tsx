@@ -8,7 +8,7 @@ import { derive, expiredUnfunded, raiseClosed, type Derived } from "@/lib/covena
 import { settleRaise } from "@/lib/covenant/math";
 import { DAY, date, duration, longSpan, relative, span } from "@/lib/covenant/time";
 import { FLAP_TAX } from "@/lib/covenant/defaults";
-import type { CovenantView, LedgerKind } from "@/lib/covenant/types";
+import type { Address, CovenantView, LedgerKind } from "@/lib/covenant/types";
 import { useActions } from "@/lib/data/actions";
 import { bnb, bps, multiple, pct, price, short, signedPct, tokens, usd } from "@/lib/format";
 import { amt } from "@/lib/covenant/story";
@@ -16,7 +16,9 @@ import { BookTrend, PriceBookChart, Sparkline } from "./chart";
 import { ConfirmAction } from "./confirm";
 import { Icon, type IconName } from "./icons";
 import { Timeline, type TimelineItem } from "./timeline";
-import { Addr, BnbUnit, CoverCut, Fig, Meter, Segmented, StateBadge, Ticker, TokenAvatar, coverVars, cx, seedOf, useCountdown } from "./ui";
+import { Addr, BnbUnit, CoverCut, Fig, Meter, Segmented, StateBadge, Ticker, TokenAvatar, coverVars, cx, seedOf, useCountdown, useNow } from "./ui";
+import { useAtlasFeed, usePokeInfo, type AtlasRound } from "@/lib/data/atlas-feed";
+import { useWallet } from "@/components/providers";
 import { BnbChain } from "@/components/app/bnb";
 
 export { derive };
@@ -692,10 +694,7 @@ export function TrustPanel({ v }: { v: CovenantView }) {
         <div className="trust-cards">
           <div className="trust-card">
             <div className="trust-card-h"><span className="icon-tile sm accent"><Icon name="globe" size={15} /></span><b>Oracle (Atlas)</b></div>
-            <div className="trust-figs">
-              <div><span>BNB/USD</span><b className="num">{g.bnbUsd ? usd(g.bnbUsd, 2) : "–"}</b></div>
-              <div><span>Report age at last poke</span><b className="num">{g.atlasReportAge === null ? "–" : g.atlasReportAge <= 180 ? `${g.atlasReportAge} s` : duration(g.atlasReportAge)}</b></div>
-            </div>
+            <AtlasLive v={v} />
             <ul className="facts">
               <li><Icon name="coins" size={14} /><span>One signer sets BNB/USD. A wrong rate can misprice the tap, <b>never past {bps(v.terms.tapCapBps)} of the treasury per 30 days</b>.</span></li>
               <li><Icon name="unlock" size={14} /><span><b>It cannot unlock team tokens on its own</b>: a tranche also needs the pool&apos;s own price (TWAP) at the multiple in BNB, with no oracle.</span></li>
@@ -732,6 +731,82 @@ export function TrustPanel({ v }: { v: CovenantView }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Atlas, live: the push feed's current BNB/USD, the rate this vault last used, and a poke anyone can send. */
+function AtlasLive({ v }: { v: CovenantView }) {
+  const g = v.trust;
+  const wallet = useWallet();
+  const { run } = useActions(v);
+  const feed = useAtlasFeed();
+  const poke = usePokeInfo(v.oracle, v.vault, wallet.address as Address | undefined);
+  const tick = useNow();
+  const now = tick || v.now;
+  const [busy, setBusy] = useState(false);
+  const chainId = liveChain(v);
+  const f = feed.data;
+  const age = f ? Math.max(0, now - f.updatedAt) : 0;
+  const stale = f ? f.maxAge > 0 && age > f.maxAge : false;
+  const ago = (t: number) => (now - t < 60 ? `${Math.max(0, now - t)} s ago` : relative(t, now));
+
+  let live: ReactNode;
+  if (v.source !== "live") live = <><b className="num">Not read</b><small>This view is not reading a chain.</small></>;
+  else if (feed.isLoading) live = <><b className="num muted">Reading…</b><small>Asking the feed for its latest round.</small></>;
+  else if (feed.isError) live = <><b className="num muted">Unavailable</b><small>The node did not answer the feed read. It retries every 30 s.</small></>;
+  else if (!f) live = <><b className="num muted">No push feed</b><small>This oracle takes Atlas rates only as signed reports attached to a poke.</small></>;
+  else live = <><b className="num">{usd(f.price, 2)}</b><small className={stale ? "bad-t" : undefined}>{stale ? `Stale: updated ${ago(f.updatedAt)}, older than the ${duration(f.maxAge)} limit` : `Updated ${ago(f.updatedAt)}`}</small></>;
+
+  const used = g.bnbUsd > 0
+    ? <><b className="num">{usd(g.bnbUsd, 2)}</b><small>{g.bnbUsdAt ? `Recorded ${ago(g.bnbUsdAt)}` : "Recorded at a past poke"}</small></>
+    : <><b className="num muted">Not yet</b><small>The next poke with a fresh Atlas rate records it.</small></>;
+
+  const p = poke.data;
+  const wait = p ? Math.max(0, (f && !stale ? p.nextRateAt : p.nextAt) - now) : 0;
+  const canPoke = v.source === "live" && Boolean(v.vault && v.oracle);
+  const onPoke = async () => {
+    setBusy(true);
+    try { if (await run("poke")) await Promise.all([feed.refetch(), poke.refetch()]); } finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <div className="trust-figs">
+        <div className="atlas-fig">
+          <span>Atlas BNB/USD (live)</span>
+          {live}
+          {f && f.rounds.length > 1 ? <AtlasSpark rounds={f.rounds} /> : null}
+        </div>
+        <div className="atlas-fig"><span>Last rate the vault used</span>{used}</div>
+      </div>
+      {f || canPoke ? (
+        <div className="atlas-foot">
+          {f ? <span className="t-xs muted w5 atlas-src">Feed <Addr a={f.feed} chainId={chainId} copy={false} />{f.description ? ` · ${f.description}` : ""}{f.rounds.length > 1 ? ` · ${f.rounds.length} rounds in the last ${duration(f.rounds.at(-1)!.t - f.rounds[0]!.t, 1)}` : ""}</span> : <span />}
+          {canPoke ? (
+            <span className="atlas-poke">
+              <span className="t-xs muted w5">{wait > 0 ? `Next poke ${relative(now + wait, now)}` : p?.feeBnb != null ? `Gas ≈ ${bnb(p.feeBnb, 6)} BNB` : "Anyone can poke"}</span>
+              <button className="btn btn-secondary btn-sm" disabled={busy || wait > 0} onClick={() => void onPoke()} title="Record the pool's price and the current Atlas rate on this vault. Uses your connected wallet.">
+                <Icon name="pulse" size={14} />{busy ? "Poking…" : wallet.address ? "Poke now" : "Connect to poke"}
+              </button>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/** Recent Atlas rounds as a small line, scaled to its own range. */
+function AtlasSpark({ rounds }: { rounds: AtlasRound[] }) {
+  const W = 120, H = 26;
+  const ys = rounds.map((r) => r.price);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const x0 = rounds[0]!.t, x1 = rounds.at(-1)!.t;
+  const d = rounds.map((r, i) => `${i ? "L" : "M"}${(((r.t - x0) / Math.max(1, x1 - x0)) * (W - 2) + 1).toFixed(1)} ${(H - 2 - ((r.price - y0) / Math.max(1e-9, y1 - y0)) * (H - 4)).toFixed(1)}`).join(" ");
+  return (
+    <svg className="atlas-spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`Atlas BNB/USD over the last ${rounds.length} rounds, ${usd(y0, 2)} to ${usd(y1, 2)}`}>
+      <path d={d} fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }
 

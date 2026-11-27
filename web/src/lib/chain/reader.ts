@@ -250,6 +250,10 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
   events.sort((a, b) => b.at - a.at);
   const lastHeartbeat = hbRaw !== undefined ? num(hbRaw) : events.find((e) => ["Heartbeat", "TapClaimed", "TapLowered", "ReportPosted"].includes(e.name))?.at ?? now;
   const lastObs = history.at(-1);
+  // the last verified BNB/USD the vault stored, and when (a lite vault has neither); and the oracle the vault accepts
+  // observations from, which for a vault from an earlier deployment is not the deployment's current oracle
+  const [bnbUsdRaw, strictAtRaw, envRaw] = await Promise.all([call(ctx, vault, V, "lastBnbUsd"), call(ctx, vault, V, "lastStrictAt"), call<{ oracle?: Address }>(ctx, vault, V, "env")]);
+  const vaultOracle = envRaw?.oracle && !/^0x0{40}$/i.test(envRaw.oracle) ? envRaw.oracle : undefined;
 
   const view: CovenantView = {
     id: launcher,
@@ -259,7 +263,7 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     vault,
     token,
     pair,
-    oracle: addressOf(d, "oracle", "covenantOracle"),
+    oracle: vaultOracle ?? addressOf(d, "oracle", "covenantOracle"),
     launchBlock: d.startBlock,
     state,
     terms,
@@ -279,8 +283,8 @@ export async function readCovenant(ctx: ReadContext, launcher: Address): Promise
     disclosure: { passed: events.filter((e) => e.name === "ReportPosted").length, due: 0, nextDueAt: null },
     trust: {
       lastPoke: lastObs?.t ?? null,
-      atlasReportAge: null,
-      bnbUsd: 0,
+      bnbUsd: eth(bnbUsdRaw),
+      bnbUsdAt: num(strictAtRaw) || null,
       exitGate: [
         { label: "Pool TWAP read from the pair's cumulative price", pass: true, detail: "On-chain" },
         { label: "Book value read from the vault's balance and supply", pass: bookRaw !== undefined, detail: bookRaw !== undefined ? "vault.bookValue()" : "Computed from balance and supply" },

@@ -22,7 +22,7 @@ export function view(over: Partial<CovenantView> = {}): CovenantView {
     treasury: 0, owedTeam: 0, deadTokens: 0, lockedTeam: 50_000_000, poolPrice: 0, poolBnb: 0, poolSeedBnb: 0,
     tap: { accrued: 0, claimedThisPeriod: 0, lastClaim: null }, tranches: [], exit: { streak: 0, roundEndsAt: null, cooldownEndsAt: null },
     lastHeartbeat: NOW, disclosure: { passed: 0, due: 0, nextDueAt: null },
-    trust: { lastPoke: null, atlasReportAge: null, bnbUsd: 600, exitGate: [], strictGate: [], poolOnlyMode: false },
+    trust: { lastPoke: null, bnbUsd: 600, bnbUsdAt: null, exitGate: [], strictGate: [], poolOnlyMode: false },
     ledger: [], history: [], bands: [], events: [], now: NOW,
     position: { committed: 0, accepted: 0, refund: 0, allocation: 0, tokensClaimed: false, refundClaimed: false, balance: 0 },
     ...over,

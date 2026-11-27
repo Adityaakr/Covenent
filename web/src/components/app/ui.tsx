@@ -185,6 +185,11 @@ export function Ticker({ value, format, duration = 650, className }: { value: nu
 const subscribeClock = (cb: () => void) => { const id = setInterval(cb, 1000); return () => clearInterval(id); };
 const clockNow = () => Math.floor(Date.now() / 1000);
 
+/** Unix seconds, ticking once a second on the client (0 while rendering on the server). */
+export function useNow(): number {
+  return useSyncExternalStore(subscribeClock, clockNow, () => 0);
+}
+
 /** Seconds left, ticking down once a second from the value the view computed (chain time for live, scene time for demo). */
 export function useCountdown(seconds: number): number {
   const now = useSyncExternalStore(subscribeClock, clockNow, () => 0);

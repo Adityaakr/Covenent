@@ -78,8 +78,9 @@ export interface GateCheck {
 
 export interface TrustView {
   lastPoke: number | null;
-  atlasReportAge: number | null; // seconds, at the last poke
+  /** the last verified BNB/USD the vault stored (USD per BNB, 0 = none yet) and when (vault.lastStrictAt) */
   bnbUsd: number;
+  bnbUsdAt: number | null;
   /** Holder-side gate for the exit streak: on-chain numbers only (fixes 2 and 3). */
   exitGate: GateCheck[];
   /** Team-side gate for unlock counters and the dollar tap. Depth and Atlas checks live here only. */

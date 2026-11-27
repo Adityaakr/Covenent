@@ -217,6 +217,15 @@
 .trust-figs > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
 .trust-figs span { font-size: 11.5px; color: var(--muted); font-weight: 500; }
 .trust-figs b { font-size: 15px; color: var(--ink); font-weight: 600; }
+.trust-figs b.muted { color: var(--muted); }
+.trust-figs small { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.trust-figs small.bad-t { color: var(--bad); }
+.atlas-fig { min-width: 0; align-content: start; }
+.atlas-spark { display: block; width: 100%; height: 26px; margin-top: 4px; }
+.atlas-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-width: 0; }
+.atlas-src { min-width: 0; overflow-wrap: anywhere; }
+.atlas-poke { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; }
+@media (max-width: 520px) { .trust-figs { grid-template-columns: minmax(0, 1fr); } }
 .facts, .not-covered ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .facts li, .not-covered li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; font-size: 13px; line-height: 1.5; color: var(--ink-2); font-weight: 500; }
 .facts li svg, .not-covered li svg { margin-top: 2px; color: var(--muted); }
