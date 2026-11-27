@@ -1,63 +1,102 @@
-/* "How it's built" on the Surface band: heading group, then the diagram (a white plate, radius 20, like the Features
-   panels) beside a detail card. Nodes are the template's pill chips; the vault is a Text-filled card. */
+/* "How it's built" on the Surface band: heading group, then one white panel holding the flow canvas, its step rail
+   and the picked integration's card. Phones swap the panel for stacked steps that open the same card. Integration nodes
+   are the template's pill chips; structural nodes (backers, oracle, agent...) are quieter surface chips; the vault
+   is a Text-filled card. Motion: SVG dots along each wire (only without prefers-reduced-motion). */
 .headingGroup { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; width: 100%; }
 .heading { width: 100%; max-width: 860px; }
 
-.body {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-  gap: 24px;
-  align-items: stretch;
-  width: 100%;
-}
+.body { width: 100%; min-width: 0; }
 
-.diagram {
-  position: relative;
-  min-height: 460px;
+/* ---------- plate: canvas + rail ---------- */
+.plate {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   border-radius: 20px;
   background: var(--c-bg);
   box-shadow: inset 0 0 0 1px var(--c-border);
   overflow: clip;
 }
-/* The chain is the frame everything sits in. */
+/* Sizes inside the canvas follow its width (container units), so the flow scales like one drawing. */
+.canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1000 / 520;
+  margin: 12px 0 4px;
+  container-type: inline-size;
+}
+/* The chain is the frame every on-chain piece sits in; below it, the off-chain strip. */
 .frame {
   position: absolute;
-  inset: 11% 5% 5%;
+  left: 2%;
+  right: 2%;
+  top: 3%;
+  bottom: 23.1%;
   border-radius: 16px;
-  border: 1px dashed var(--c-border);
+  border: 1px dashed rgb(214, 218, 225);
   transition: border-color 0.3s var(--ease-framer), background-color 0.3s var(--ease-framer);
 }
-.frameOn { border-color: #f0b90b; background: rgba(240, 185, 11, 0.05); }
+.frameOn { border-color: #f0b90b; border-style: solid; background: rgba(240, 185, 11, 0.06); }
+.zone {
+  position: absolute;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-2);
+  opacity: 0.8;
+  white-space: nowrap;
+}
 
-.wires { position: absolute; inset: 0; width: 100%; height: 100%; }
-.wire { stroke: var(--c-border); stroke-width: 1.5; transition: stroke 0.3s var(--ease-framer); }
-.wirePlanned { stroke-dasharray: 4 5; }
+.wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wire { fill: none; stroke: rgb(214, 218, 225); stroke-width: 1.5; transition: stroke 0.3s var(--ease-framer), stroke-width 0.3s var(--ease-framer); }
+.wireDashed { stroke-dasharray: 5 6; }
 .wireOn { stroke: var(--c-accent); stroke-width: 2; }
-.pulse {
-  stroke: var(--c-accent);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-dasharray: 2 14;
-  animation: flow 1s linear infinite;
-  opacity: 0.85;
-}
-@keyframes flow {
-  to { stroke-dashoffset: -16; }
-}
+.dotIdle { fill: rgb(176, 183, 195); }
+.dotOn { fill: var(--c-accent); filter: drop-shadow(0 0 3px rgba(43, 89, 255, 0.55)); }
+
+/* Off the lit path: quieter, but opaque, so no wire shows through a chip. */
+.dim,
+.node.dim { color: rgb(160, 167, 180); }
+.dim .logo { opacity: 0.4; filter: grayscale(1); }
+.dim .coreLabel,
+.dim .coreSub { color: rgb(170, 176, 188); }
 
 .vault {
   position: absolute;
+  color: var(--c-bg);
   transform: translate(-50%, -50%);
-  padding: 14px 18px;
+  padding: 12px 18px;
   border-radius: 14px;
   background: var(--c-text);
   color: var(--c-bg);
   text-align: center;
   box-shadow: var(--shadow-card-photo);
   z-index: 2;
+  transition: opacity 0.3s var(--ease-framer);
 }
-.vaultName { font-family: var(--font-display); font-weight: 500; font-size: 17px; letter-spacing: -0.01em; line-height: 1.2; white-space: nowrap; }
-.vaultSub { font-size: 12px; font-weight: 500; opacity: 0.7; white-space: nowrap; }
+.vaultName { font-family: var(--font-display); font-weight: 500; font-size: clamp(13px, 1.6cqw, 18px); letter-spacing: -0.01em; line-height: 1.2; white-space: nowrap; }
+.vaultSub { font-size: clamp(10px, 1.15cqw, 12.5px); font-weight: 500; opacity: 0.7; white-space: nowrap; }
+
+.core {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 11px;
+  border-radius: 10px;
+  background: var(--c-surface);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+  text-align: center;
+  transition: opacity 0.3s var(--ease-framer), box-shadow 0.3s var(--ease-framer);
+}
+.coreOn { box-shadow: inset 0 0 0 1px rgba(43, 89, 255, 0.35); }
+.coreLabel { font-size: clamp(10.5px, 1.2cqw, 13px); font-weight: 500; line-height: 1.2; color: var(--c-text); white-space: nowrap; }
+.coreSub { font-size: clamp(9.5px, 1.02cqw, 11.5px); line-height: 1.2; color: var(--c-text-2); white-space: nowrap; }
 
 .node {
   position: absolute;
@@ -66,91 +105,305 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px 8px 10px;
+  padding: 7px 12px 7px 10px;
   border-radius: 999px;
   background: var(--c-bg);
   box-shadow: inset 0 0 0 1px var(--c-border), 0 8px 16px -10px rgba(21, 23, 28, 0.2);
   color: var(--c-text-2);
-  transition: box-shadow 0.25s var(--ease-framer), color 0.25s var(--ease-framer), transform 0.25s var(--ease-framer);
+  transition: box-shadow 0.25s var(--ease-framer), color 0.25s var(--ease-framer), transform 0.25s var(--ease-framer),
+    opacity 0.3s var(--ease-framer);
 }
-.node:hover { color: var(--c-text); }
+.node:hover { color: var(--c-text); opacity: 1; }
 .node:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
 .nodeOn {
   color: var(--c-text);
   box-shadow: inset 0 0 0 1.5px var(--c-accent), 0 12px 24px -12px rgba(43, 89, 255, 0.45);
   transform: translate(-50%, -50%) scale(1.06);
 }
-.nodePlanned { background: var(--c-surface); }
-.nodeChain { padding-right: 14px; }
-.logo { height: 16px; width: auto; max-width: none; opacity: 0.85; }
+.nodeChain.nodeOn { box-shadow: inset 0 0 0 1.5px #f0b90b, 0 12px 24px -12px rgba(240, 185, 11, 0.5); }
+.logo { height: clamp(13px, 1.5cqw, 17px); width: auto; max-width: none; opacity: 0.85; }
 .nodeOn .logo { opacity: 1; }
-.nodeName { font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; }
-.flow {
+.nodeName { font-size: clamp(11px, 1.3cqw, 14px); font-weight: 500; line-height: 1; white-space: nowrap; }
+
+.flowLabel {
   position: absolute;
-  transform: translate(-50%, -50%);
-  z-index: 2;
+  translate: -50% -50%;
+  z-index: 4;
   padding: 3px 8px;
   border-radius: 6px;
   background: var(--c-accent);
   color: var(--c-bg);
-  font-size: 11px;
+  font-size: clamp(10px, 1.1cqw, 12px);
   font-weight: 500;
+  line-height: 1.3;
   white-space: nowrap;
   pointer-events: none;
+  box-shadow: 0 6px 14px -8px rgba(43, 89, 255, 0.7);
 }
 
-.detail {
+/* The rail: the same integrations as numbered steps, in flow order. The active one fills while autoplay runs. */
+.rail {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-top: 1px solid var(--c-border);
+}
+.railStep {
+  position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 32px;
-  border-radius: 20px;
-  background: var(--c-bg);
-  box-shadow: inset 0 0 0 1px var(--c-border);
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px 12px 14px;
+  text-align: left;
+  color: var(--c-text-2);
+  transition: background-color 0.2s var(--ease-framer), color 0.2s var(--ease-framer);
 }
-.detailInner { display: flex; flex-direction: column; gap: 18px; }
-.detailHead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--c-border); }
-.detailLogo { height: 22px; width: auto; max-width: none; }
+.railStep + .railStep { box-shadow: inset 1px 0 0 var(--c-border); }
+.railStep:hover { background: var(--c-surface); color: var(--c-text); }
+.railStep:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -2px; }
+.railOn { color: var(--c-text); background: rgba(43, 89, 255, 0.05); }
+.railNum { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--c-text-2); }
+.railOn .railNum { color: var(--c-accent); }
+.railText { font-size: 12.5px; font-weight: 500; line-height: 1.25; }
+.railOn::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--c-accent); opacity: 0.25; }
+.railBar {
+  position: absolute;
+  left: 0;
+  top: -1px;
+  height: 2px;
+  width: 100%;
+  background: var(--c-accent);
+  transform-origin: left center;
+  animation: fill linear forwards;
+}
+@keyframes fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* ---------- the card: under the rail, three columns (what / how / proof) ---------- */
+.detail {
+  min-width: 0;
+  padding: 28px 32px 32px;
+  border-top: 1px solid var(--c-border);
+}
+.card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr);
+  column-gap: 40px;
+  row-gap: 20px;
+  align-items: start;
+}
+.cardHead { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.cardLogo { height: 24px; width: auto; max-width: none; }
+.cardName { font-family: var(--font-display); font-size: 22px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.2; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
   padding: 4px 9px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1.2;
   white-space: nowrap;
 }
 .statusDot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
-.chip_live { background: rgba(31, 157, 85, 0.1); color: rgb(24, 128, 69); }
-.chip_testnet { background: rgba(31, 157, 85, 0.1); color: rgb(24, 128, 69); }
+.chip_live, .chip_testnet { background: rgba(31, 157, 85, 0.1); color: rgb(24, 128, 69); }
 .chip_fork { background: rgba(43, 89, 255, 0.1); color: var(--c-accent); }
-.chip_planned { background: var(--c-surface); color: var(--c-text-2); }
-.statusText { flex-basis: 100%; }
-.how { display: flex; flex-direction: column; gap: 6px; }
-.how > li { position: relative; padding-left: 14px; color: var(--c-text); }
-.how > li::before { content: ""; position: absolute; left: 2px; top: 0.6em; width: 5px; height: 5px; border-radius: 50%; background: var(--c-border); }
-.block { display: flex; flex-direction: column; gap: 6px; }
-.dots { display: flex; gap: 6px; }
-.dot { width: 22px; height: 4px; border-radius: 2px; background: var(--c-border); transition: background-color 0.2s var(--ease-framer); }
-.dot:hover { background: var(--c-text-2); }
-.dotOn { background: var(--c-text); }
+.chip_next { background: rgba(240, 185, 11, 0.16); color: rgb(138, 98, 0); }
 
-@media (max-width: 1199.98px) {
-  .body { grid-template-columns: minmax(0, 1fr); }
-  .diagram { min-height: 440px; }
+.colA,
+.colC { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.does {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  color: var(--c-text);
 }
-/* Phone: nodes show the logo only; the detail card names the active one. */
+
+.how { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.how > li { display: flex; align-items: flex-start; gap: 12px; padding: 5px 0; }
+.howIcon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9px;
+  background: var(--c-surface);
+  color: var(--c-text);
+}
+.howNum {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--c-bg);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 15px;
+  text-align: center;
+  color: var(--c-text-2);
+}
+.howText { padding-top: 6px; font-size: 14px; line-height: 1.45; color: var(--c-text); min-width: 0; overflow-wrap: anywhere; }
+
+.proof {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--c-surface);
+}
+.proofLabel { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-2); }
+.proofLinks { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.proofLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: var(--c-bg);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+  color: var(--c-text);
+  font-size: 12.5px;
+  transition: box-shadow 0.2s var(--ease-framer), color 0.2s var(--ease-framer);
+}
+.proofLink:hover { box-shadow: inset 0 0 0 1px var(--c-accent); color: var(--c-accent); }
+.proofLink:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+.proofName { font-weight: 500; white-space: nowrap; }
+.proofValue { font-family: var(--font-mono, ui-monospace), ui-monospace, monospace; font-size: 11.5px; color: var(--c-text-2); overflow-wrap: anywhere; }
+
+.note { font-size: 12.5px; line-height: 1.5; color: var(--c-text-2); }
+.without { font-size: 13px; line-height: 1.5; color: var(--c-text-2); padding-top: 12px; border-top: 1px solid var(--c-border); }
+.withoutLabel { display: block; margin-bottom: 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-danger); }
+
+.contracts { border-radius: 12px; box-shadow: inset 0 0 0 1px var(--c-border); }
+.contractsSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-text);
+  cursor: pointer;
+  list-style: none;
+  border-radius: 12px;
+}
+.contractsSummary::-webkit-details-marker { display: none; }
+.contractsSummary:hover { background: var(--c-surface); }
+.contractsSummary:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+.caret { color: var(--c-text-2); transition: transform 0.2s var(--ease-framer); }
+.contracts[open] .caret { transform: rotate(180deg); }
+.contractsList { padding: 0 14px 8px; }
+.previous { padding: 12px 0 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-2); }
+
+/* ---------- phone steps (hidden above phone width) ---------- */
+.steps { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .railBar { display: none; }
+}
+
+/* Tablet: how and proof side by side under the line. */
+@media (max-width: 1199.98px) {
+  .card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .colA { grid-column: 1 / -1; }
+  .detail { padding: 24px; }
+}
+
 @media (max-width: 809.98px) {
-  .diagram { min-height: 340px; }
-  .nodeName { display: none; }
-  .node { padding: 9px; }
-  .logo { height: 18px; }
-  .vault { padding: 10px 12px; }
-  .vaultName { font-size: 14px; }
-  .vaultSub { display: none; }
-  .flow { display: none; }
-  .detail { padding: 24px 20px; }
+  .plate { display: none; }
+  .steps { display: flex; flex-direction: column; }
+  .stepItem { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; }
+  .stepRail { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .stepNum {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    margin-top: 14px;
+    border-radius: 50%;
+    background: var(--c-bg);
+    box-shadow: inset 0 0 0 1px var(--c-border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--c-text-2);
+    transition: background-color 0.2s var(--ease-framer), color 0.2s var(--ease-framer);
+  }
+  .stepOn .stepNum { background: var(--c-accent); color: var(--c-bg); box-shadow: none; }
+  .stepLine { position: relative; flex: 1; width: 2px; margin: 4px 0 -14px; background: var(--c-border); overflow: hidden; border-radius: 1px; }
+  .stepPulse {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2px;
+    height: 18px;
+    border-radius: 1px;
+    background: var(--c-accent);
+    opacity: 0.7;
+    animation: down 2.2s linear infinite;
+  }
+  @keyframes down {
+    from { transform: translateY(-18px); }
+    to { transform: translateY(240px); }
+  }
+  .stepBody { min-width: 0; padding-bottom: 10px; }
+  .stepHead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--c-bg);
+    box-shadow: inset 0 0 0 1px var(--c-border);
+    text-align: left;
+  }
+  .stepOn .stepHead { box-shadow: inset 0 0 0 1.5px var(--c-accent); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .stepHead:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+  .stepLogo { height: 20px; width: auto; max-width: 28px; flex: none; }
+  .stepTitle { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .stepVerb { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; line-height: 1.4; text-transform: uppercase; color: var(--c-text-2); }
+  .stepName { font-size: 15.5px; font-weight: 500; line-height: 1.3; color: var(--c-text); }
+  .stepOn .stepVerb { color: var(--c-accent); }
+  .stepChips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .stepHead .chip { padding: 2px 7px; font-size: 11px; }
+  .stepCaret { flex: none; align-self: center; color: var(--c-text-2); transition: transform 0.2s var(--ease-framer); }
+  .stepOn .stepCaret { transform: rotate(180deg); }
+  .stepCard {
+    overflow: hidden;
+    border-radius: 0 0 14px 14px;
+    background: var(--c-bg);
+    box-shadow: inset 1.5px 0 0 var(--c-accent), inset -1.5px 0 0 var(--c-accent), inset 0 -1.5px 0 var(--c-accent);
+  }
+  /* One column; "Without it" moves to the end. */
+  .cardCompact { display: flex; flex-direction: column; padding: 14px 16px 16px; gap: 14px; }
+  .cardCompact .colA { display: contents; }
+  .cardCompact .does { order: 1; }
+  .cardCompact .how { order: 2; }
+  .cardCompact .colC { order: 3; }
+  .cardCompact .without { order: 4; }
+  .cardCompact .does { font-size: 17px; }
+  .cardCompact .howText { font-size: 13.5px; }
+}
+
+@media (max-width: 809.98px) and (prefers-reduced-motion: reduce) {
+  .stepPulse { display: none; }
 }

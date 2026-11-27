@@ -60,7 +60,8 @@ Every fact below is from `docs/DESIGN.md`; the section of DESIGN.md is given in 
 - PancakeSwap V2: "Time-weighted pool price, read on-chain" [Which data does which job]
 - ERC-8004: "Agent identity and a record that travels between raises" [Agent layer > Optional contract changes]
 - Covenant MCP server: "Lets any agent read terms, commit and redeem" [Summary: What ships; Covenant MCP server]
-- Cournot: "A verdict on each period’s disclosure report" [Cournot; Rule 5]
+- BNB Chain: "Where every contract and every rule runs" (the tile that replaced Cournot, whose verdict hook is
+  designed but not integrated; the tiles are generated from `web/src/landing/content/integrations.ts`)
 
 ## Security (trust assumptions)
 

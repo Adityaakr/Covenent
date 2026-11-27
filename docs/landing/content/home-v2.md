@@ -48,15 +48,22 @@ clicks and swipes move it. All five cards share one grid cell, so the frame neve
 
 Six Feature Cards: Create, Raise, Settle and launch, Operate, Exit round, Unlock or wind down.
 
-## How it's built (a system diagram)
+## How it's built (a live flow)
 
-One covenant as a diagram on a white plate: the Covenant vault in the middle, each integration a pill node wired to
-it, the whole inside a dashed BNB Chain frame. The active node lights its wire (with a moving pulse and a label for
-what flows), and the card beside it says what the piece does in Covenant, what breaks without it, and its status
-(Live API, Live on testnet, Proven on mainnet fork, Planned), with exactly how we use it (functions, endpoints)
-and its contract addresses as short BscScan links with a copy button. Hover, focus, click or the slow autoplay. The
-facts live in `content/integrations.ts` and also feed the /features integrations tiles. Atlas: the BNB/USD push
-feed on BNB testnet, which CovenantOracle takes at deployment; Cournot is planned.
+One white panel. On top, a flow canvas that follows the money and the data through a covenant: backers' BNB goes
+through Flap Pool Launch into the PancakeSwap pool and the Covenant vault; the pool's TWAP and the Atlas BNB/USD push
+feed meet in CovenantOracle, which sends the vault one observation; the vault pays the issuer agent its capped tap and
+writes outcomes to ERC-8004, which carries the agent's identity; Four.meme is a dashed Lite branch, coming to mainnet;
+everything on-chain sits in a dashed BNB Chain frame, and CoinMarketCap feeds the launch simulator in the off-chain
+strip below it. Dots move along each wire (none under reduced motion). Under the canvas, a rail of seven numbered steps
+(Raise and launch, Price the pool, Price in dollars, Bind the agent, Run on-chain, Test the terms, Coming next) that
+autoplays slowly; picking a step or a node lights its path, labels what flows on each wire and dims the rest. Under the
+rail, the picked integration's card in three columns: what it does in one line and what breaks without it; how, in
+three short steps with small glyphs; the proof (one or two BscScan or source links), how far it is proven, and its
+addresses folded into "Contracts (n)" (previous deployments only there, under "Previous deployment"). Status chips:
+Live on testnet, Fork-tested, Live API, plus "Coming to mainnet" for Four.meme. Phones get the same cards as stacked
+steps, one open at a time. Cournot is not shown (only its hook is designed). Facts: `content/integrations.ts`, which
+also feeds the /features tiles.
 
 ## Use cases
 

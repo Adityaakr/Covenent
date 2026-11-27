@@ -1,71 +1,115 @@
 /**
- * What each integration does in Covenant, how we call it, where it lives and how far it is proven. Shared by the
- * home "How it's built" diagram and the /features integrations grid. Every line is checked against the build
- * (contracts/, server/, docs/DEPLOY.md on the integration branch) and, for the Atlas feed, against BNB testnet itself
- * on 26 Nov 2026 (decimals() = 18, description() = "SingleFeed BNB/USD", latestRoundData() updated seconds before).
- * Our contracts are deployed on BNB testnet (contracts/deployments/97.json, 26 Nov 2026, source verified on Sourcify);
- * nothing is on BNB Chain mainnet. Statuses say exactly how far each piece is proven.
+ * What each integration does in Covenant, how we call it, the one fact that proves it and where it lives. Shared by
+ * the home "How it's built" flow and the /features integrations grid. Every line is checked against the code, the
+ * deployment record (contracts/deployments/97.json, the 27 Nov 2026 redeploy) and the runs in docs/DEPLOY.md
+ * ("Flap's test launch on BNB testnet", where Flap's Portal launched $CVD on the current contracts). Statuses match
+ * README.md ("Proven on chain", "Fork only") and JUDGES.md ("What is not done"). Nothing is on BNB Chain mainnet.
+ * Cournot is not listed: only its verdict hook is designed; no relayer is integrated (as in the hero credits).
  * Citations: docs/landing/sources.md "How it's built".
  */
-export type IntegrationStatus = "live" | "testnet" | "fork" | "planned";
-export type ChainAddress = { label: string; address: string; chain: "bsc" | "bsc-testnet" };
+import { repoFile } from "@/lib/repo";
+
+/** live = a live off-chain API; testnet = runs on BNB testnet; fork = proven on a BNB Chain mainnet fork. */
+export type IntegrationStatus = "live" | "testnet" | "fork";
+export type Chain = "bsc" | "bsc-testnet";
+export type ChainAddress = { label: string; address: string; chain: Chain };
+
+/** The tiny glyph beside each "how" step (sections/home/builtOnIcons.tsx). */
+export type HowIcon = "launch" | "pool" | "vault" | "chart" | "shield" | "feed" | "sign" | "id" | "pen" | "api" | "bell" | "split" | "lock" | "clock" | "code" | "check" | "people";
+
+export type Proof = { label: string; value: string; href: string };
 
 export type Integration = {
   id: string;
   name: string;
   logo: string;
-  /** diagram node centre, % of the diagram box */
-  x: number;
-  y: number;
-  flow: string;
+  /** the verb in the flow, for the step rail and the phone steps */
+  step: string;
   status: IntegrationStatus;
-  statusText: string;
+  /** a second tag, e.g. what comes next */
+  next?: string;
+  /** exactly how far it is proven, one or two sentences */
+  statusNote: string;
   /** one line for tiles */
   short: string;
-  /** what it does in Covenant */
+  /** what it does for Covenant, one line */
   does: string;
-  /** how we call it, concretely */
-  how: string[];
-  addresses: ChainAddress[];
+  /** how, in three short steps */
+  how: { icon: HowIcon; text: string }[];
+  /** the one fact to check */
+  proof: Proof[];
+  contracts: ChainAddress[];
+  /** superseded deployments, shown only inside the collapsed contracts list */
+  previous?: ChainAddress[];
   without: string;
 };
 
 export const statusLabel: Record<IntegrationStatus, string> = {
   live: "Live API",
   testnet: "Live on testnet",
-  fork: "Proven on mainnet fork",
-  planned: "Planned",
+  fork: "Fork-tested",
 };
+
+export function explorerUrl(a: { address: string; chain: Chain }) {
+  return `https://${a.chain === "bsc-testnet" ? "testnet." : ""}bscscan.com/address/${a.address}`;
+}
+export function txUrl(hash: string, chain: Chain = "bsc-testnet") {
+  return `https://${chain === "bsc-testnet" ? "testnet." : ""}bscscan.com/tx/${hash}`;
+}
+const shortHex = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
+
+/* The current deployment on BNB testnet (contracts/deployments/97.json) and $CVD's launch (docs/DEPLOY.md). */
+const T = "bsc-testnet" as const;
+const PORTAL = "0x000042108465206185A077Edc3F3fd2b49060000";
+const DOCK_ROUTER = "0x000048E888aBf09f690a952E1b386b2D031a0000";
+const CVD = {
+  token: "0xCD4CB77A6D970FDfddE04Ab9D9a89349995e7777",
+  launcher: "0xFb40790832BBAF5ABe61Db0beEc575468c973045",
+  vault: "0xFdC8dA0C251ED1f24cef6d9220aDa60E311638bE",
+  pool: "0x464AF9543120B9a83Da2196BC6C3d1FC67E7860b",
+  finalizeTx: "0x38170242eb34ebf1b449a16403fc270bd32892e3cd3ff3f8a2b9b6c589a09d2d",
+  buyTx: "0x00cdbd9c1ea77af6c4835389d42b5fac70c291d71cd7a17a1d6031e5f443e729",
+  pokeTx: "0x114078bc4d2abdfeec5c08206d348574b1859b7db76ea1790c9a7e1544c77b9e",
+};
+const ATLAS_BNB_USD = "0x3957d289ee9C38272377786787ea34F9dd29788D";
+const LITE_TEMPLATE = "0x411c4560f9D8F9b06a730D9652FCb9D71290D285";
+const LENS = "0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4";
 
 export const integrations: Integration[] = [
   {
     id: "flap",
     name: "Flap Pool Launch",
     logo: "/landing/logos/flap.svg",
-    x: 15,
-    y: 20,
-    flow: "Raise, tokens and tax in",
+    step: "Raise and launch",
     status: "testnet",
-    statusText: "Live on BNB testnet: Flap's testnet Portal launched our first covenant token ($CVT) and its pool (from our previous demo launcher factory) and funded its vault; tax reaching the vault is proven on a fork of chain 97",
+    statusNote:
+      "Flap’s testnet Portal launched $CVD on the current contracts. Tax reaching a vault is fork-tested: testnet volume never crossed Flap’s ~0.714 BNB processing threshold.",
     short: "Creates the token, seeds the pool, docks the reserved tokens and routes tax to the vault",
-    does: "Our launcher and vault are a Flap Pool Launch pair. Flap creates the token, seeds the PancakeSwap pool at the sale price, holds the vault’s reserved tokens in its Token Dock and routes trading tax to the vault.",
+    does: "Takes the raise, launches the token and its pool, and fills the vault.",
     how: [
-      "The team creates a covenant with Portal.newLauncher and our launcher factory.",
-      "At finalize, the launcher calls Portal.launchTaxTokenV2 with the pool quote.",
-      "The vault deposits the reserved tokens through the TokenDockRouter.",
-      "Tax collects in the token and Flap swaps it to BNB in batches, once it is worth about $500; a dispatch then sends the vault its share (90% on a fork of chain 97, Flap keeps 10%).",
-      "Raises are in BNB today. USDT and USD1 raises are in progress: Flap mainnet already accepts both as launch quotes.",
+      { icon: "launch", text: "The team opens a covenant with Portal.newLauncher and our launcher factory." },
+      { icon: "pool", text: "At finalize, Flap launches the tax token and seeds the pool at the sale price." },
+      { icon: "vault", text: "Treasury, reserved tokens (Token Dock) and trading tax flow to the vault." },
     ],
-    addresses: [
-      { label: "Portal", address: "0x000042108465206185A077Edc3F3fd2b49060000", chain: "bsc-testnet" },
-      { label: "TokenDockRouter", address: "0x000048E888aBf09f690a952E1b386b2D031a0000", chain: "bsc-testnet" },
-      { label: "Our launcher factory", address: "0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF", chain: "bsc-testnet" },
-      { label: "Previous demo factory (made $CVT)", address: "0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48", chain: "bsc-testnet" },
-      { label: "First launch token", address: "0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777", chain: "bsc-testnet" },
-      { label: "First launch vault", address: "0x524059B1424101D4CAFD33B9a1A8D332dD71193D", chain: "bsc-testnet" },
-      { label: "Our vault factory", address: "0xAbb9811f529B793c86848211522B789071671ebC", chain: "bsc-testnet" },
-      { label: "Demo launcher factory", address: "0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE", chain: "bsc-testnet" },
-      { label: "Demo vault factory", address: "0x6d3a421708F8b45FbD92342d33a841de40E6cC8F", chain: "bsc-testnet" },
+    proof: [
+      { label: "$CVD token", value: shortHex(CVD.token), href: explorerUrl({ address: CVD.token, chain: T }) },
+      { label: "Launch tx", value: shortHex(CVD.finalizeTx), href: txUrl(CVD.finalizeTx) },
+    ],
+    contracts: [
+      { label: "Flap Portal", address: PORTAL, chain: T },
+      { label: "Flap TokenDockRouter", address: DOCK_ROUTER, chain: T },
+      { label: "Our launcher factory", address: "0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF", chain: T },
+      { label: "Our vault factory", address: "0xAbb9811f529B793c86848211522B789071671ebC", chain: T },
+      { label: "Demo launcher factory (launched $CVD)", address: "0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE", chain: T },
+      { label: "Demo vault factory", address: "0x6d3a421708F8b45FbD92342d33a841de40E6cC8F", chain: T },
+      { label: "$CVD launcher", address: CVD.launcher, chain: T },
+      { label: "$CVD token", address: CVD.token, chain: T },
+      { label: "$CVD vault", address: CVD.vault, chain: T },
+    ],
+    previous: [
+      { label: "First demo factory (made $CVT)", address: "0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48", chain: T },
+      { label: "$CVT token", address: "0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777", chain: T },
+      { label: "$CVT vault", address: "0x524059B1424101D4CAFD33B9a1A8D332dD71193D", chain: T },
     ],
     without: "No raise, no launch and no tax coming into the treasury.",
   },
@@ -73,140 +117,141 @@ export const integrations: Integration[] = [
     id: "pancakeswap",
     name: "PancakeSwap V2",
     logo: "/landing/logos/pancakeswap.svg",
-    x: 15,
-    y: 80,
-    flow: "Pool price",
+    step: "Price the pool",
     status: "testnet",
-    statusText: "Live on BNB testnet: our keeper reads the first covenant's pool on every poke",
+    statusNote: "The $CVD pool was seeded at launch, traded both ways and read by a strict poke on BNB testnet.",
     short: "The pool, and the time-weighted price the exit reads on-chain",
-    does: "The pool the token trades in, seeded and locked by Flap at launch. Its time-weighted price is the one number the exit rule compares with book value.",
+    does: "The pool the token trades in, and the one price the exit compares with book value.",
     how: [
-      "Each poke reads the pair’s cumulative price (price0CumulativeLast / price1CumulativeLast).",
-      "CovenantOracle turns it into the time-weighted price since that vault’s last poke.",
-      "No oracle and no depth gate on the exit: pool price and book value are both on-chain.",
+      { icon: "lock", text: "Flap seeds the pair at the sale price; all of the LP is burned." },
+      { icon: "chart", text: "Each poke reads the pair’s cumulative price (price0/1CumulativeLast)." },
+      { icon: "shield", text: "CovenantOracle turns it into a time-weighted price a flash loan cannot move." },
     ],
-    addresses: [{ label: "First covenant pool", address: "0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201", chain: "bsc-testnet" }],
+    proof: [
+      { label: "$CVD pool", value: shortHex(CVD.pool), href: explorerUrl({ address: CVD.pool, chain: T }) },
+      { label: "Buy tx", value: shortHex(CVD.buyTx), href: txUrl(CVD.buyTx) },
+    ],
+    contracts: [{ label: "$CVD / WBNB pool", address: CVD.pool, chain: T }],
+    previous: [{ label: "$CVT / WBNB pool", address: "0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201", chain: T }],
     without: "Nothing to compare with book value, so no exit.",
   },
   {
     id: "atlas",
     name: "Atlas",
     logo: "/landing/logos/atlas.svg",
-    x: 85,
-    y: 20,
-    flow: "BNB/USD",
+    step: "Price in dollars",
     status: "testnet",
-    statusText: "Live on BNB testnet: our CovenantOracle reads the BNB/USD push feed",
+    statusNote: "$CVD’s poke on BNB testnet read BNB/USD $553.15 from the Atlas push feed and counted as strict.",
     short: "Live BNB/USD for the dollar budget and dollar unlocks; never needed for the exit",
-    does: "Live BNB/USD from Atlas’s on-chain push feed prices the dollar budget and the dollar unlock multiples, and feeds the strict trust gate that keeps a faked pump from counting toward an unlock. The exit never depends on it.",
+    does: "Live BNB/USD prices the dollar budget and the dollar unlocks. The exit never needs it.",
     how: [
-      "CovenantOracle reads the feed’s latestRoundData (Chainlink-compatible, 18 decimals, updating continuously).",
-      "Signed Atlas pull reports are also accepted when a signing key is set; they are tried first.",
-      "Only strict observations (fresh BNB/USD and a pool at least half its seed) move the dollar rules.",
+      { icon: "feed", text: "CovenantOracle reads the push feed’s latestRoundData (18 decimals)." },
+      { icon: "sign", text: "Signed Atlas pull reports are tried first when a signing key is set." },
+      { icon: "shield", text: "Only strict observations (fresh price, pool at least half its seed) move the dollar rules." },
     ],
-    addresses: [
-      { label: "BNB/USD push feed", address: "0x3957d289ee9C38272377786787ea34F9dd29788D", chain: "bsc-testnet" },
-      { label: "BTC/USD push feed", address: "0x83B2F2c20df36F166cF5b3f017204cbB7BABcAD0", chain: "bsc-testnet" },
-      { label: "ETH/USD push feed", address: "0x35369dEcD8c662954B3D24acc2A862C708A34fD2", chain: "bsc-testnet" },
-      { label: "Our CovenantOracle", address: "0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775", chain: "bsc-testnet" },
+    proof: [
+      { label: "BNB/USD feed", value: shortHex(ATLAS_BNB_USD), href: explorerUrl({ address: ATLAS_BNB_USD, chain: T }) },
+      { label: "Strict poke tx", value: shortHex(CVD.pokeTx), href: txUrl(CVD.pokeTx) },
     ],
+    contracts: [
+      { label: "Atlas BNB/USD push feed", address: ATLAS_BNB_USD, chain: T },
+      { label: "Our CovenantOracle", address: "0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775", chain: T },
+    ],
+    previous: [{ label: "CovenantOracle, first deployment", address: "0x3CC607931edaF307dC867111e48cAc28e31fF052", chain: T }],
     without: "The dollar rules freeze, then fall back in holders’ favour. The exit keeps working.",
-  },
-  {
-    id: "cmc",
-    name: "CoinMarketCap",
-    logo: "/landing/logos/coinmarketcap.svg",
-    x: 85,
-    y: 50,
-    flow: "Market data",
-    status: "live",
-    statusText: "Server-side: powers the launch simulator; the hosted site shows it only when a Covenant server is attached",
-    short: "Pair quotes, holders and candles on the sheet; real launches for the simulator",
-    does: "Market context next to the rules: what the pool trades at, who holds it, how liquidity moves, and real launches to test terms against.",
-    how: [
-      "/v4/dex/pairs/quotes/latest: the live quote, holders and security scan on each covenant sheet.",
-      "/v1/k-line/candles: price history for the price-against-book chart and the launch simulator.",
-      "/v1/dex/liquidity-change/list and /v1/dex/tokens/transactions: depth alerts and who is selling into a round.",
-    ],
-    addresses: [],
-    without: "The sheet still reads the chain, but loses market context, and the simulator has no real launches.",
   },
   {
     id: "erc8004",
     name: "ERC-8004",
     logo: "/landing/logos/erc-8004.svg",
-    x: 85,
-    y: 80,
-    flow: "Agent identity",
+    step: "Bind the agent",
     status: "fork",
-    statusText: "Proven on a BNB Chain mainnet fork against the live registries; our BNB testnet factories point at the testnet registries",
+    statusNote:
+      "Fork-tested against the live BNB Chain registries. Our testnet factories point at the testnet registries; testnet holds no reputation write yet.",
     short: "Agent identity bound to the team wallet, outcomes on its reputation record",
-    does: "An agent’s identity is bound to the team wallet when the covenant is created, and outcomes (an unlock, an abandonment, a wind-down) are written to its reputation record, so its history follows it to its next raise.",
+    does: "Gives the issuer agent an identity, and its covenant outcomes a public reputation record.",
     how: [
-      "The launcher factory requires IdentityRegistry.ownerOf(agentId) to be the team wallet.",
-      "The vault calls ReputationRegistry.giveFeedback inside try/catch, so it can never block a rule.",
+      { icon: "id", text: "The launcher factory refuses an agentId the team wallet does not own." },
+      { icon: "pen", text: "The vault records each outcome: an unlock, an abandonment, a wind-down." },
+      { icon: "shield", text: "giveFeedback runs inside try/catch, so it can never block a rule." },
     ],
-    addresses: [
-      { label: "Identity", address: "0x8004A818BFB912233c491871b3d84c89A494BD9e", chain: "bsc-testnet" },
-      { label: "Reputation", address: "0x8004B663056A597Dffe9eCcC1965A193B7388713", chain: "bsc-testnet" },
-      { label: "Identity", address: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432", chain: "bsc" },
-      { label: "Reputation", address: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63", chain: "bsc" },
+    proof: [
+      {
+        label: "Fork test",
+        value: "Covenant.BSC.fork.t.sol",
+        href: repoFile("contracts/test/fork/Covenant.BSC.fork.t.sol"),
+      },
+    ],
+    contracts: [
+      { label: "Identity registry", address: "0x8004A818BFB912233c491871b3d84c89A494BD9e", chain: T },
+      { label: "Reputation registry", address: "0x8004B663056A597Dffe9eCcC1965A193B7388713", chain: T },
+      { label: "Identity registry", address: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432", chain: "bsc" },
+      { label: "Reputation registry", address: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63", chain: "bsc" },
     ],
     without: "An agent’s track record would not follow it into its next raise.",
-  },
-  {
-    id: "four",
-    name: "Four.meme",
-    logo: "/landing/logos/four-meme.svg",
-    x: 15,
-    y: 50,
-    flow: "Lite template",
-    status: "fork",
-    statusText: "Proven on a BNB Chain mainnet fork (the Lite template is also deployed on BNB testnet); the ForwardVault flow is proven on a BNB Chain mainnet fork, since token creation happens on Four.meme’s site",
-    short: "The Covenant Lite tax-vault template on OpenFour",
-    does: "The Covenant Lite tax-vault template: a founder’s tax share goes to a vault with a capped draw per period and an abandonment switch.",
-    how: [
-      "OpenFour’s ForwardVault clones CovenantLiteVault for each token that picks the template.",
-      "The template settings (tap share, period, heartbeat, redeem fee) are fixed at creation.",
-    ],
-    addresses: [
-      { label: "Our Lite template", address: "0x411c4560f9D8F9b06a730D9652FCb9D71290D285", chain: "bsc-testnet" },
-      { label: "ForwardVault", address: "0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4", chain: "bsc" },
-    ],
-    without: "Four.meme founders would have no covenant to opt into.",
-  },
-  {
-    id: "cournot",
-    name: "Cournot",
-    logo: "/landing/logos/cournot.svg",
-    x: 50,
-    y: 88,
-    flow: "Report check",
-    status: "planned",
-    statusText: "Planned: the vault’s verdict hook is built, the Cournot relayer is not",
-    short: "A verdict on each period’s report (planned)",
-    does: "A Cournot market would check each period report, and a failed check pauses the tap until a passing report lands.",
-    how: ["The vault accepts recordVerdict from the relayer fixed at creation; no Cournot relayer is wired yet."],
-    addresses: [],
-    without: "Reports are still posted on-chain, but nobody checks them.",
   },
   {
     id: "bnb",
     name: "BNB Chain",
     logo: "/landing/logos/bnb-chain.svg",
-    x: 50,
-    y: 11,
-    flow: "Where it runs",
+    step: "Run on\u2011chain",
     status: "testnet",
-    statusText: "Live on BNB testnet, verified on Sourcify, one covenant run end to end; mainnet after Flap's factory audit",
+    statusNote: "Deployed and source-verified on BNB testnet (chain 97), unaudited. Nothing is on mainnet yet.",
     short: "Where every contract and every rule runs",
-    does: "The launcher, the vault, the oracle and every rule are BNB Chain contracts. Agents, keepers and buyers all meet there.",
-    how: ["Deploy.s.sol targets BNB testnet (97) and BNB Chain (56) and refuses any other chain."],
-    addresses: [{ label: "Our CovenantLens", address: "0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4", chain: "bsc-testnet" }],
+    does: "The base layer: the launcher, the vault, the oracle and every rule are BNB Chain contracts.",
+    how: [
+      { icon: "code", text: "Deploy.s.sol targets BNB testnet (97) and BNB Chain (56) and refuses any other chain." },
+      { icon: "check", text: "Every contract of the current deployment is source-verified on Sourcify." },
+      { icon: "people", text: "Agents, keepers and holders meet in the same contracts; anyone can trigger a rule." },
+    ],
+    proof: [
+      { label: "CovenantLens", value: shortHex(LENS), href: explorerUrl({ address: LENS, chain: T }) },
+      { label: "Test launch", value: "DEPLOY.md", href: `${repoFile("docs/DEPLOY.md")}#flaps-test-launch-on-bnb-testnet-27-nov-2026` },
+    ],
+    contracts: [{ label: "Our CovenantLens", address: LENS, chain: T }],
     without: "Nothing above exists without it.",
   },
+  {
+    id: "cmc",
+    name: "CoinMarketCap",
+    logo: "/landing/logos/coinmarketcap.svg",
+    step: "Test the terms",
+    status: "live",
+    statusNote: "Runs in the Covenant server. The hosted site has no server attached, so it shows no live CMC quote.",
+    short: "Real BNB Chain launches for the simulator; pair quotes and candles on the sheet",
+    does: "Real BNB Chain launches to test terms against, before a covenant goes live.",
+    how: [
+      { icon: "chart", text: "/v1/k-line/candles: price history for the launch simulator." },
+      { icon: "api", text: "/v4/dex/pairs/quotes/latest: the quote, holders and security scan on a sheet." },
+      { icon: "bell", text: "Liquidity changes and token transactions: depth alerts, sellers in a round." },
+    ],
+    proof: [{ label: "Source", value: "server/src/api/cmc.ts", href: repoFile("server/src/api/cmc.ts") }],
+    contracts: [],
+    without: "The sheet still reads the chain, but the simulator has no real launches.",
+  },
+  {
+    id: "four",
+    name: "Four.meme",
+    logo: "/landing/logos/four-meme.svg",
+    step: "Coming next",
+    status: "fork",
+    next: "Coming to mainnet",
+    statusNote:
+      "Fork-tested against the live ForwardVault, which exists only on BNB Chain mainnet. The Lite template is deployed on BNB testnet.",
+    short: "The Covenant Lite tax-vault template on OpenFour",
+    does: "Covenant Lite for Four.meme tokens: the founder’s tax share goes to a vault with a capped draw.",
+    how: [
+      { icon: "split", text: "A token picks the template; OpenFour’s ForwardVault clones CovenantLiteVault for it." },
+      { icon: "lock", text: "Tap share, period, heartbeat and redeem fee are fixed at creation." },
+      { icon: "clock", text: "If the founder goes silent, holders redeem pro rata." },
+    ],
+    proof: [
+      { label: "Lite template", value: shortHex(LITE_TEMPLATE), href: explorerUrl({ address: LITE_TEMPLATE, chain: T }) },
+    ],
+    contracts: [
+      { label: "Our Lite template", address: LITE_TEMPLATE, chain: T },
+      { label: "OpenFour ForwardVault", address: "0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4", chain: "bsc" },
+    ],
+    without: "Four.meme founders would have no covenant to opt into.",
+  },
 ];
-
-export function explorerUrl(a: ChainAddress) {
-  return `https://${a.chain === "bsc-testnet" ? "testnet." : ""}bscscan.com/address/${a.address}`;
-}

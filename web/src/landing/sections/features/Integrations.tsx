@@ -8,10 +8,10 @@ import { integrations, statusLabel } from "../../content/integrations";
 import s from "./Integrations.module.css";
 
 /* Framer "Integrations" E6keqeSjV: heading group + Integration Tiles (grid 4 / 2 / 2, gap 12). The tiles come from
-   content/integrations.ts (the same facts as the home "How it's built" diagram), each with its real status, plus
-   the Covenant MCP server; BNB Chain is the heading, so eight tiles fill the 4 x 2 grid. */
+   content/integrations.ts (the same facts as the home "How it's built" flow), each with its real status, plus
+   the Covenant MCP server, so eight tiles fill the 4 x 2 grid. */
 const tiles = [
-  ...integrations.filter((i) => i.id !== "bnb").map((i) => ({
+  ...integrations.map((i) => ({
     key: i.id,
     // eslint-disable-next-line @next/next/no-img-element
     icon: <img src={i.logo} alt="" className={s.logo} />,
