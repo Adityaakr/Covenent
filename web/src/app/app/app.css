@@ -1084,7 +1084,10 @@ input[type="range"].range::-moz-range-thumb { width: 18px; height: 18px; border:
 .sim-list .table tbody tr.sel { background: var(--raised); }
 .sim-list .table tbody tr.sel td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
 .sim-list .table td:first-child, .sim-list .table th:first-child { padding-left: 12px; }
-.sim-detail { position: sticky; top: 76px; display: grid; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); min-width: 0; }
+.sim-detail { position: sticky; top: 76px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); min-width: 0; }
+.sim-detail > * { min-width: 0; }
+.sim-detail .sim-verdict { overflow-wrap: anywhere; }
+@media (max-width: 520px) { .sim-detail { padding: 16px; } }
 @media (max-width: 1100px) { .sim-split { grid-template-columns: minmax(0, 1fr); } .sim-detail { position: static; } }
 .choice.venue { margin-bottom: -4px; }
 .choice.venue button { padding: 16px; }

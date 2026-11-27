@@ -162,7 +162,8 @@ function FloorDetail({ t, r, rule }: { t: Token; r: SimulatorResult; rule: strin
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setW(Math.max(240, Math.round(el.clientWidth - 2))));
+    // the content box, not clientWidth: that includes the card's padding and would draw the chart past its edge
+    const ro = new ResizeObserver(([e]) => setW(Math.max(240, Math.floor(e!.contentRect.width))));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -183,7 +184,7 @@ function FloorDetail({ t, r, rule }: { t: Token; r: SimulatorResult; rule: strin
     const fmt = (v: number) => { const x = Math.pow(10, v); return x >= 1 ? `${(x * 100).toLocaleString("en-US")}%` : `${+(x * 100).toPrecision(2)}%`; };
     const streakFrom = tr ? sx(Math.max(0, tr.day - r.terms.exitStreakDays)) : 0;
     chart = (
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${t.symbol ?? "Launch"}: price against the covenant floor, log scale`} className="chart" style={{ display: "block" }}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${t.symbol ?? "Launch"}: price against the covenant floor, log scale`} className="chart" style={{ display: "block", width: "100%", height: "auto" }}>
         {ticks.map((v) => <g key={v}><line x1={pad.l} x2={W - pad.r} y1={sy(v)} y2={sy(v)} stroke="var(--line)" strokeDasharray="2 4" /><text x={pad.l - 8} y={sy(v) + 4} textAnchor="end" className="chart-tick">{fmt(v)}</text></g>)}
         {[0, dmax / 2, dmax].map((d, i) => <text key={i} x={sx(d)} y={H - 6} textAnchor={i === 0 ? "start" : i === 2 ? "end" : "middle"} className="chart-tick">day {Math.round(d)}</text>)}
         {tr ? <><rect x={streakFrom} y={pad.t} width={Math.max(2, sx(tr.day) - streakFrom)} height={ih} fill="var(--warn-bg)" /><line x1={sx(tr.day)} x2={sx(tr.day)} y1={pad.t} y2={H - pad.b} stroke="var(--warn)" strokeWidth="1.5" /></> : null}
@@ -196,7 +197,7 @@ function FloorDetail({ t, r, rule }: { t: Token; r: SimulatorResult; rule: strin
     <div className="sim-detail" ref={box}>
       <div className="row between wrap-ok" style={{ gap: 8 }}>
         <span className="row" style={{ gap: 10 }}><TokenAvatar seed={t.token} size={30} /><span style={{ display: "grid" }}><span className="h-card" style={{ fontSize: 15 }}>{t.symbol ?? "?"}</span><span className="t-xs muted w5">{t.createdAt ? `Launched ${date(t.createdAt)}` : "Launch date unknown"} · {t.days} days traded</span></span></span>
-        <span className={cx("t-s w5", tr ? "warn-t" : "muted")}>{tr ? `Exit round opens on day ${tr.day}` : "Never under the floor long enough"}</span>
+        <span className={cx("t-s w5 sim-verdict", tr ? "warn-t" : "muted")}>{tr ? `Exit round opens on day ${tr.day}` : "Never under the floor long enough"}</span>
       </div>
       {chart ?? <p className="t-s muted w5">The server&apos;s result has no candles for this launch.</p>}
       <div className="chart-legend"><span><i style={{ borderColor: "var(--ink)" }} />Price, share of the opening price</span><span><i style={{ borderColor: "var(--accent)", borderTopStyle: "dashed" }} />Covenant floor</span>{tr ? <span><span className="swatch" style={{ background: "var(--warn-bg)" }} />Streak before the round</span> : null}</div>
