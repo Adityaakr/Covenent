@@ -1,5 +1,4 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Address, Hex } from 'viem';
@@ -11,6 +10,7 @@ import type { CovenantService } from '../../src/covenant/read.js';
 import { FINALIZE_GAS_LIMIT, TxBuilder } from '../../src/covenant/tx.js';
 import { Keeper } from '../../src/keeper/keeper.js';
 import type { UnsignedTx } from '../../src/schema.js';
+import { scratchDir } from './scratch.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const LAUNCHER: Address = '0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E';
@@ -59,7 +59,7 @@ describe('finalize gas limit', () => {
   });
 
   it('the keeper finalizes a raise past its deadline with the limit, and leaves an open one alone', async () => {
-    const dir = mkdtempSync(path.join(tmpdir(), 'keeper-finalize-'));
+    const dir = scratchDir('keeper-finalize');
     const now = 1_800_000_000;
     const launchers: Record<string, { state: number; deadline: number }> = {
       [LAUNCHER]: { state: 0, deadline: now - 10 },

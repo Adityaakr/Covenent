@@ -1,5 +1,5 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,7 +57,9 @@ export function buildFixtures(): void {
 export interface Anvil {
   rpcUrl: string;
   proc: ChildProcess;
+  /** Kills anvil and runs the cleanups registered with `onStop` (the fixture's temp data dir). */
   stop(): void;
+  onStop(fn: () => void): void;
 }
 
 export async function startAnvil(): Promise<Anvil> {
@@ -68,7 +70,16 @@ export async function startAnvil(): Promise<Anvil> {
   for (let i = 0; i < 100; i++) {
     try {
       await c.getChainId();
-      return { rpcUrl, proc, stop: () => proc.kill('SIGKILL') };
+      const cleanups: (() => void)[] = [];
+      return {
+        rpcUrl,
+        proc,
+        stop: () => {
+          proc.kill('SIGKILL');
+          for (const fn of cleanups.splice(0)) fn();
+        },
+        onStop: (fn) => cleanups.push(fn),
+      };
     } catch {
       await new Promise((r) => setTimeout(r, 100));
     }
@@ -203,6 +214,7 @@ export async function deployFixture(anvil: Anvil, opts: { identity?: boolean } =
     },
   };
   const dataDir = mkdtempSync(path.join(tmpdir(), 'covenant-server-test-'));
+  anvil.onStop(() => rmSync(dataDir, { recursive: true, force: true }));
   const deploymentsFile = path.join(dataDir, 'local.json');
   writeFileSync(deploymentsFile, JSON.stringify(deployments, null, 2));
 

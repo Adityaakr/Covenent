@@ -13,6 +13,7 @@ import { TxBuilder } from '../../src/covenant/tx.js';
 import { Keeper } from '../../src/keeper/keeper.js';
 import { assertPublicUriBase, callerAddress, RateLimiter, rateKey, redactSecrets } from '../../src/safety.js';
 import type { UnsignedTx } from '../../src/schema.js';
+import { keeperFiles } from './scratch.js';
 
 const FAKE = getAddress('0x00000000000000000000000000000000000fa4e0'); // attacker contract posing as a vault
 const REAL_VAULT = getAddress('0x0000000000000000000000000000000000000ba1'); // a vault our factory created
@@ -184,7 +185,7 @@ describe('A-3: the anvil test signer never prices a public chain, and a refused 
         return `0x${'11'.repeat(32)}` as Hex;
       },
     } as unknown as WalletClient;
-    const keeper = new Keeper({ cfg: { ...cfg, keeper: { ...cfg.keeper, stateFile: `/private/tmp/keeper-regress-${process.pid}.json` } }, svc, wallet, log: () => {} });
+    const keeper = new Keeper({ cfg: { ...cfg, keeper: { ...cfg.keeper, ...keeperFiles('keeper-regress') } }, svc, wallet, log: () => {} });
     const r = await keeper.pokeOne({ vault: REAL_VAULT }, 1_000, true);
     expect(r.action).toBe('poked');
     expect(r.reportMode).toBe('none');

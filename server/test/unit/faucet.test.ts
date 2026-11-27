@@ -1,10 +1,10 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseEther, type Address, type Hex, type PublicClient } from 'viem';
 import { Faucet, FaucetError } from '../../src/api/faucet.js';
 import { loadConfig } from '../../src/config.js';
+import { scratchDir } from './scratch.js';
 
 const ANVIL0 = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 const ANVIL1 = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
@@ -65,7 +65,7 @@ function testnetRig(opts: { chainId?: number; faucetBalance?: string; balances?:
     },
     writeContract: async () => '0x' as Hex,
   });
-  const dir = mkdtempSync(path.join(tmpdir(), 'faucet-'));
+  const dir = scratchDir('faucet');
   let t = Date.parse('2026-11-26T10:00:00Z');
   const clock = { now: () => t, advance: (ms: number) => (t += ms) };
   const make = () =>

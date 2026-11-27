@@ -10,6 +10,7 @@ import type { AtlasReport } from '../../src/atlas/report.js';
 import { loadConfig, type Deployments } from '../../src/config.js';
 import { CovenantService } from '../../src/covenant/read.js';
 import { Keeper } from '../../src/keeper/keeper.js';
+import { keeperFiles } from './scratch.js';
 
 const VAULT = getAddress('0x0000000000000000000000000000000000000ba1');
 const ORACLE = getAddress('0x00000000000000000000000000000000000000c1');
@@ -56,7 +57,7 @@ function setup(o: { plainAgo: number; rateAgo: number; push: bigint; report: Atl
   const cfg = {
     ...base,
     oracle: ORACLE,
-    keeper: { ...base.keeper, pokeIntervalSeconds: 3_600, stateFile: `/private/tmp/keeper-f5-${process.pid}-${Math.random()}.json` },
+    keeper: { ...base.keeper, pokeIntervalSeconds: 3_600, ...keeperFiles('keeper-f5') },
   };
   const svc = new CovenantService({ cfg, client });
   const wallet = {
