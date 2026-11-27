@@ -351,21 +351,67 @@ contract FlapReReviewTest is CovenantTestBase {
         _poke(v, BNB_USD);
     }
 
-    /// @dev Repeated: a griefer pokes without a report first every hour for the whole cliff. The keeper's reports
-    ///      still land, and the 2x tranche unlocks at the cliff (the price holds 2.5x throughout).
+    /// @dev Repeated: a griefer pokes without a report first, in the same block, before every keeper report for the
+    ///      whole cliff. The keeper's reports still land and count (the price holds 2.5x), a real dip still resets the
+    ///      count, and the 2x tranche unlocks exactly when the 30-day window since the dip completes, after the cliff.
+    ///
+    ///      Gas: every top-level call is its own transaction (forge 1.10+, as `--isolate`), about 185k gas a poke, so
+    ///      the bot's hourly PoC over all 180 days (8,640 pokes) passes forge's 2^30 per-test limit. Only the strict
+    ///      run since the last reset decides an unlock, so the hourly PoC runs over that whole decisive window (30
+    ///      days, across the cliff), and the rest of the cliff runs at `maxStep`, the longest gap that stays
+    ///      continuous. Together they use about half the limit.
     function test_F5_aGrieferFirstEveryHour_cannotFreezeUnlocks() public {
         (, CovenantVault v, IERC20 tok) = _live("f5-freeze");
+        uint256 cliffAt = uint256(v.launchedAt()) + v.cliff();
+        uint256 window = v.unlockWindow();
+        uint256 step = v.maxStep();
+        assertEq(window, 30 days);
+        assertEq(step, 6 hours);
         _poke(v, BNB_USD);
         _pump(v, tok, 250);
-        uint256 cliffAt = uint256(v.launchedAt()) + 180 days;
-        vm.warp(block.timestamp + 1 hours);
-        while (block.timestamp <= cliffAt + 1 hours) {
+
+        // 1. Most of the cliff: the griefer first before every report, reports at maxStep. They land and count.
+        uint256 dipAt = cliffAt - window / 2;
+        while (block.timestamp + step < dipAt) {
+            vm.warp(block.timestamp + step);
             _bare(v);
             _poke(v, BNB_USD);
-            vm.warp(block.timestamp + 1 hours);
+            assertTrue(v.lastStrict(), "the keeper's report landed after the griefer's poke");
         }
-        (, bool unlocked) = _progress(v, 0);
-        assertTrue(unlocked, "unlocked on schedule despite the griefer");
+        (uint256 p1, bool u1) = _progress(v, 0);
+        assertGe(p1, window, "a full window of strict time counted despite the griefer");
+        assertFalse(u1, "but the cliff holds it");
+
+        // 2. A real dip under 2x (the whole hour since the last report, so no TWAP averages it away) resets the
+        //    count, griefer or not.
+        _dipUnder(v, tok, 180);
+        vm.warp(block.timestamp + 1 hours);
+        _bare(v);
+        _poke(v, BNB_USD);
+        (uint256 p2,) = _progress(v, 0);
+        assertEq(p2, 0, "a real dip resets the count");
+        _pump(v, tok, 250);
+
+        // 3. The bot's PoC over the whole window that decides the unlock: the griefer first every hour, across the
+        //    cliff, until the window completes.
+        bool crossedCliff;
+        bool unlocked;
+        uint256 p;
+        while (!unlocked) {
+            require(block.timestamp < cliffAt + window, "no unlock within a window after the cliff");
+            vm.warp(block.timestamp + 1 hours);
+            _bare(v);
+            _poke(v, BNB_USD);
+            assertTrue(v.lastStrict(), "the keeper's report landed after the griefer's poke");
+            (p, unlocked) = _progress(v, 0);
+            if (!crossedCliff && block.timestamp >= cliffAt) {
+                crossedCliff = true;
+                assertFalse(unlocked, "past the cliff, the window since the dip is not complete yet");
+            }
+        }
+        assertTrue(crossedCliff, "the griefed window spans the cliff");
+        assertGe(p, window, "unlocked after a full window of strict time");
+        assertLt(p, window + 1 hours, "on the first report that completes it");
         assertEq(v.unlockedUnreleased(), 50_000_000 ether);
     }
 
