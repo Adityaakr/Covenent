@@ -31,7 +31,34 @@ import { Icon, type IconName } from "./icons";
 import { ThinkingMark } from "./mark";
 import { cx } from "./ui";
 
-export const SUGGEST = ["Raise 3 BNB for my GPU agent", "Should I redeem?", "What can I do with my wallet?", "Mint test USDT"];
+/**
+ * Starter questions, grouped. Each one runs end to end on BNB testnet with the demo factory: the raise drafts clear
+ * Flap's live floor (the smallest minimum raise on testnet is above 3 BNB), and the invest ones read the raises that
+ * are open now (lib/ai/chips.live.test.ts checks them against the chain).
+ */
+export const SUGGEST_GROUPS: { label: string; chips: string[] }[] = [
+  { label: "Raise", chips: ["Raise 4 BNB for my GPU agent", "Raise for an AI research agent with a $500/month budget", "What's the smallest raise Flap allows?", "Draft a raise with no team tokens"] },
+  { label: "Invest", chips: ["Which raises can I join right now?", "Commit 0.01 BNB to the open raise", "Should I redeem?", "Explain how my money is protected"] },
+  { label: "Wallet", chips: ["What can I do with my wallet?", "Mint test USDT"] },
+];
+/** The four shown before "More". */
+export const SUGGEST = ["Raise 4 BNB for my GPU agent", "Which raises can I join right now?", "Should I redeem?", "Mint test USDT"];
+
+function Suggestions({ onPick }: { onPick: (q: string) => void }) {
+  const [more, setMore] = useState(false);
+  const chip = (x: string) => <button key={x} type="button" className="ag-chip-btn" onClick={() => onPick(x)}>{x}</button>;
+  return (
+    <div className="ag-sugg" role="group" aria-label="Suggestions">
+      {more ? SUGGEST_GROUPS.map((g) => (
+        <div key={g.label} className="ag-sugg-group" role="group" aria-label={g.label}>
+          <span className="ag-sugg-label">{g.label}</span>
+          <div className="ag-chips">{g.chips.map(chip)}</div>
+        </div>
+      )) : <div className="ag-chips">{SUGGEST.map(chip)}</div>}
+      <button type="button" className="ag-sugg-more" aria-expanded={more} onClick={() => setMore(!more)}>{more ? "Fewer ideas" : "More ideas"}<Icon name={more ? "up" : "down"} size={13} /></button>
+    </div>
+  );
+}
 
 function useAskStatus() {
   return useQuery({
@@ -111,9 +138,7 @@ export function AskAI({ initial }: { initial?: string }) {
           label="Covenant AI"
           placeholder={configured ? "Raise, commit, redeem, explain… in plain words" : "Covenant AI is not configured on this site"}
           header={s.items.length === 0 && configured ? (
-            <div className="ag-chips" role="group" aria-label="Suggestions">
-              {SUGGEST.map((x) => <button key={x} type="button" className="ag-chip-btn" onClick={() => send(x)}>{x}</button>)}
-            </div>
+            <Suggestions onPick={send} />
           ) : null}
           footer={<p className="ag-composer-note">Answers can be wrong. Every card shows the raw call and simulates again before you sign.</p>}
         />

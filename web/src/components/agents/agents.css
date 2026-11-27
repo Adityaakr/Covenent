@@ -258,7 +258,12 @@ button.ag-activity-head:hover .ag-chev { color: var(--ink); }
 .ag-prompt-btn:active:not([disabled]) { transform: scale(0.93); }
 .ag-prompt-btn[disabled] { opacity: 0.3; cursor: not-allowed; }
 .ag-stop-sq { width: 11px; height: 11px; border-radius: 3px; background: currentColor; }
-.ag-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ag-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.ag-sugg { display: grid; gap: 8px; min-width: 0; }
+.ag-sugg-group { display: grid; gap: 4px; min-width: 0; }
+.ag-sugg-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.ag-sugg-more { justify-self: start; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px; font-size: 12.5px; font-weight: 500; color: var(--accent); background: none; }
+.ag-sugg-more:hover { text-decoration: underline; }
 .ag-chip-btn { height: 30px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 500; color: var(--ink-2); background: var(--raised); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; transition: background var(--t) var(--ease-framer), color var(--t) var(--ease-framer), box-shadow var(--t) var(--ease-framer); }
 .ag-chip-btn:hover { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .ag-composer-note { text-align: center; font-size: 11px; color: var(--faint); font-weight: 500; margin: 0; }

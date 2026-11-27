@@ -226,6 +226,40 @@ function floorFor(chainId: number, poolBps: number, saleBps: number) {
   return { minPoolSeedBnb: +seed.toFixed(6), minRaiseBnb: +((seed * saleBps) / poolBps).toFixed(6) };
 }
 
+/** The launcher factory a draft goes to: the demo one on testnet and the local chain unless asked otherwise. */
+const factoryAddr = (ctx: AiContext, demo: boolean) =>
+  demo ? addressOf(ctx.payload.deployment!, "demoLauncherFactory") ?? addressOf(ctx.payload.deployment!, "launcherFactory") : addressOf(ctx.payload.deployment!, "launcherFactory");
+
+/**
+ * Flap's floor for a split as the factory itself enforces it: minRaiseFor(), read live (Flap's BNB price, the
+ * profile's creation or graduation floor and the factory's margin), so a draft that passes here passes checkTerms.
+ * Falls back to the measured testnet estimate when the factory cannot answer.
+ */
+export async function liveFloor(ctx: AiContext, demo: boolean, saleBps: number, poolBps: number, totalSupply = DEFAULT_TERMS.totalSupply): Promise<{ minPoolSeedBnb: number; minRaiseBnb: number; source: "factory" | "estimate" }> {
+  const F = abiFor(ctx.payload.abis, "CovenantLauncherFactory", "LauncherFactory");
+  const at = factoryAddr(ctx, demo);
+  if (F && at && hasFn(F, "minRaiseFor") && saleBps > 0 && poolBps > 0) {
+    try {
+      const r = (await ctx.client.readContract({ address: at, abi: F, functionName: "minRaiseFor", args: [parseEther(String(totalSupply)), saleBps, poolBps] })) as readonly [bigint, bigint, ...unknown[]];
+      // rounded up, so a minimum copied from here always clears the floor
+      const up = (w: bigint) => Math.ceil(Number(formatEther(w)) * 1e6) / 1e6;
+      return { minRaiseBnb: up(r[0]), minPoolSeedBnb: up(r[1]), source: "factory" };
+    } catch { /* fall through to the estimate */ }
+  }
+  return { ...floorFor(ctx.chainId, poolBps, saleBps), source: "estimate" };
+}
+
+/** Splits a draft tries, in order, when the user names none: the default, then deeper pools that need smaller raises. */
+const AUTO_SPLITS: [number, number][] = [[DEFAULT_TERMS.saleBps, DEFAULT_TERMS.poolBps], [5000, 4500], [5000, 5000]];
+
+/** One tranche at 2x for a small team share, else the default three at 2x/4x/8x; none without a team share. */
+export function tranchesFor(teamBps: number): { trancheBps: number[]; trancheMultiple: number[] } {
+  if (teamBps <= 0) return { trancheBps: [], trancheMultiple: [] };
+  if (teamBps < 1500) return { trancheBps: [teamBps], trancheMultiple: [200] };
+  const a = Math.round(teamBps * 0.2), b = Math.round(teamBps * 0.4);
+  return { trancheBps: [a, b, teamBps - a - b], trancheMultiple: [200, 400, 800] };
+}
+
 export const TOOLS: ToolDef[] = [
   {
     name: "offer_choices",
@@ -320,11 +354,21 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "flap_floor",
-    description: "Flap's pool-creation floor for a supply split on this chain: the minimum pool seed and the minimum raise that clears it. On BNB testnet the Portal refuses a pool unless seed (BNB) >= 1.0714 / pool share.",
-    schema: z.object({ pool_pct: z.number().min(5).max(60).describe("pool share of supply in percent"), sale_pct: z.number().min(40).max(95).describe("sale share of supply in percent") }),
+    description: "Flap's pool floor for a supply split, read live from the launcher factory (minRaiseFor): the minimum pool seed and the smallest minimum raise the factory accepts. Without pool_pct and sale_pct it returns the common splits, so you can answer 'what is the smallest raise' with the cheapest one.",
+    schema: z.object({
+      pool_pct: z.number().min(5).max(60).optional().describe("pool share of supply in percent"),
+      sale_pct: z.number().min(40).max(95).optional().describe("sale share of supply in percent"),
+      factory: z.enum(["demo", "production"]).optional().describe("default: demo on testnet and the local chain"),
+    }),
     async run(ctx, input) {
-      const f = floorFor(ctx.chainId, Math.round(Number(input.pool_pct) * 100), Math.round(Number(input.sale_pct) * 100));
-      return { data: { chainId: ctx.chainId, ...f, note: ctx.chainId === 97 ? "Measured on BNB testnet; below it the launch fails, the covenant ends FAILED and every commitment refunds." : "No Flap floor applies on this chain beyond the factory profile's minimum pool quote." }, summary: `min raise ${n6(f.minRaiseBnb, 3)} BNB` };
+      const demo = (input.factory ?? (ctx.chainId === 97 || ctx.chainId === 31337 ? "demo" : "production")) === "demo";
+      const asked: [number, number][] = input.pool_pct !== undefined && input.sale_pct !== undefined ? [[Math.round(Number(input.sale_pct) * 100), Math.round(Number(input.pool_pct) * 100)]] : AUTO_SPLITS;
+      const splits = await Promise.all(asked.map(async ([s, q]) => ({ salePct: s / 100, poolPct: q / 100, teamPct: (10_000 - s - q) / 100, ...(await liveFloor(ctx, demo, s, q)) })));
+      const cheapest = splits.reduce((a, b) => (b.minRaiseBnb < a.minRaiseBnb ? b : a));
+      return {
+        data: { chainId: ctx.chainId, factory: demo ? "demo" : "production", splits, cheapest, note: "Below the minimum raise for its split the factory refuses the draft; a raise that settles under it fails at launch and every commitment refunds." },
+        summary: `min raise ${n6(cheapest.minRaiseBnb, 3)} BNB`,
+      };
     },
   },
   {
@@ -365,17 +409,34 @@ export const TOOLS: ToolDef[] = [
       const factory = (input.factory as "demo" | "production" | undefined) ?? (ctx.chainId === 97 || ctx.chainId === 31337 ? "demo" : "production");
       const team = (input.team_wallet as Address | undefined) ?? ctx.account;
       if (!team) throw new Error(`${NO_WALLET} The connected wallet becomes the team wallet.`);
-      const saleBps = Math.round(Number(input.sale_pct ?? DEFAULT_TERMS.saleBps / 100) * 100);
-      const poolBps = Math.round(Number(input.pool_pct ?? DEFAULT_TERMS.poolBps / 100) * 100);
-      const teamBps = 10_000 - saleBps - poolBps;
-      // team tranches: the default three at 2x/4x/8x scaled to the team share, or one tranche at 2x for a small team share
-      const trancheBps = teamBps <= 0 ? [] : teamBps < 1500 ? [teamBps] : [Math.round(teamBps * 0.2), Math.round(teamBps * 0.4)].concat([teamBps - Math.round(teamBps * 0.2) - Math.round(teamBps * 0.4)]);
-      const trancheMultiple = trancheBps.length === 1 ? [200] : [200, 400, 800];
       const demo = factory === "demo";
+      const notes: string[] = [];
+      let saleBps: number, poolBps: number;
+      let floor: Awaited<ReturnType<typeof liveFloor>>;
+      if (input.sale_pct !== undefined || input.pool_pct !== undefined) {
+        saleBps = Math.round(Number(input.sale_pct ?? DEFAULT_TERMS.saleBps / 100) * 100);
+        poolBps = Math.round(Number(input.pool_pct ?? DEFAULT_TERMS.poolBps / 100) * 100);
+        floor = await liveFloor(ctx, demo, saleBps, poolBps);
+      } else {
+        // no split named: the default, or the first deeper pool whose floor this minimum raise clears
+        const tries = await Promise.all(AUTO_SPLITS.map(async ([s, q]) => ({ s, q, f: await liveFloor(ctx, demo, s, q) })));
+        const cheapest = tries.reduce((a, b) => (b.f.minRaiseBnb < a.f.minRaiseBnb ? b : a));
+        const ok = tries.find((t) => Number(input.min_raise_bnb) >= t.f.minRaiseBnb) ?? cheapest;
+        [saleBps, poolBps, floor] = [ok.s, ok.q, ok.f];
+        if (ok !== tries[0]) notes.push(`Split set to sale ${pctOf(saleBps)}, pool ${pctOf(poolBps)}: at the default split Flap's floor needs a ${n6(tries[0]!.f.minRaiseBnb, 4)} BNB minimum raise.`);
+      }
+      const teamBps = 10_000 - saleBps - poolBps;
+      const { trancheBps, trancheMultiple } = tranchesFor(teamBps);
       const timers = demo
         ? { saleDuration: DEMO_TIMERS.saleDuration, unlockWindow: DEMO_TIMERS.unlockWindow, cliff: 0, exitStreak: DEMO_TIMERS.exitStreak, roundLength: DEMO_TIMERS.roundLength, cooldown: DEMO_TIMERS.cooldown, heartbeat: DEMO_TIMERS.heartbeat }
         : { saleDuration: DEFAULT_TERMS.saleDuration, unlockWindow: DEFAULT_TERMS.unlockWindow, cliff: DEFAULT_TERMS.cliff, exitStreak: DEFAULT_TERMS.exitStreak, roundLength: DEFAULT_TERMS.roundLength, cooldown: DEFAULT_TERMS.cooldown, heartbeat: DEFAULT_TERMS.heartbeat };
-      const issuer = input.issuer ?? (input.agent_id ? "agent" : "human");
+      // An agent issuer binds an ERC-8004 identity the team wallet owns. Without an id the draft stays valid as a human
+      // issuer and says how to bind one, rather than failing.
+      let issuer = input.issuer ?? (input.agent_id ? "agent" : "human");
+      if (issuer === "agent" && !input.agent_id) {
+        issuer = "human";
+        notes.push("Drafted with a human issuer: no ERC-8004 agent id was given. To run it as an agent, register one on the Create page and draft again with its agent_id.");
+      }
       const terms: Terms = {
         ...DEFAULT_TERMS, ...timers,
         name: String(input.name), symbol: String(input.symbol), meta: String(input.description ?? ""),
@@ -391,21 +452,19 @@ export const TOOLS: ToolDef[] = [
         ...(input.heartbeat_seconds ? { heartbeat: Number(input.heartbeat_seconds) } : {}),
       };
       const problems: string[] = [];
-      if (issuer === "agent" && !(terms.agentId > 0)) problems.push("An agent issuer needs agent_id: an ERC-8004 identity owned by the team wallet (register one on the Create page).");
       if (terms.cap < terms.minRaise) problems.push("The cap must be at least the minimum raise.");
       if (saleBps < BOUNDS.saleBpsMin) problems.push("Sale share must be at least 40%.");
       if (poolBps < BOUNDS.poolBpsMin || poolBps > saleBps) problems.push("Pool share must be 5% up to the sale share.");
       if (teamBps < 0 || teamBps > BOUNDS.teamBpsMax) problems.push("Team share (100% minus sale and pool) must be 0 to 30%.");
       if (terms.tapCapBps > BOUNDS.tapCapBpsMax) problems.push("The tap cap is at most 10% of the treasury per 30 days.");
-      const floor = floorFor(ctx.chainId, poolBps, saleBps);
       const sp = split(terms.totalSupply, saleBps, poolBps);
       const atMin = settleRaise(terms.minRaise, terms.minRaise, terms.cap, sp);
       const atCap = settleRaise(terms.cap, terms.minRaise, terms.cap, sp);
-      if (ctx.chainId === 97 && atMin.qPool < floor.minPoolSeedBnb) problems.push(`Flap's testnet floor: at the minimum raise the pool seed is ${n6(atMin.qPool, 4)} BNB, under the ${n6(floor.minPoolSeedBnb, 4)} BNB Flap requires for a ${pctOf(poolBps)} pool. Raise the minimum to at least ${n6(floor.minRaiseBnb, 4)} BNB or the launch fails and everyone is refunded.`);
+      if ((ctx.chainId === 97 || floor.source === "factory") && terms.minRaise < floor.minRaiseBnb) problems.push(`Flap's floor: at the minimum raise the pool seed is ${n6(atMin.qPool, 4)} BNB, under the ${n6(floor.minPoolSeedBnb, 4)} BNB Flap requires for a ${pctOf(poolBps)} pool. Raise the minimum to at least ${floor.minRaiseBnb} BNB${input.sale_pct === undefined && input.pool_pct === undefined ? " (the smallest any split allows)" : ""}.`);
 
       let check: string | null = "not run";
       const F = abiFor(ctx.payload.abis, "CovenantLauncherFactory", "LauncherFactory");
-      const fAddr = demo ? addressOf(ctx.payload.deployment!, "demoLauncherFactory") ?? addressOf(ctx.payload.deployment!, "launcherFactory") : addressOf(ctx.payload.deployment!, "launcherFactory");
+      const fAddr = factoryAddr(ctx, demo);
       const param = F?.find((x) => x.type === "function" && x.name === "checkTerms");
       if (F && fAddr && param && param.type === "function" && problems.length === 0) {
         try {
@@ -430,7 +489,7 @@ export const TOOLS: ToolDef[] = [
       ];
       const risks = [
         "Finalizing the raise needs a 15M gas limit (the launcher needs 12M left before the launch); anyone can finalize once the sale closes.",
-        ...(ctx.chainId === 97 ? [`Flap's testnet floor: the raise must reach ${n6(floor.minRaiseBnb, 4)} BNB with this split, or the launch fails and everyone is refunded.`] : []),
+        ...(floor.minRaiseBnb > 0 ? [`Flap's floor: the minimum raise must be at least ${floor.minRaiseBnb} BNB with this split.`] : []),
         "Below the minimum raise the covenant ends FAILED and every commitment is refundable.",
         "The rules are fixed at creation: the tap can be lowered, never raised.",
       ];
@@ -438,7 +497,7 @@ export const TOOLS: ToolDef[] = [
         kind: "create", title: `Create ${terms.symbol}`, summary: problems.length ? `Draft with ${problems.length} problem${problems.length > 1 ? "s" : ""} to fix before it can be created.` : "Terms pass the factory's own check. Mine the 7777 salt, then sign Portal.newLauncher.",
         facts, risks, signer: team, txs: [], create: { factory, terms, checkTerms: problems.length ? problems.join(" ") : check, problems },
       });
-      return { ...proposalResult(p), data: { ...(proposalResult(p).data as object), valid: problems.length === 0, problems, flapFloor: floor } };
+      return { ...proposalResult(p), data: { ...(proposalResult(p).data as object), valid: problems.length === 0, problems, notes, flapFloor: floor } };
     },
   },
   {

@@ -123,12 +123,59 @@ describe("Covenant AI transaction builders", () => {
   it("draft_covenant: flags Flap's testnet floor and runs the factory's checkTerms", async () => {
     const chain = { calls: [] as { method: string; args: unknown }[], reads: { checkTerms: undefined } };
     const low = await runTool(context([], chain), "draft_covenant", { name: "GPU Agent", symbol: "GPU", min_raise_bnb: 1, cap_bnb: 3, sale_pct: 50, pool_pct: 45, tap_cap_pct: 4 });
-    expect((low.data as { valid: boolean; problems: string[] }).problems.join(" ")).toMatch(/Flap's testnet floor/);
+    expect((low.data as { valid: boolean; problems: string[] }).problems.join(" ")).toMatch(/Flap's floor/);
     const ok = await runTool(context([], chain), "draft_covenant", { name: "GPU Agent", symbol: "GPU", min_raise_bnb: 2.7, cap_bnb: 3, sale_pct: 50, pool_pct: 45, tap_cap_pct: 4 });
     expect((ok.data as { valid: boolean }).valid).toBe(true);
     expect(ok.proposal!.create).toMatchObject({ factory: "demo", checkTerms: null, terms: { tapCapBps: 400, minRaise: 2.7, cap: 3, teamWallet: ME } });
     const check = chain.calls.find((c) => c.method === "read:checkTerms")!.args as { args: [{ salt: string }] };
     expect(check.args[0].salt).not.toMatch(/^0x0{64}$/); // a zero salt is BadText()
+  });
+
+  /** A chain whose factory answers minRaiseFor like the demo factory on BNB testnet (27 Nov 2026) and accepts checkTerms. */
+  const FLOORS: Record<string, string> = { "6000/1500": "42.857142857142857148", "5000/4500": "3.968253968253968256", "5000/5000": "3.214285714285714287", "5500/4500": "4.365079365079365082" };
+  function floorChain() {
+    const calls: { fn: string; args: unknown[] }[] = [];
+    const ctx = context([]);
+    (ctx.client as unknown as { readContract: unknown }).readContract = async ({ functionName, args }: { functionName: string; args: unknown[] }) => {
+      calls.push({ fn: functionName, args });
+      if (functionName === "minRaiseFor") { const w = parseEther(FLOORS[`${args[1]}/${args[2]}`] ?? "100"); return [w, w, 0n, 0n, false, 10_500n] as const; }
+      if (functionName === "checkTerms") return undefined;
+      throw new Error(`no ${functionName}`);
+    };
+    return { ctx, calls };
+  }
+
+  it("draft_covenant: a small raise with no split named gets the first split whose live floor it clears", async () => {
+    const { ctx } = floorChain();
+    const r = await runTool(ctx, "draft_covenant", { name: "GPU Agent", symbol: "GPU", min_raise_bnb: 3.97, cap_bnb: 4 });
+    const d = r.data as { valid: boolean; problems: string[]; notes: string[]; flapFloor: { minRaiseBnb: number; source: string } };
+    expect(d.valid).toBe(true);
+    expect(r.proposal!.create!.terms).toMatchObject({ saleBps: 5000, poolBps: 4500, trancheBps: [500], trancheMultiple: [200] });
+    expect(d.flapFloor).toMatchObject({ minRaiseBnb: 3.968254, source: "factory" });
+    expect(d.notes.join(" ")).toMatch(/Split set to sale 50%, pool 45%/);
+    // 3 BNB clears no split: the draft says the smallest it would need instead of passing
+    const low = await runTool(ctx, "draft_covenant", { name: "GPU Agent", symbol: "GPU", min_raise_bnb: 3, cap_bnb: 3 });
+    expect((low.data as { valid: boolean; problems: string[] }).problems.join(" ")).toMatch(/at least 3\.214286 BNB \(the smallest any split allows\)/);
+  });
+
+  it("draft_covenant: no team tokens sends empty tranches, and an agent with no id drafts as a human issuer", async () => {
+    const { ctx, calls } = floorChain();
+    const r = await runTool(ctx, "draft_covenant", { name: "Open Lab", symbol: "OPEN", min_raise_bnb: 3.5, cap_bnb: 4, sale_pct: 50, pool_pct: 50, issuer: "agent" });
+    const d = r.data as { valid: boolean; notes: string[] };
+    expect(d.valid).toBe(true);
+    expect(r.proposal!.create!.terms).toMatchObject({ trancheBps: [], trancheMultiple: [], agentId: 0 });
+    expect(d.notes.join(" ")).toMatch(/human issuer/);
+    const sent = calls.find((c) => c.fn === "checkTerms")!.args[0] as { trancheBps: unknown[]; trancheMultiple: unknown[] };
+    expect(sent.trancheBps).toEqual([]);
+    expect(sent.trancheMultiple).toEqual([]); // [200, 400, 800] here was BadTranches()
+  });
+
+  it("flap_floor: reads the factory's live minimum for every common split and names the cheapest", async () => {
+    const { ctx } = floorChain();
+    const r = await runTool(ctx, "flap_floor", {});
+    const d = r.data as { splits: { salePct: number; poolPct: number; minRaiseBnb: number }[]; cheapest: { salePct: number; poolPct: number; minRaiseBnb: number } };
+    expect(d.splits).toHaveLength(3);
+    expect(d.cheapest).toMatchObject({ salePct: 50, poolPct: 50, minRaiseBnb: 3.214286 });
   });
 });
 
