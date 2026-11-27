@@ -9,10 +9,15 @@ import { vaultAbi } from "./VaultABI";
 type Hex = `0x${string}`;
 type TrancheTuple = readonly [amount: bigint, multiple: bigint, progress: bigint, unlocked: boolean, targetUsd: bigint];
 type Tranche = { amount: bigint; multiple: bigint; progress: bigint; unlocked: boolean };
+type ReportTuple = readonly [hash: Hex, postedAt: bigint, uri: string];
+/** The trading tax as the vault's description() states it, from the launcher's terms on chain. */
+type Tax = { buy: string; sell: string; end: string; ended: boolean };
+type Translate = (key: string, fallback?: string, params?: Record<string, string | number>) => string;
 type Covenant = {
   state: number; taxToken: Hex; launcher: Hex; teamWallet: Hex;
   bookValue: bigint; freeTreasury: bigint; redeemableSupply: bigint; treasuryRaised: bigint; totalRevenue: bigint; totalRedeemed: bigint;
-  exitFeeBps: number; exitStreak: bigint; exitStreakNeeded: number; roundEnd: bigint; cooldownEnd: bigint;
+  exitFeeBps: number; exitStreak: bigint; exitStreakNeeded: number; roundEnd: bigint; cooldownEnd: bigint; cooldown: number;
+  cliff: number; launchedAt: bigint; disclosurePaused: boolean | null; tax: Tax | null;
   heartbeatDeadline: bigint; abandonable: boolean;
   tapUsdPer30d: bigint; tapCapPer30d: bigint; owedTeam: bigint; tapPaid: bigint;
   unlockWindow: number; lockedTeam: bigint; unlockedUnreleased: bigint; teamReleased: bigint;
@@ -42,13 +47,37 @@ function perToken(value: bigint | null | undefined, digits = 4) {
   return "0." + fraction.slice(0, lead + digits).replace(/0+$/, "");
 }
 
-function parseAmount(text: string) {
+function parseAmount(text: string, allowZero = false) {
+  if (!text.trim()) return null;
   try {
     const value = parseTokenAmount(text.trim(), 18);
-    return value > 0n ? value : null;
+    return value > 0n || (allowZero && value === 0n) ? value : null;
   } catch {
     return null;
   }
+}
+
+/** A duration in at most two units ("3 min", "1 d 4 h"). */
+function span(seconds: number, t: Translate) {
+  const s = Math.max(0, Math.floor(seconds));
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  const parts = [d ? t("units.days", undefined, { n: d }) : "", h ? t("units.hours", undefined, { n: h }) : "",
+    m ? t("units.minutes", undefined, { n: m }) : "", r ? t("units.seconds", undefined, { n: r }) : ""].filter(Boolean);
+  return parts.length ? parts.slice(0, 2).join(" ") : t("units.seconds", undefined, { n: 0 });
+}
+
+/** Unix seconds as "YYYY-MM-DD HH:MM UTC". */
+function utcTime(seconds: bigint) {
+  return new Date(Number(seconds) * 1000).toISOString().slice(0, 16).replace("T", " ") + " UTC";
+}
+
+/** The tax sentence of CovenantVaultDisplay._taxText (rates and end date from the launcher's terms). */
+function parseTax(text: string | null): Tax | null {
+  if (!text) return null;
+  const live = /Trading tax \(buy ([0-9.]+%), sell ([0-9.]+%)\) is the treasury's income until (\d{4}-\d{2}-\d{2}) UTC/.exec(text);
+  if (live) return { buy: live[1], sell: live[2], end: live[3], ended: false };
+  const ended = /Trading tax ended on (\d{4}-\d{2}-\d{2}) UTC/.exec(text);
+  return ended ? { buy: "", sell: "", end: ended[1], ended: true } : null;
 }
 
 export default function CovenantVault(_props: VaultComponentProps) {
@@ -75,6 +104,8 @@ export default function CovenantVault(_props: VaultComponentProps) {
   const [tapText, setTapText] = useState("");
   const [report, setReport] = useState({ period: "", uri: "", hash: "" });
   const [windDownArmed, setWindDownArmed] = useState(false);
+  const [tapZeroArmed, setTapZeroArmed] = useState(false);
+  const [reportTaken, setReportTaken] = useState<boolean | null>(null);
   const lock = useRef(false);
   const revision = useRef(0);
   const txMessages = useMemo(() => ({ userRejected: t("errors.userRejected"), walletDisconnected: t("errors.walletDisconnected"), insufficientFunds: t("errors.insufficientFunds"), simulationFailed: t("errors.simulationFailed"), reverted: t("errors.reverted"), unknown: t("errors.transaction") }), [t]);
@@ -92,21 +123,25 @@ export default function CovenantVault(_props: VaultComponentProps) {
       ]);
       if (current !== revision.current) return;
       if (taxToken.toLowerCase() !== context.tokenAddress.toLowerCase()) { setCovenant(null); setHolder(null); setReadError(t("errors.binding")); return; }
-      const [exitFeeBps, exitStreak, exitStreakNeeded, roundEnd, cooldownEnd, heartbeatDeadline, abandonable, tapUsdPer30d, tapCapPer30d, owedTeam, tapPaid, unlockWindow, lockedTeam, unlockedUnreleased, teamReleased, trancheCount] = await Promise.all([
+      const [exitFeeBps, exitStreak, exitStreakNeeded, roundEnd, cooldownEnd, cooldown, cliff, launchedAt, heartbeatDeadline, abandonable, tapUsdPer30d, tapCapPer30d, owedTeam, tapPaid, unlockWindow, lockedTeam, unlockedUnreleased, teamReleased, trancheCount] = await Promise.all([
         read<number>("exitFeeBps"), read<bigint>("exitStreak"), read<number>("exitStreakNeeded"), read<bigint>("roundEnd"), read<bigint>("cooldownEnd"),
+        read<number>("cooldown"), read<number>("cliff"), read<bigint>("launchedAt"),
         read<bigint>("heartbeatDeadline"), read<boolean>("abandonable"), read<bigint>("tapUsdPer30d"), read<bigint>("tapCapPer30d"), read<bigint>("owedTeam"),
         read<bigint>("tapPaid"), read<number>("unlockWindow"), read<bigint>("lockedTeam"), read<bigint>("unlockedUnreleased"), read<bigint>("teamReleased"), read<bigint>("trancheCount"),
       ]);
       const count = Number(trancheCount > 8n ? 8n : trancheCount);
-      const [tranches, windDownCause, reportsPosted] = await Promise.all([
+      const [tranches, windDownCause, reportsPosted, disclosurePaused, description] = await Promise.all([
         Promise.all(Array.from({ length: count }, (_, k) => read<TrancheTuple>("trancheProgress", [BigInt(k)]))),
         read<number>("windDownCause").catch(() => null),
         read<bigint>("reportsPosted").catch(() => null),
+        read<boolean>("disclosurePaused").catch(() => null),
+        read<string>("description").catch(() => null),
       ]);
       if (current !== revision.current) return;
       setCovenant({
         state: Number(state), taxToken, launcher, teamWallet, bookValue, freeTreasury, redeemableSupply, treasuryRaised, totalRevenue, totalRedeemed,
-        exitFeeBps: Number(exitFeeBps), exitStreak, exitStreakNeeded: Number(exitStreakNeeded), roundEnd, cooldownEnd, heartbeatDeadline, abandonable,
+        exitFeeBps: Number(exitFeeBps), exitStreak, exitStreakNeeded: Number(exitStreakNeeded), roundEnd, cooldownEnd, cooldown: Number(cooldown),
+        cliff: Number(cliff), launchedAt, disclosurePaused, tax: parseTax(description), heartbeatDeadline, abandonable,
         tapUsdPer30d, tapCapPer30d, owedTeam, tapPaid, unlockWindow: Number(unlockWindow), lockedTeam, unlockedUnreleased, teamReleased,
         tranches: tranches.map(([amount, multiple, progress, unlocked]) => ({ amount, multiple, progress, unlocked })),
         windDownCause: windDownCause === null ? null : Number(windDownCause), reportsPosted,
@@ -147,8 +182,29 @@ export default function CovenantVault(_props: VaultComponentProps) {
     return () => { live = false; };
   }, [read, redeemOpen, redeemWei, validVault, covenant]);
 
+  const periodValid = /^[1-9][0-9]{0,5}$/.test(report.period);
+  useEffect(() => {
+    let live = true;
+    setReportTaken(null);
+    if (!periodValid || !validVault) return;
+    read<ReportTuple>("report", [BigInt(report.period)]).then(([, postedAt]) => { if (live) setReportTaken(postedAt > 0n); }).catch(() => { if (live) setReportTaken(null); });
+    return () => { live = false; };
+  }, [read, periodValid, report.period, validVault, covenant]);
+
   const isTeam = !!covenant && !!context.userAddress && covenant.teamWallet.toLowerCase() === context.userAddress.toLowerCase();
   const walletBlock = !validVault ? t("errors.binding") : wallet.isWrongNetwork ? t("states.wrongNetwork") : !context.userAddress || !wallet.isConnected ? t("states.connect") : !stageAvailable ? t("states.phaseUnavailable") : loading || !covenant ? t("states.loading") : null;
+
+  /** U-03: the contract keeps one report per period (ReportExists); say so instead of a generic failure. */
+  async function postReport() {
+    if (walletBlock || lock.current || !reportReady) return;
+    try {
+      const [, postedAt] = await read<ReportTuple>("report", [BigInt(report.period)]);
+      if (postedAt > 0n) { setReportTaken(true); setDone(null); setTxError(t("errors.reportExists")); return; }
+    } catch {
+      // The pre-check is advisory; the transaction's own simulation still guards the call.
+    }
+    await send("postReport", "postReport", [BigInt(report.period), report.uri, report.hash as Hex], t("messages.reportPosted"));
+  }
 
   async function send(key: ActionKey, functionName: string, args: readonly unknown[], success: string, target: "vault" | "token" = "vault") {
     if (walletBlock || lock.current) return;
@@ -163,12 +219,13 @@ export default function CovenantVault(_props: VaultComponentProps) {
       setDone(success);
       sdk.notify.success(success);
       if (key === "redeem") setRedeemText("");
-      if (key === "lowerTap") setTapText("");
+      if (key === "lowerTap") { setTapText(""); setTapZeroArmed(false); }
       if (key === "postReport") setReport({ period: "", uri: "", hash: "" });
       if (key === "windDown") setWindDownArmed(false);
       await loadData();
     } catch (error) {
-      setTxError(handleTxError(error, txMessages));
+      const text = error instanceof Error ? error.message : String(error);
+      setTxError(/ReportExists/.test(text) ? t("errors.reportExists") : /TapNotLower/.test(text) ? t("errors.tapNotLower") : handleTxError(error, txMessages));
     } finally {
       lock.current = false; setBusy(null);
     }
@@ -181,8 +238,18 @@ export default function CovenantVault(_props: VaultComponentProps) {
   const needsApproval = redeemWei !== null && holder !== null && holder.allowance < redeemWei;
   const overBalance = redeemWei !== null && holder !== null && redeemWei > holder.balance;
   const minOut = preview === null ? null : preview - preview / 100n;
-  const tapNew = parseAmount(tapText);
-  const reportReady = /^[1-9][0-9]{0,5}$/.test(report.period) && /^(ipfs|https):\/\/\S{3,}$/.test(report.uri) && HASH.test(report.hash);
+  // U-02: the contract takes any lower budget, 0 included (0 stops the tap for good), so 0 is a valid entry here.
+  const tapNew = parseAmount(tapText, true);
+  const reportReady = periodValid && /^(ipfs|https):\/\/\S{3,}$/.test(report.uri) && HASH.test(report.hash);
+  // U-01: cooldownEnd is written only by the next state-changing call after the round ends (state() already reports
+  // COOLDOWN as a view), so until then it is 0 or a past round's value. The cooldown ends at roundEnd + cooldown.
+  const cooldownTarget = covenant ? (covenant.cooldownEnd > covenant.roundEnd ? covenant.cooldownEnd : covenant.roundEnd + BigInt(covenant.cooldown)) : null;
+  const streakText = covenant ? span(covenant.exitStreakNeeded, t) : "—";
+  const heartbeatLapsed = !!covenant && covenant.heartbeatDeadline <= nowSec;
+  const taxText = !covenant?.tax ? t("notices.taxUnknown") : covenant.tax.ended ? t("notices.taxEnded", undefined, { date: covenant.tax.end }) : t("notices.taxLive", undefined, { buy: covenant.tax.buy, sell: covenant.tax.sell, date: covenant.tax.end });
+  const trancheText = !covenant ? "" : covenant.cliff > 0
+    ? t("notices.tranchesCliff", undefined, { window: span(covenant.unlockWindow, t), date: utcTime(covenant.launchedAt + BigInt(covenant.cliff)) })
+    : t("notices.tranchesNoCliff", undefined, { window: span(covenant.unlockWindow, t) });
   const causeLabel = covenant?.windDownCause === 1 ? t("labels.causeTeam") : covenant?.windDownCause === 2 ? t("labels.causeGuardian") : covenant?.windDownCause === 3 ? t("labels.causeAbandoned") : null;
 
   return <div className="w-full min-w-0 space-y-4">
@@ -199,7 +266,7 @@ export default function CovenantVault(_props: VaultComponentProps) {
         <div className="grid gap-3 sm:grid-cols-3">
           <Metric label={t("labels.bookValue")} value={covenant ? perToken(covenant.bookValue) : "—"} hint={t("units.bnbPerToken")} tone="primary" />
           <Metric label={t("labels.treasury")} value={covenant ? bnb(covenant.freeTreasury) : "—"} hint={t("units.bnb")} />
-          <Metric label={t("labels.exitStreak")} value={streakPct === null ? "—" : streakPct + "%"} hint={t("hints.exitStreak")} />
+          <Metric label={t("labels.exitStreak")} value={streakPct === null ? "—" : streakPct + "%"} hint={t("hints.exitStreak", undefined, { streak: streakText })} />
         </div>
 
         <section aria-label={t("sections.holder")} className="space-y-3 rounded-[14px] border border-white/10 bg-black/30 p-3 sm:p-4">
@@ -215,9 +282,9 @@ export default function CovenantVault(_props: VaultComponentProps) {
           ) : null}
 
           <div className="space-y-2">
-            <p className="text-xs leading-5 text-white/55">{redeemOpen ? (state === 5 ? t("notices.redeemWindDown") : t("notices.redeemRound")) : t("notices.redeemClosed")}</p>
+            <p className="text-xs leading-5 text-white/55">{redeemOpen ? (state === 5 ? t("notices.redeemWindDown") : t("notices.redeemRound")) : t("notices.redeemClosed", undefined, { streak: streakText })}</p>
             {state === 3 && covenant ? <DataRow label={t("labels.roundEnds")} value={<Countdown targetTimeMs={Number(covenant.roundEnd) * 1000} />} /> : null}
-            {state === 4 && covenant ? <DataRow label={t("labels.cooldownEnds")} value={<Countdown targetTimeMs={Number(covenant.cooldownEnd) * 1000} />} /> : null}
+            {state === 4 && cooldownTarget !== null ? <DataRow label={t("labels.cooldownEnds")} value={<Countdown targetTimeMs={Number(cooldownTarget) * 1000} />} /> : null}
             {redeemOpen ? <>
               <div className="flex gap-2">
                 <Input name="redeemAmount" inputMode="decimal" value={redeemText} placeholder={t("labels.redeemAmount")} aria-label={t("labels.redeemAmount")} disabled={busy !== null} onChange={event => { setRedeemText(event.target.value); setDone(null); }} />
@@ -254,17 +321,20 @@ export default function CovenantVault(_props: VaultComponentProps) {
               <Button type="button" variant="secondary" disabled={Boolean(walletBlock) || state === 5 || busy !== null} loading={busy === "heartbeat"} onClick={() => void send("heartbeat", "heartbeat", [], t("messages.heartbeat"))}>{t("actions.heartbeat")}</Button>
             </div>
             <div className="flex gap-2">
-              <Input name="newTapUsd" inputMode="decimal" value={tapText} placeholder={t("labels.newTap")} aria-label={t("labels.newTap")} disabled={busy !== null} onChange={event => setTapText(event.target.value)} />
-              <Button type="button" variant="outline" disabled={Boolean(walletBlock) || tapNew === null || tapNew >= covenant.tapUsdPer30d || state === 5 || busy !== null} loading={busy === "lowerTap"} onClick={() => tapNew !== null && void send("lowerTap", "lowerTap", [tapNew], t("messages.tapLowered"))}>{t("actions.lowerTap")}</Button>
+              <Input name="newTapUsd" inputMode="decimal" value={tapText} placeholder={t("labels.newTap")} aria-label={t("labels.newTap")} disabled={busy !== null} onChange={event => { setTapText(event.target.value); setTapZeroArmed(false); }} />
+              <Button type="button" variant={tapZeroArmed ? "destructive" : "outline"} disabled={Boolean(walletBlock) || tapNew === null || tapNew >= covenant.tapUsdPer30d || state === 5 || busy !== null} loading={busy === "lowerTap"} onClick={() => { if (tapNew === null) return; if (tapNew === 0n && !tapZeroArmed) { setTapZeroArmed(true); return; } void send("lowerTap", "lowerTap", [tapNew], t("messages.tapLowered")); }}>{tapZeroArmed ? t("actions.confirmTapZero") : t("actions.lowerTap")}</Button>
             </div>
+            {tapZeroArmed && tapNew === 0n ? <Alert tone="warning">{t("notices.tapZero")}</Alert> : null}
             <div className="grid gap-2 sm:grid-cols-3">
               <Input name="reportPeriod" inputMode="numeric" value={report.period} placeholder={t("labels.reportPeriod")} aria-label={t("labels.reportPeriod")} disabled={busy !== null} onChange={event => setReport({ ...report, period: event.target.value.trim() })} />
               <Input name="reportUri" value={report.uri} placeholder={t("labels.reportUri")} aria-label={t("labels.reportUri")} disabled={busy !== null} onChange={event => setReport({ ...report, uri: event.target.value.trim() })} />
               <Input name="reportHash" value={report.hash} placeholder={t("labels.reportHash")} aria-label={t("labels.reportHash")} disabled={busy !== null} onChange={event => setReport({ ...report, hash: event.target.value.trim() })} />
             </div>
-            <Button type="button" variant="outline" disabled={Boolean(walletBlock) || !reportReady || busy !== null} loading={busy === "postReport"} onClick={() => void send("postReport", "postReport", [BigInt(report.period), report.uri, report.hash as Hex], t("messages.reportPosted"))}>{t("actions.postReport")}</Button>
+            {reportTaken ? <Alert tone="warning">{t("errors.reportExists")}</Alert> : null}
+            <Button type="button" variant="outline" disabled={Boolean(walletBlock) || !reportReady || reportTaken === true || busy !== null} loading={busy === "postReport"} onClick={() => void postReport()}>{t("actions.postReport")}</Button>
             <div className="space-y-2 border-t border-white/10 pt-3">
               <p className="text-xs leading-5 text-white/55">{t("notices.windDown")}</p>
+              {heartbeatLapsed && state !== 5 ? <Alert tone="warning">{t("notices.windDownForfeit", undefined, { owed: bnb(covenant.owedTeam, 6) + " " + t("units.bnb") })}</Alert> : null}
               {windDownArmed
                 ? <Button type="button" variant="destructive" disabled={Boolean(walletBlock) || state === 5 || busy !== null} loading={busy === "windDown"} onClick={() => void send("windDown", "windDown", [], t("messages.woundDown"))}>{t("actions.confirmWindDown")}</Button>
                 : <Button type="button" variant="outline" disabled={state === 5 || busy !== null} onClick={() => setWindDownArmed(true)}>{t("actions.windDown")}</Button>}
@@ -277,12 +347,16 @@ export default function CovenantVault(_props: VaultComponentProps) {
           {covenant ? <div className="mt-3 space-y-2">
             <DataRow label={t("labels.tapBudget")} value={formatTokenAmount(covenant.tapUsdPer30d, 18, 2) + " " + t("units.usdPer30d")} detail={t("hints.tapCap") + " " + bnb(covenant.tapCapPer30d, 6) + " " + t("units.bnb")} />
             <DataRow label={t("labels.tapPaid")} value={bnb(covenant.tapPaid, 6) + " " + t("units.bnb")} detail={t("labels.owedTeam") + " " + bnb(covenant.owedTeam, 6)} />
+            <p className="text-xs leading-6 text-white/55">{t("notices.tap")}</p>
+            {covenant.disclosurePaused ? <Alert tone="warning">{t("notices.tapPaused")}</Alert> : null}
+            {covenant.tranches.length > 0 ? <p className="text-xs leading-6 text-white/55">{trancheText}</p> : null}
             {covenant.tranches.map((tranche, k) => (
               <DataRow key={k} label={t("labels.tranche") + " " + (k + 1) + " · " + (Number(tranche.multiple) / 100) + "×"} value={tranche.unlocked ? t("states.unlocked") : Math.min(100, covenant.unlockWindow > 0 ? Number(tranche.progress * 100n / BigInt(covenant.unlockWindow)) : 0) + "%"} detail={formatTokenAmount(tranche.amount, 18, 0) + " " + (context.tokenSymbol ?? "")} />
             ))}
             <DataRow label={t("labels.teamTokens")} value={formatTokenAmount(covenant.lockedTeam, 18, 0)} detail={t("labels.released") + " " + formatTokenAmount(covenant.teamReleased, 18, 0)} />
             <DataRow label={t("labels.heartbeat")} value={state === 5 ? (causeLabel ?? t("states.windDown")) : covenant.heartbeatDeadline > nowSec ? <Countdown targetTimeMs={Number(covenant.heartbeatDeadline) * 1000} /> : t("states.lapsed")} detail={t("hints.heartbeat")} />
             <DataRow label={t("labels.treasuryRaised")} value={bnb(covenant.treasuryRaised) + " " + t("units.bnb")} detail={t("labels.revenue") + " " + bnb(covenant.totalRevenue) + " · " + t("labels.redeemed") + " " + bnb(covenant.totalRedeemed)} />
+            <p className="text-xs leading-6 text-white/55">{taxText}</p>
             <DataRow label={t("labels.redeemableSupply")} value={formatTokenAmount(covenant.redeemableSupply, 18, 0)} />
             {covenant.reportsPosted !== null ? <DataRow label={t("labels.reports")} value={covenant.reportsPosted.toString()} /> : null}
             <DataRow label={t("labels.teamWallet")} value={<AddressLink address={covenant.teamWallet} explorerBaseUrl={context.explorerBaseUrl} />} />

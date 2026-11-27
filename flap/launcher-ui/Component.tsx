@@ -34,7 +34,7 @@ type Snapshot = Readonly<{
   vault?: string | null;
   expectedToken?: string | null;
   launchRetryUntil?: string | null;
-  creator?: string | null;
+  poolAmount?: string | null;
   contribution?: string | null;
   refundDue?: string | null;
   allocation?: string | null;
@@ -101,11 +101,38 @@ function parseBnb(text: string) {
   return match ? BigInt(match[1]) * unit + BigInt((match[2] ?? "").padEnd(18, "0")) : null;
 }
 
-function when(seconds: bigint | null, locale: string, fallback: string) {
+const two = (n: bigint) => (n < 10n ? "0" : "") + n.toString();
+
+/** Unix seconds as "YYYY-MM-DD HH:MM UTC", computed by hand (civil-from-days), so no date constructor is needed. */
+function when(seconds: bigint | null, fallback: string) {
   if (seconds === null || seconds <= 0n || seconds > 253402300799n) return fallback;
-  return Intl.DateTimeFormat(locale, {
-    timeZone: "UTC", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  }).format(Number(seconds) * 1000) + " UTC";
+  const z = seconds / 86400n + 719468n;
+  const era = z / 146097n;
+  const doe = z - era * 146097n;
+  const yoe = (doe - doe / 1460n + doe / 36524n - doe / 146096n) / 365n;
+  const doy = doe - (365n * yoe + yoe / 4n - yoe / 100n);
+  const mp = (5n * doy + 2n) / 153n;
+  const day = doy - (153n * mp + 2n) / 5n + 1n;
+  const month = mp < 10n ? mp + 3n : mp - 9n;
+  const year = yoe + era * 400n + (month <= 2n ? 1n : 0n);
+  const rest = seconds % 86400n;
+  return year.toString() + "-" + two(month) + "-" + two(day) + " " + two(rest / 3600n) + ":" + two((rest % 3600n) / 60n) + " UTC";
+}
+
+/** An 18-decimal value with `digits` significant figures, however small (no "<0.0…1" floor, no exponent). */
+function significant(value: bigint, digits = 4) {
+  if (value === 0n) return "0";
+  if (value >= unit) return decimal(value, 4);
+  const fraction = value.toString().padStart(18, "0");
+  const lead = fraction.search(/[1-9]/);
+  return "0." + fraction.slice(0, lead + digits).replace(/0+$/, "");
+}
+
+/** Percent of `part` in `whole` with up to two decimals. */
+function percent(part: bigint, whole: bigint) {
+  const bps = part * 10_000n / whole;
+  const cents = bps % 100n;
+  return (bps / 100n).toString() + (cents ? "." + two(cents).replace(/0$/, "") : "");
 }
 
 function short(address: string) {
@@ -158,7 +185,6 @@ export function Launcher({ context, messages: m, host }: LauncherProps) {
   const lock = useRef(false);
 
   const { identity, launcherAddress, snapshot } = context;
-  const locale = context.locale || "en";
   const unknown = m.unavailable;
   const native = identity.chainId === 97 ? "tBNB" : "BNB";
   const bnb = (value: bigint | null) => (value === null ? unknown : decimal(value) + " " + native);
@@ -178,18 +204,27 @@ export function Launcher({ context, messages: m, host }: LauncherProps) {
   const reserved = snapshot?.expectedToken && addressPattern.test(snapshot.expectedToken)
     ? snapshot.expectedToken.toLowerCase() : null;
   const vault = snapshot?.vault && addressPattern.test(snapshot.vault) ? snapshot.vault : null;
-  const creator = snapshot?.creator && addressPattern.test(snapshot.creator) ? snapshot.creator : null;
+  const poolAmount = units(snapshot?.poolAmount);
+  // Where the accepted raise goes at launch: Q x P / A seeds the pool, the rest (less 1 wei per contributor when
+  // oversubscribed) funds the vault treasury. P / A is fixed by the terms, so the split is known before launch.
+  const poolPct = poolAmount !== null && saleAmount !== null && saleAmount > 0n && poolAmount <= saleAmount
+    ? percent(poolAmount, saleAmount) : null;
+  const vaultPct = poolPct !== null && saleAmount !== null && poolAmount !== null ? percent(saleAmount - poolAmount, saleAmount) : null;
 
   const now = BigInt(Math.floor(Date.now() / 1000));
   const raising = state === 0n;
   const saleOpen = raising && deadline !== null && now < deadline;
   const awaitingFinalize = raising && deadline !== null && now >= deadline;
   const failed = state === 1n;
+  // A raise that closed with nothing committed has nothing to refund: say so instead of "refunds open".
+  const neverFunded = failed && committed === 0n;
+  // The retry window is a deadline on the Launcher, not a stored state: once it has passed, a refused launch fails.
+  const retryClosed = retryUntil !== null && now >= retryUntil;
   const launched = state === 2n;
   const minReached = committed !== null && minRaise !== null && committed >= minRaise;
   const oversubscribed = committed !== null && cap !== null && committed > cap;
 
-  const stateLabel = saleOpen ? m.stateOpen : awaitingFinalize ? m.stateAwaiting : failed ? m.stateFailed
+  const stateLabel = saleOpen ? m.stateOpen : awaitingFinalize ? m.stateAwaiting : neverFunded ? m.stateNeverFunded : failed ? m.stateFailed
     : launched ? m.stateLaunched : unknown;
   const stateColor = saleOpen || launched ? accent : failed ? bad : awaitingFinalize ? warn : soft;
 
@@ -198,6 +233,10 @@ export function Launcher({ context, messages: m, host }: LauncherProps) {
   const minMark = minRaise !== null && cap !== null && cap > 0n ? Number(minRaise * 10_000n / cap) / 100 : null;
   const priceLow = minRaise !== null && saleAmount !== null && saleAmount > 0n ? minRaise * unit / saleAmount : null;
   const priceHigh = cap !== null && saleAmount !== null && saleAmount > 0n ? cap * unit / saleAmount : null;
+  // Prices below 0.000001 per token read per million tokens, so tiny prices keep their digits.
+  const perMillion = priceHigh !== null && priceHigh < 10n ** 12n;
+  const price = (value: bigint) => significant(perMillion ? value * 1_000_000n : value);
+  const priceUnit = " " + native + " " + (perMillion ? m.perMillionTokens : m.perToken);
 
   const wallet = host?.wallet;
   const account = wallet?.account ? wallet.account.toLowerCase() : null;
@@ -339,26 +378,30 @@ export function Launcher({ context, messages: m, host }: LauncherProps) {
             <dl style={grid}>
               <Datum label={m.minRaise}>{bnb(minRaise)}</Datum>
               <Datum label={m.cap}>{bnb(cap)}</Datum>
-              <Datum label={m.saleEnds}>{when(deadline, locale, unknown)}</Datum>
+              <Datum label={m.saleEnds}>{when(deadline, unknown)}</Datum>
               {contributors !== null && <Datum label={m.contributors}>{contributors.toString()}</Datum>}
               {saleAmount !== null && <Datum label={m.tokensForSale}>{decimal(saleAmount, 0)}</Datum>}
               {priceLow !== null && priceHigh !== null && (
                 priceLow === priceHigh
-                  ? <Datum label={m.salePriceFixed}>{decimal(priceLow, 10) + " " + native}</Datum>
-                  : <Datum label={m.salePrice}>{decimal(priceLow, 10) + " – " + decimal(priceHigh, 10) + " " + native}</Datum>
+                  ? <Datum label={m.salePriceFixed}>{price(priceLow) + priceUnit}</Datum>
+                  : <Datum label={m.salePrice}>{price(priceLow) + " – " + price(priceHigh) + priceUnit}</Datum>
               )}
               {launched && token ? <Datum label={m.token}><span title={token}>{short(token)}</span></Datum>
                 : reserved ? <Datum label={m.reservedToken}><span title={reserved}>{short(reserved)}</span></Datum> : null}
             </dl>
+            <p style={muted}>{poolPct !== null && vaultPct !== null
+              ? m.split.replace("{pool}", poolPct).replace("{vault}", vaultPct) : m.splitUnknown}</p>
             <p style={muted}>{m.rules}</p>
+            <p style={muted}>{m.tax}</p>
+            <p style={muted}>{m.guardian}</p>
 
             {awaitingFinalize && (
               <p style={{ ...muted, color: warn }}>
                 {minReached ? m.finalizeHint : committed !== null && minRaise !== null ? m.finalizeFailHint : m.finalizeUnknownHint}
-                {retryUntil !== null ? " " + m.retryUntil + " " + when(retryUntil, locale, unknown) + "." : ""}
+                {retryUntil === null ? "" : retryClosed ? " " + m.retryClosed : " " + m.retryUntil + " " + when(retryUntil, unknown) + ". " + m.retryAfter}
               </p>
             )}
-            {failed && <p style={{ ...muted, color: bad }}>{m.failedHint}</p>}
+            {failed && <p style={{ ...muted, color: neverFunded ? soft : bad }}>{neverFunded ? m.neverFundedHint : m.failedHint}</p>}
 
             {launched && (
               <div style={{ display: "grid", gap: 8, justifyItems: "start" }}>
@@ -386,6 +429,7 @@ export function Launcher({ context, messages: m, host }: LauncherProps) {
                     <span style={{ fontSize: 14, fontWeight: 700 }}>{m.amountLabel + " (" + native + ")"}</span>
                     <input name="contribution" value={amount} inputMode="decimal" maxLength={28} autoComplete="off"
                       disabled={busy || waiting} style={field} onChange={event => edit(event.target.value)} />
+                    {amount.trim() !== "" && (inputWei === null || inputWei === 0n) && <span role="status" style={{ ...muted, color: warn }}>{m.amountInvalid}</span>}
                     <span style={muted}>{m.contributeHelp}</span>
                   </label>
                 )}
@@ -442,7 +486,6 @@ export function Launcher({ context, messages: m, host }: LauncherProps) {
           <dl style={{ ...grid, marginBlockStart: 12 }}>
             <Datum label={m.factory}>{identity.factoryAddress}</Datum>
             {launcherAddress && <Datum label={m.launcher}>{launcherAddress}</Datum>}
-            {creator && <Datum label={m.creator}>{creator}</Datum>}
             {vault && <Datum label={m.vault}>{vault}</Datum>}
             {token && <Datum label={m.token}>{token}</Datum>}
             {!token && reserved && <Datum label={m.reservedToken}>{reserved}</Datum>}

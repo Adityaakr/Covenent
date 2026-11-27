@@ -91,7 +91,7 @@ test("vault methods named in the Vault UI's calls are all in VaultABI.ts", () =>
 });
 
 test("translations: same keys in en, zh and ko, and every key the components use exists", () => {
-  for (const [dir, pattern] of [["launcher-ui", /\bm\.(\w+)/g], ["vault-ui", /\bt\("([\w.]+)"\)/g]]) {
+  for (const [dir, pattern] of [["launcher-ui", /\bm\.(\w+)/g], ["vault-ui", /\bt\("([\w.]+)"/g]]) {
     const i18n = readJson(flap(dir, "i18n.json"));
     const en = Object.keys(i18n.en).sort();
     for (const locale of ["zh", "ko"]) assert.deepEqual(Object.keys(i18n[locale]).sort(), en, `${dir} ${locale} keys`);

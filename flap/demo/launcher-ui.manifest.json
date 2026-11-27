@@ -55,9 +55,9 @@
       "functionName": "launchRetryUntil",
       "returns": "uint256"
     },
-    "creator": {
-      "functionName": "creator",
-      "returns": "address"
+    "poolAmount": {
+      "functionName": "poolAmount",
+      "returns": "uint256"
     },
     "contribution": {
       "functionName": "contributions",
