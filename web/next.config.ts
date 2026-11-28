@@ -17,7 +17,24 @@ const nextConfig: NextConfig = {
       { source: "/app/covenant-ai", destination: "/app/ask", permanent: false },
       // the contact page was removed; old links land on the home page
       { source: "/contact", destination: "/", permanent: false },
+      // the docs' first page lives at /docs
+      { source: "/docs/introduction", destination: "/docs", permanent: true },
     ];
+  },
+  // Every docs page has a markdown twin for agents: /docs/<slug>.md (and /docs.md), or the page URL with
+  // `Accept: text/markdown`. Both serve app/docs-md/[slug], built from the same source as the page.
+  async rewrites() {
+    const md = [{ type: "header" as const, key: "accept", value: "(.*)text/markdown(.*)" }];
+    return {
+      beforeFiles: [
+        { source: "/docs.md", destination: "/docs-md/introduction" },
+        { source: "/docs/:slug([a-z0-9-]+)\\.md", destination: "/docs-md/:slug" },
+        { source: "/docs", has: md, destination: "/docs-md/introduction" },
+        { source: "/docs/:slug([a-z0-9-]+)", has: md, destination: "/docs-md/:slug" },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
   },
   turbopack: {
     rules: {

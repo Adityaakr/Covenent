@@ -33,7 +33,8 @@ export function Footer({ current }: { current?: string }) {
             <div key={col.title} className={s.column}>
               <p className="t-label">{col.title}</p>
               {col.links.map((l) =>
-                /^https?:\/\//.test(l.href) ? (
+                // external links and plain files (/llms.txt) open as documents, not app routes
+                /^https?:\/\//.test(l.href) || /\.[a-z]+$/.test(l.href) ? (
                   <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" className={["t-body link-footer", s.link].join(" ")}>
                     {l.label}
                   </a>

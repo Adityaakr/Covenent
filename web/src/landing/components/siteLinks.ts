@@ -9,6 +9,7 @@ export const JUDGES_URL = `${REPO_URL}/blob/main/JUDGES.md`;
 export const navLinks = [
   { label: "Rules", href: "/features" },
   { label: "Use cases", href: "/use-cases" },
+  { label: "Docs", href: "/docs" },
   { label: "Why we built it", href: "/#prior-art" },
   { label: "GitHub", href: REPO_URL },
   { label: "For judges", href: JUDGES_URL },
@@ -27,6 +28,7 @@ export const footerColumns = [
     links: [
       { label: "Rules", href: "/features" },
       { label: "Use cases", href: "/use-cases" },
+      { label: "Docs", href: "/docs" },
       { label: "Launch app", href: "/app" },
     ],
   },
@@ -37,6 +39,7 @@ export const footerColumns = [
       { label: "Who named the problem", href: "/#research" },
       { label: "Source on GitHub", href: REPO_URL },
       { label: "Judge guide (JUDGES.md)", href: JUDGES_URL },
+      { label: "For agents (llms.txt)", href: "/llms.txt" },
     ],
   },
   {
