@@ -86,6 +86,8 @@ export const WRITE_TOOLS = [
   'deposit_revenue', 'claim_tap', 'heartbeat', 'lower_tap', 'post_report', 'wind_down',
 ] as const;
 export const TOOL_NAMES = [...READ_TOOLS, ...WRITE_TOOLS] as const;
+/** The write tools whose transaction only the covenant's team wallet can sign (the vault's `onlyTeam` functions). */
+export const TEAM_TOOLS = ['claim_tap', 'heartbeat', 'lower_tap', 'post_report', 'wind_down'] as const satisfies readonly (typeof WRITE_TOOLS)[number][];
 
 const networkChecks = new WeakMap<CovenantService, Map<string, Promise<number>>>();
 

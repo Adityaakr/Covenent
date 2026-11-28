@@ -1,0 +1,487 @@
+{
+  "source": "server/mcp/tools.ts, rendered by `pnpm --dir server gen:llms` (server/mcp/reference.ts)",
+  "tools": [
+    {
+      "name": "get_network",
+      "title": "Network and deployment",
+      "signer": "read",
+      "args": []
+    },
+    {
+      "name": "list_covenants",
+      "title": "List covenants",
+      "signer": "read",
+      "args": [
+        {
+          "name": "under_book_only",
+          "required": false
+        },
+        {
+          "name": "state",
+          "required": false
+        },
+        {
+          "name": "include_raises",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_covenant",
+      "title": "Covenant overview",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_terms",
+      "title": "Get terms",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_status",
+      "title": "Get status",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_raise",
+      "title": "Get raise",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_position",
+      "title": "Get position",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "wallet",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_actions",
+      "title": "What can I do now",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "wallet",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_downside",
+      "title": "Get downside",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "wallet",
+          "required": false
+        },
+        {
+          "name": "tokens",
+          "required": false
+        },
+        {
+          "name": "tokens_wei",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_issuer",
+      "title": "Get issuer",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_market",
+      "title": "Get market",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_events",
+      "title": "Get events",
+      "signer": "read",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "simulate_transaction",
+      "title": "Simulate a transaction",
+      "signer": "read",
+      "args": [
+        {
+          "name": "to",
+          "required": true
+        },
+        {
+          "name": "data",
+          "required": true
+        },
+        {
+          "name": "value_wei",
+          "required": false
+        },
+        {
+          "name": "gas",
+          "required": false
+        },
+        {
+          "name": "from",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "commit",
+      "title": "Commit to a raise",
+      "signer": "anyone",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "amount_bnb",
+          "required": true
+        },
+        {
+          "name": "from",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "finalize",
+      "title": "Finalize a raise",
+      "signer": "anyone",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "from",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "claim_tokens",
+      "title": "Claim sale tokens",
+      "signer": "anyone",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "from",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "claim_refund",
+      "title": "Claim refund",
+      "signer": "anyone",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "from",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "redeem",
+      "title": "Redeem at book value",
+      "signer": "anyone",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "wallet",
+          "required": true
+        },
+        {
+          "name": "tokens",
+          "required": false
+        },
+        {
+          "name": "tokens_wei",
+          "required": false
+        },
+        {
+          "name": "slippage_bps",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "poke",
+      "title": "Poke the oracle",
+      "signer": "anyone",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "from",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "declare_abandoned",
+      "title": "Declare abandoned",
+      "signer": "anyone",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "from",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "release_team",
+      "title": "Release unlocked team tokens",
+      "signer": "anyone",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "from",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "deposit_revenue",
+      "title": "Deposit revenue",
+      "signer": "anyone",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "amount_bnb",
+          "required": true
+        },
+        {
+          "name": "tag",
+          "required": false
+        },
+        {
+          "name": "from",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "claim_tap",
+      "title": "Claim tap",
+      "signer": "team",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "heartbeat",
+      "title": "Heartbeat",
+      "signer": "team",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "lower_tap",
+      "title": "Lower tap",
+      "signer": "team",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "usd_per_30d",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "post_report",
+      "title": "Post report",
+      "signer": "team",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "period",
+          "required": true
+        },
+        {
+          "name": "uri",
+          "required": true
+        },
+        {
+          "name": "report_text",
+          "required": false
+        },
+        {
+          "name": "hash",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "wind_down",
+      "title": "Wind down (irreversible)",
+      "signer": "team",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "confirm_irreversible",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "prompts": [
+    {
+      "name": "explain_covenant",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        }
+      ],
+      "description": "Plain-language explanation of one covenant: what holders are protected by, what is at risk, and its state today."
+    },
+    {
+      "name": "should_i_redeem",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "wallet",
+          "required": true
+        }
+      ],
+      "description": "Compare redeeming at book with selling into the pool for one wallet, and say whether redemption is open."
+    },
+    {
+      "name": "before_you_commit",
+      "args": [
+        {
+          "name": "covenant",
+          "required": true
+        },
+        {
+          "name": "amount_bnb",
+          "required": false
+        }
+      ],
+      "description": "Due diligence before funding a raise: terms, worst case at book, issuer identity and reputation, and the raise itself."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "covenant://network",
+      "description": "Chain, redacted RPC, contract addresses and server limits (same as get_network)."
+    },
+    {
+      "uri": "covenant://guide",
+      "description": "The five rules, every tool, and recipes for investors and issuers (server/mcp/SKILL.md)."
+    },
+    {
+      "uri": "covenant://covenants/{address}",
+      "description": "Snapshot of one covenant by any of its addresses: state, treasury, book value, terms, exit, tap, heartbeat."
+    }
+  ]
+}

@@ -16,7 +16,7 @@ server/
   agents/issuer/     issuer agent loop, period reports (Claude or labelled template), ERC-8004 registration
   agents/investor/   investor agent: under book -> downside -> redeem, over MCP
   mcp/               Covenant MCP server (stdio and stateless streamable HTTP) + SKILL.md
-  scripts/           agent-demo.ts (a scripted agent session on BNB testnet), gen-llms.ts (web/public/llms-full.txt)
+  scripts/           agent-demo.ts (a scripted agent session on BNB testnet), gen-llms.ts (the MCP reference in the web docs)
   data/simulator/    latest simulator output (real data, see provenance inside)
   test/              vitest: unit + chain (anvil) with a Solidity fake-chain fixture
 ```
@@ -40,7 +40,7 @@ pnpm investor               # needs INVESTOR_PRIVATE_KEY; drives the MCP server 
 pnpm mcp                    # stdio MCP server (BNB testnet from 97.json when there is no local.json)
 pnpm mcp:http               # streamable HTTP MCP, stateless, read-only by default: POST http://127.0.0.1:8788/mcp
 pnpm demo:agent             # scripted agent session over MCP against BNB testnet (docs/AGENT-DEMO.md)
-pnpm gen:llms               # regenerate web/public/llms-full.txt from the tool list
+pnpm gen:llms               # regenerate the MCP reference in web/src/docs/generated/ from the tool list
 ```
 
 Everything reads `contracts/deployments/local.json` (`{chainId, rpcUrl, addresses{...}, demo{...}}`) and `contracts/abi/<Contract>.json` at runtime. Until those exist the code runs on the interfaces in `docs/DESIGN.md`; point at any other file with `COVENANT_DEPLOYMENTS` / `COVENANT_ABI_DIR`. Vaults are found anywhere in the deployments JSON under a key ending in `vault` (factories, implementations and registries are skipped), or listed in `COVENANT_VAULTS`.
@@ -145,7 +145,7 @@ RPC URLs printed host-only, and third-party text (token names, descriptions, URI
 `untrustedFields`, and fenced in `<untrusted-data>` blocks inside prompts. `pnpm mcp:http` adds a per-IP limit
 (`MCP_HTTP_RATE_PER_MIN`, 120) and a Host allowlist on loopback (`MCP_HTTP_ALLOWED_HOSTS`); write tools only with
 `MCP_HTTP_WRITES=1`. The API rate-limits `/tx/*` and `/poke-report` per IP (`API_TX_RATE_PER_MIN`, 60).
-`mcp/SKILL.md` documents the same surface for skill-based agents; `web/public/llms-full.txt` is generated from it.
+`mcp/SKILL.md` documents the same surface for skill-based agents. The site's MCP reference (`/docs/mcp-reference`, also in `/llms-full.txt`) is generated from the tool list by `pnpm gen:llms`.
 
 Hardening from the pre-audit (regressions in `test/unit/preaudit-regressions.test.ts`):
 
