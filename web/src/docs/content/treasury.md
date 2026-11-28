@@ -26,7 +26,7 @@ The split sets the starting floor. Part of the raise seeds the pool, and the tre
 
 > **book value at launch / sale price = (A − P) / (A + P)**, with A the sale share and P the pool share
 
-| Sale | Pool | Share of the raise in the pool | Starting book value, as a share of the sale price |
+| Sale | Pool | Raise in the pool | Starting floor (book value / sale price) |
 |---|---|---|---|
 | 70% | 10% | 14.3% | 75% |
 | 60% | 15% (default) | 25.0% | 60% |

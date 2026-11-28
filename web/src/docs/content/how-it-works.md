@@ -29,13 +29,13 @@ Money enters through the launcher and leaves the vault only two ways: the team's
 
 ## The five rules
 
-| Rule | What it does | Default | In depth |
-|---|---|---|---|
-| **1. Tap** | The team draws a dollar budget per 30 days, paid in BNB at the Atlas rate, capped as a share of the treasury. It can only go down | $30,000, at most 4% | [The budget](/docs/budget) |
-| **2. Performance unlock** | Team tokens unlock only when the price holds at a multiple of the sale price, in dollars and in BNB | 5% of supply at 2x, 10% at 4x, 10% at 8x, after a 180-day cliff | [Team unlocks](/docs/unlocks) |
-| **3. Book-value exit** | When the pool trades below book value for the exit streak, any holder can redeem at book | 3-day streak, 7-day round, 1% fee | [The exit](/docs/exit) |
-| **4. Abandonment switch** | If the team sends no heartbeat for the window, anyone opens the treasury to holders, fee-free, forever | 45 days | [Heartbeats and the end](/docs/heartbeats) |
-| **5. Disclosure** | The team posts each period's report pointer and its hash on chain | every period | [Heartbeats and the end](/docs/heartbeats#reports-on-chain) |
+| Rule | What it does | Default |
+|---|---|---|
+| **[1. Tap](/docs/budget)** | The team draws a dollar budget per 30 days, paid in BNB at the Atlas rate, capped as a share of the treasury. It can only go down | $30,000, at most 4% |
+| **[2. Performance unlock](/docs/unlocks)** | Team tokens unlock only when the price holds at a multiple of the sale price, in dollars and in BNB | 5% of supply at 2x, 10% at 4x, 10% at 8x, after a 180-day cliff |
+| **[3. Book-value exit](/docs/exit)** | When the pool trades below book value for the exit streak, any holder can redeem at book | 3-day streak, 7-day round, 1% fee |
+| **[4. Abandonment switch](/docs/heartbeats)** | If the team sends no heartbeat for the window, anyone opens the treasury to holders, fee-free, forever | 45 days |
+| **[5. Disclosure](/docs/heartbeats#reports-on-chain)** | The team posts each period's report pointer and its hash on chain | every period |
 
 The terms are set once, when the covenant is created, inside bounds the launcher factory enforces. After that the only change anyone can make is to lower the budget. [Rules and defaults](/docs/rules) lists every bound.
 

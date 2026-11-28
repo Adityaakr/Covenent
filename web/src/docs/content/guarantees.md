@@ -2,12 +2,12 @@
 
 Covenant itself charges nothing. Its contracts have no owner, no pause and no fee switch. These are every cost a covenant involves:
 
-| Cost | Who pays | Where it goes | Default and bounds |
-|---|---|---|---|
-| Flap's salt lock fee | The creator, once, at creation | Flap (the Portal's `SALT_LOCK_FEE`) | Set by Flap; it was 0.005 test BNB when CVD was created on BNB testnet on 27 November 2026 |
-| Trading tax | Whoever buys or sells the token on the pool | The vault treasury, after Flap's protocol fee at Flap's tax processor | 1% on buys and 1% on sells for 100 years; each side at most 10%, the higher at least 1%, for 30 days to 100 years |
-| Exit fee | A holder redeeming during an exit round | Stays in the treasury, for the holders who remain | 1%; at most 3% |
-| Gas | Whoever sends a transaction | The network | `finalize()` is sent with a 15,000,000 limit and used about 5.6M on testnet; you pay only what is used |
+| Cost | Who pays it, and where it goes | Default and bounds |
+|---|---|---|
+| Flap's salt lock fee | The creator, once, at creation; to Flap (the Portal's `SALT_LOCK_FEE`) | Set by Flap; it was 0.005 test BNB when CVD was created on BNB testnet on 27 November 2026 |
+| Trading tax | Whoever buys or sells the token on the pool; to the vault treasury, after Flap's protocol fee at Flap's tax processor | 1% on buys and 1% on sells for 100 years; each side at most 10%, the higher at least 1%, for 30 days to 100 years |
+| Exit fee | A holder redeeming during an exit round; it stays in the treasury, for the holders who remain | 1%; at most 3% |
+| Gas | Whoever sends a transaction; to the network | `finalize()` is sent with a 15,000,000 limit and used about 5.6M on testnet; you pay only what is used |
 
 No fee is taken on commitments, refunds, token claims, the team's budget, or redemption after a covenant has ended.
 

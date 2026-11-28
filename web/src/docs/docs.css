@@ -618,6 +618,8 @@ html:root[data-theme="dark"] .docs-root {
   .docs-table th,
   .docs-table td {
     padding: 9px 11px;
+    /* no column narrower than a short phrase: a table too wide for the phone scrolls inside its box instead */
+    min-width: 7.5em;
   }
   .docs-pager-link {
     padding: 14px;
