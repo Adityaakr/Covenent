@@ -32,7 +32,7 @@ PancakeSwap; the ERC-8004 registries. Four.meme's `CovenantLiteVault` is outside
 
 Flap's Guardian is the only upgrade path for the vault and launcher beacons and can call every team function (Flap's
 Pool Launch spec). One Atlas signer sets BNB/USD. The PancakeSwap pair is the price. The disclosure relayer is trusted
-for rule 5 only. See README "Security" and docs/DESIGN.md "Trust assumptions".
+for rule 5 only. See the docs' [Security](https://covenant.adibuilds.in/docs/security#trust-assumptions) page and docs/DESIGN.md "Trust assumptions".
 
 ## Reporting a vulnerability
 

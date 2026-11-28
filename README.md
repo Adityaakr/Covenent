@@ -11,646 +11,116 @@
 Capital, budgets and exits for businesses run by AI agents. Enforced by code, not courts. 24/7 on BNB Chain.</p>
 
 <p>
-  <a href="#deployments"><img alt="BNB testnet: deployed" src="https://img.shields.io/badge/BNB_testnet-deployed-F0B90B?logo=bnbchain&logoColor=white"></a>
+  <a href="https://covenant.adibuilds.in/docs/contracts"><img alt="BNB testnet: deployed" src="https://img.shields.io/badge/BNB_testnet-deployed-F0B90B?logo=bnbchain&logoColor=white"></a>
   <a href="contracts/foundry.toml"><img alt="Solidity 0.8.26" src="https://img.shields.io/badge/Solidity-0.8.26-363636?logo=solidity&logoColor=white"></a>
-  <a href="https://book.getfoundry.sh"><img alt="Built with Foundry" src="https://img.shields.io/badge/built_with-Foundry-FFDB1C"></a>
   <a href="web/package.json"><img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white"></a>
-  <a href="#for-ai-agents"><img alt="MCP: 27 tools" src="https://img.shields.io/badge/MCP-27_tools-5B6CFF"></a>
-  <a href="#testing"><img alt="Tests: 398 passing" src="https://img.shields.io/badge/tests-398_passing-2EA44F"></a>
-  <a href="#security"><img alt="Audit: none" src="https://img.shields.io/badge/audit-none-D73A49"></a>
+  <a href="https://covenant.adibuilds.in/docs/agents"><img alt="MCP server" src="https://img.shields.io/badge/MCP-keyless,_unsigned_writes-5B6CFF"></a>
+  <a href="SECURITY.md"><img alt="Audit: none" src="https://img.shields.io/badge/audit-none-D73A49"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
 </p>
 
 <p>
-  <a href="https://covenant.adibuilds.in"><b>Live app</b></a> ·
-  <a href="docs/README.md"><b>Docs</b></a> ·
-  <a href="JUDGES.md"><b>Judging? Start here</b></a> ·
-  <a href="docs/DESIGN.md"><b>Design</b></a> ·
-  <a href="docs/DEPLOY.md"><b>Deploy</b></a> ·
-  <a href="server/mcp/SKILL.md"><b>MCP</b></a>
+  <a href="https://covenant.adibuilds.in"><b>Website</b></a> ·
+  <a href="https://covenant.adibuilds.in/app"><b>App</b></a> ·
+  <a href="https://covenant.adibuilds.in/docs"><b>Docs</b></a> ·
+  <a href="https://covenant.adibuilds.in/llms.txt"><b>llms.txt</b></a> ·
+  <a href="JUDGES.md"><b>Judging? Start here</b></a>
 </p>
 
 </div>
 
-**Judging or auditing? Start with [JUDGES.md](JUDGES.md): see it working in 2 minutes, then check each claim.**
+> [!WARNING]
+> Hackathon code on BNB testnet (chain 97) only. Not audited, nothing on mainnet. Do not use it with real funds.
 
-| | |
-|---|---|
-| Status | BNB testnet (chain 97) only. Unaudited. 7 contracts [Sourcify](https://sourcify.dev/server/v2/contract/97/0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775) full match (redeploy of 27 Nov 2026, with the fixes for Flap's pre-audit re-review) |
-| Proven on chain | On the current contracts: `$CVD`, a raise that Flap's Portal launched (token, pool, vault, sale-token claim, a strict poke on the Atlas push feed). On the first deployment, before the audit fixes: `$CVT` ran every stage: raise, Flap launch, the issuer's budget and heartbeats, the issuer stops, the keeper declares abandonment, holders redeem at book |
-| Fork only | Trading tax reaching a vault, ERC-8004 reputation writes, Four.meme Lite through `ForwardVault` |
-| Planned | Cournot report checks |
-| Tests | 398 passing: contracts 155, server 137, web 106 |
-| Agents | MCP server: 27 tools, 3 prompts, 3 resources, keyless, writes unsigned · [`/llms.txt`](https://covenant.adibuilds.in/llms.txt) · Covenant AI in the app |
-| On Flap | Launcher UI and Vault UI packages for flap.sh pages ([`flap/`](flap/README.md)) |
+## What it is
+
+A team that raises money by launching a token asks buyers to trust it with the treasury. An AI agent running a business has even less to answer to. Covenant replaces that trust with code: a launcher and a vault for token raises on BNB Chain, built on [Flap](https://flap.sh)'s Pool Launch. Flap launches the token and its PancakeSwap pool, and most of the raise goes into a vault that runs five fixed rules. The same contracts bind a human team or an AI agent, and anyone can trigger the rules.
+
+| Rule | What it does | Default |
+|---|---|---|
+| **Tap** | The team draws a dollar budget per 30 days, priced through Atlas BNB/USD and capped as a share of the treasury. It can only go down | $30,000, at most 4% |
+| **Performance unlock** | Team tokens unlock only when the price holds at a multiple of the sale price, in dollars and in BNB | 2x, 4x, 8x after a 180-day cliff |
+| **Book-value exit** | When the pool trades below treasury value per token for the exit streak, any holder can redeem at book | 3-day streak, 1% fee |
+| **Abandonment switch** | If the team sends no heartbeat for the window, anyone opens the treasury to holders, fee-free, forever | 45 days |
+| **Disclosure** | The team posts each period's report pointer and hash on chain | every period |
+
+```mermaid
+flowchart LR
+  B([Buyers]) -- commit BNB --> L[Launcher]
+  L -- "finalize()" --> P[Flap Portal]
+  P --> T[Token + PancakeSwap pool]
+  P --> V[(Vault)]
+  T -. trading tax .-> V
+  V -- "tap, capped" --> Team([Team or AI agent])
+  V -- "redeem at book" --> H([Holders])
+  O[Oracle: pool TWAP + Atlas] -- poke --> V
+```
+
+The [docs](https://covenant.adibuilds.in/docs) explain each step: [how it works](https://covenant.adibuilds.in/docs/how-it-works), [the five rules](https://covenant.adibuilds.in/docs/rules) and [concepts](https://covenant.adibuilds.in/docs/concepts).
 
 <p align="center">
   <img src="docs/assets/app-testnet-covenant.png" width="900" alt="The Covenant app on BNB testnet, showing the covenant $CVT wound down with its treasury open to holders at book value">
   <br>
-  <sub>The app on BNB testnet. This covenant ran every stage on chain 97. Its issuer stopped, the keeper declared it abandoned, and holders now redeem at book with no fee.</sub>
+  <sub>The app on BNB testnet: the first covenant ran every stage on chain 97, then its issuer stopped, the keeper declared it abandoned, and holders redeem at book with no fee.</sub>
 </p>
 
-<p align="center">
-  <a href="#why-covenant">Why Covenant</a> ·
-  <a href="#the-five-rules">The five rules</a> ·
-  <a href="#how-a-covenant-moves">Lifecycle</a> ·
-  <a href="#where-the-money-goes">Money flow</a> ·
-  <a href="#architecture">Architecture</a> ·
-  <a href="#for-ai-agents">For AI agents</a> ·
-  <a href="#built-with">Built with</a> ·
-  <a href="#deployments">Deployments</a> ·
-  <a href="#quickstart">Quickstart</a> ·
-  <a href="#testing">Testing</a> ·
-  <a href="#security">Security</a> ·
-  <a href="#repository-layout">Layout</a> ·
-  <a href="#documentation">Documentation</a>
-</p>
-
-## Why Covenant
-
-A token raise gives buyers no claim on the money once it lands.
-
-- **The money leaves in one piece.** The team controls the whole raise on day one.
-- **Insiders are paid by the calendar.** Vesting unlocks on dates, whatever the token is worth.
-- **Buyers cannot exit at fair value.** The only exit is a thin pool, even when the treasury holds most of the raise.
-- **Projects fade instead of closing.** A team that stops working keeps the keys.
-
-Covenant is a launcher and a vault on [Flap](https://flap.sh) Pool Launch. Most of a raise goes into a vault, not to the
-team. Five fixed rules decide when it moves, and anyone can trigger them. The same contracts bind a human team or an AI
-agent. An agent needs them more: it cannot be sued, its key can be stolen, and it can simply stop running.
-
-Sources for each claim are in [docs/DESIGN.md, "Problem and evidence"](docs/DESIGN.md).
-
-## The five rules
-
-| # | Rule | What it does | Enforced in |
-|---|---|---|---|
-| 1 | **Tap** | The team draws a dollar budget per 30 days, paid in BNB at the Atlas BNB/USD rate. It is capped as a share of the treasury. It can be lowered, never raised. | `CovenantVault.claimTap`, `lowerTap` |
-| 2 | **Performance unlock** | Team tokens unlock only after the dollar price holds above 2x, 4x or 8x the sale price for a window of trusted observations, after a cliff. | `CovenantVault.releaseTeam` |
-| 3 | **Book-value exit** | When the pool trades below book value for the exit streak, an exit round opens. Any holder can burn tokens for a pro-rata share of the treasury. | `CovenantVault.onObservation`, `redeem` |
-| 4 | **Abandonment switch** | After the heartbeat window with no word from the team, anyone can call `declareAbandoned()`. Locked team tokens burn and redemption opens with no fee, forever. | `CovenantVault.declareAbandoned`, `windDown` |
-| 5 | **Disclosure** | The team posts a pointer to each period's report and its hash on-chain. | `CovenantVault.postReport` |
-
-```text
-book value = (vault BNB - tap owed to the team) / (total supply - burned - locked team tokens)
-```
-
-Pool tokens count in the denominator, so trading never moves book value. A redemption never lowers it for the holders who
-stay. The exit streak decays above book instead of resetting. It compares two on-chain numbers, so it works with no
-oracle. There is no owner, no pause and no fee switch. Flap's Guardian is the only upgrade path.
-
-<details>
-<summary><b>Default terms</b> (<code>CovenantProfiles.defaultTerms</code>)</summary>
-
-<br>
-
-Terms are fixed at creation. Only the tap can change later, and only downwards.
-
-| Term | Default | Term | Default |
-|---|---|---|---|
-| Supply | 1,000,000,000 | Exit streak | 3 days below book |
-| Split | 60% sale, 15% pool, 25% team | Exit round, cooldown | 7 days, 14 days |
-| Team tranches | 5% at 2x, 10% at 4x, 10% at 8x | Exit fee | 1% (0 at wind-down) |
-| Raise | min 200 BNB, cap 500 BNB, 4-day sale | Heartbeat window | 45 days |
-| Trading tax | 1% buy, 1% sell, 100 years, net of Flap's ~10% fee to the vault | Poke spacing | at least 1 hour (plain and report-carrying pokes on separate clocks) |
-| Tap | $30,000 per 30 days, capped at 4% of the treasury | Most time one poke adds | 6 hours |
-| Cliff, unlock window | 6 months, 30 continuous strict days | Pool-seed floor | 1.5x Flap's live graduation floor (21.4 BNB seed, 85.7 BNB minimum raise at a 15% pool and $700 per BNB); demo factory: 1.5x the creation floor |
-
-A demo factory pair runs the same rules on minute timers (`CovenantProfiles.demo`): a 3-minute exit streak, 5-minute
-round, 10-minute heartbeat and 20-second pokes.
-
-**Worked example** at default terms: buyers commit 1,400 BNB against the 500 BNB cap. 500 BNB is accepted and 900 BNB
-refunds pro rata. 125 BNB seeds the pool and 375 BNB goes to the vault. Book value starts at 60% of the sale price. With
-the 4% tap cap binding and no tax income, it is 47.0% after 6 months, 36.8% after 12 and 22.5% after 24.
-
-</details>
-
-## How a covenant moves
-
-```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> RAISING: newLauncher
-    RAISING --> FAILED: below minimum or launch reverts
-    RAISING --> ACTIVE: finalize
-    ACTIVE --> EXIT_ROUND: below book for the streak
-    EXIT_ROUND --> COOLDOWN: round ends
-    COOLDOWN --> ACTIVE: cooldown ends
-    ACTIVE --> WIND_DOWN: abandoned or wound down
-    EXIT_ROUND --> WIND_DOWN
-    COOLDOWN --> WIND_DOWN
-    FAILED --> [*]: full refunds
-    WIND_DOWN --> [*]: redeem at book
-
-    classDef live fill:#EEF0FF,stroke:#5B6CFF,color:#15171C
-    classDef exit fill:#FFF6E5,stroke:#E0A100,color:#15171C
-    classDef done fill:#FDECEC,stroke:#D64545,color:#15171C
-    class RAISING,ACTIVE,COOLDOWN live
-    class EXIT_ROUND exit
-    class FAILED,WIND_DOWN done
-```
-
-| State | What holds | What ends it |
-|---|---|---|
-| `RAISING` | Commitments are open. A raise can be oversubscribed and is scaled back pro rata | Anyone calls `finalize()` after the deadline |
-| `FAILED` | The minimum was missed or the launch reverted. Every commitment refunds | Terminal |
-| `ACTIVE` | The tap accrues, tax arrives, pokes record prices, the exit trigger is armed | The exit streak, or wind-down |
-| `EXIT_ROUND` | Redemption at book is open. The tap is paused | The round length |
-| `COOLDOWN` | As active, but the exit trigger is disarmed | The cooldown length |
-| `WIND_DOWN` | The tap has ended. Locked team tokens are burned. Redemption is open with no fee | Terminal |
-
-## Where the money goes
-
-```mermaid
-flowchart LR
-    B([Buyers]) -->|contribute| L[CovenantLauncher]
-    L -->|excess or refund| B
-    L -->|pool share| P[Flap Portal]
-    P -->|seed at sale price| X[(PancakeSwap pool)]
-    P -->|reserved tokens| V[CovenantVault]
-    L -->|treasury share| V
-    X -->|trading tax| V
-    R([Agent revenue]) -->|BNB transfer| V
-    V -->|tap| T([Team or agent])
-    V -->|unlocked tranches| T
-    V -->|redeem at book| H([Holders])
-
-    classDef cov fill:#EEF0FF,stroke:#5B6CFF,color:#15171C
-    classDef ext fill:#F4F5F7,stroke:#8A8F98,color:#15171C
-    classDef who fill:#E9F9EF,stroke:#22A55B,color:#15171C
-    class L,V cov
-    class P,X ext
-    class B,R,T,H who
-```
-
-The vault counts incoming BNB by balance delta. Tax and revenue raise book value. Tap claims and unlocks lower it.
-Redemptions leave it unchanged, or raise it slightly when the exit fee applies.
-
-Tax does not arrive per trade. Flap's tax processor accumulates it and forwards it in chunks once a threshold
-(about $500 worth) is reached, after Flap's protocol fee of about 10%. On BNB testnet, trading volume has not yet
-crossed that threshold, so no tax has reached a vault there.
-
-## Architecture
-
-```mermaid
-flowchart LR
-    APP[Web app] --> API[API :8787]
-    AG([AI agents]) --> MCP[MCP server]
-    K[Keeper]
-    IA[Issuer agent]
-
-    API --> LENS[CovenantLens]
-    MCP --> LENS
-    API -.-> CMC[(CoinMarketCap)]
-    K -->|poke| OR[CovenantOracle]
-    IA -->|tap, heartbeat, report| VA[CovenantVault]
-    LA[CovenantLauncher] -->|launch| PORTAL[Flap Portal]
-    PORTAL -->|vault and tokens| VA
-    OR -->|observation| VA
-    OR -.-> PAIR[(PancakeSwap pair)]
-    OR -.-> ATLAS[Atlas BNB/USD]
-    VA -->|outcomes| ERC[ERC-8004]
-
-    classDef cov fill:#EEF0FF,stroke:#5B6CFF,color:#15171C
-    classDef ext fill:#F4F5F7,stroke:#8A8F98,color:#15171C
-    classDef off fill:#FFF6E5,stroke:#E0A100,color:#15171C
-    classDef who fill:#E9F9EF,stroke:#22A55B,color:#15171C
-    class LENS,LA,VA,OR cov
-    class PORTAL,PAIR,ATLAS,ERC,CMC ext
-    class API,MCP,K,IA off
-    class APP,AG who
-```
-
-Blue boxes are Covenant contracts. Amber boxes run in `server/`. Grey boxes are integrations. Green boxes are users. Dotted lines are reads.
-
-| Contract | Role |
-|---|---|
-| `CovenantLauncherFactory` | Checks terms against its profile and deploys one launcher per raise. Built on Flap `LauncherFactoryBase` |
-| `CovenantLauncher` | Holds commitments, settles pro rata, launches once through the Portal, pays refunds |
-| `CovenantVaultFactory` | Accepts launches only from its paired launcher factory. Deploys each vault as a beacon proxy |
-| `CovenantVault` | Holds the treasury and reserved tokens, runs the five rules, writes outcomes to ERC-8004 |
-| `CovenantOracle` | Ownerless. Reads the pair's TWAP and the Atlas BNB/USD rate, then sends one observation to a vault |
-| `CovenantLens` | Read-only views for the app, keeper and MCP server: `status`, `downside`, `issuer` |
-| `CovenantLiteVault` | Rules 1 and 4 for Four.meme tax tokens, cloned per token by OpenFour's `ForwardVault` |
-
-Third-party sources are vendored unchanged under `contracts/src/flap` and `contracts/src/vendor`
-([VENDORED.md](contracts/VENDORED.md)).
-
-## For AI agents
-
-An agent can raise money, draw a budget, hold a position or exit through the same rules. Every write returns an
-**unsigned transaction**. The server never holds or asks for a key.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor A as Issuer agent
-    participant P as Flap Portal
-    participant L as Launcher
-    actor B as Buyers
-    participant V as Vault
-    participant K as Keeper
-
-    A->>P: newLauncher(terms, agentId)
-    B->>L: contribute()
-    B->>L: finalize()
-    L->>P: launch token and pool
-    L->>V: fund treasury
-    loop about hourly
-        K->>V: poke via CovenantOracle
-    end
-    A->>V: claimTap() (also a heartbeat)
-    A->>V: postReport(period, uri, hash)
-    Note over A,V: If the agent stops, anyone calls declareAbandoned()<br/>and the vault records it on ERC-8004
-```
-
-**Connect an MCP client.** `pnpm --dir server mcp` serves 27 tools, 3 prompts and 3 resources over stdio. With no
-local dev chain it reads BNB testnet from the committed `contracts/deployments/97.json`, so reads need no key and no
-env. `pnpm --dir server mcp:http` serves the read tools over stateless streamable HTTP for remote agents.
-
-```bash
-claude mcp add covenant -- pnpm --dir /absolute/path/to/Covenent/server mcp
-```
-
-```json
-{
-  "mcpServers": {
-    "covenant": {
-      "command": "pnpm",
-      "args": ["--dir", "/absolute/path/to/Covenent/server", "mcp"],
-      "env": { "COVENANT_NETWORK": "testnet" }
-    }
-  }
-}
-```
-
-The same JSON works in Claude Desktop (`claude_desktop_config.json`) and Cursor (`.cursor/mcp.json`). For the local dev
-chain, set `COVENANT_DEPLOYMENTS` to `contracts/deployments/local.json` instead. [docs/AGENT-DEMO.md](docs/AGENT-DEMO.md)
-is a recorded session on BNB testnet against the current deployment (`pnpm --dir server demo:agent` replays it).
-
-One command starts anvil (a BNB Chain fork with chain id 56 when a BNB RPC that serves older state answers, else the
-offline mock stack on 31337; `--fork` / `--mock` force one; a block every second), deploys every contract, deploys the
-local test funds (Demo USDC, shown in the app as test USDT, and its pool against WBNB on the local PancakeSwap), and seeds a covenant at every stage by real
-transactions: abandoned by its agent, wound down by its team, ACTIVE with tax and tap, an exit round open, and a raise
-under way (recorded under `.seeded` in `contracts/deployments/local.json`). It then starts the server API on `:8787`,
-the keeper (pokes every 20 s with the local Atlas test signer), an issuer agent on each live covenant and the web app
-on http://localhost:8080 (`WEB_PORT` moves it; 8081-8083 and 8085 are also Privy origins; `--prod` serves a build).
-Every screen reads the chain or the server; there is no stand-in data. Settings, Test funds (`/app/settings/funds`)
-sends a connected wallet test BNB and test USDT on the dev chain (and swaps it to BNB on the local pool), or a
-0.003 tBNB drip on BNB testnet, once per wallet a day.
-
-Agents that read skills can use [server/mcp/SKILL.md](server/mcp/SKILL.md). The site serves
-[`/llms.txt`](web/public/llms.txt) and the generated, complete [`/llms-full.txt`](web/public/llms-full.txt).
-
-| Role | Command | What it does |
-|---|---|---|
-| Issuer agent | `pnpm --dir server issuer` | Holds the team wallet. Claims the tap, sends heartbeats, cuts its own pay near book, posts reports. Claude proposes each period's plan (claim, cut pay or heartbeat) and writes the report; a fixed policy bounds the plan, and each decision is posted on chain with its hash |
-| Investor agent | `pnpm --dir server investor` | Uses the MCP server to find covenants under book and redeems when that beats selling |
-| Keeper | `pnpm --dir server keeper` | Pokes about hourly, dispatches trading tax, declares abandonment when due |
-
-<details>
-<summary><b>All 27 MCP tools</b> (<a href="server/mcp/tools.ts"><code>server/mcp/tools.ts</code></a>)</summary>
-
-<br>
-
-Every covenant tool takes `covenant`: the vault, token, launcher or pool address, any one.
-
-| Tool | Kind | Inputs | Returns |
-|---|---|---|---|
-| `get_network` | read | none | Chain, redacted RPC host, block, contract addresses, limits (per-call cap, finalize gas) |
-| `list_covenants` | read | `under_book_only?`, `state?`, `include_raises?` | Each covenant (state, treasury, book, price, premium to book) and each open or failed raise |
-| `get_covenant` | read | `covenant` | Overview from any address, with a plain summary |
-| `get_terms` | read | `covenant` | Terms, tranches, sale price, and a plain summary of the five rules |
-| `get_status` | read | `covenant` | State, exit streak, round end, tap, heartbeat, tranches, trust, treasury, book, price, ledger |
-| `get_raise` | read | `covenant` | Launcher state, committed, minimum, cap, deadline, seconds left, whether finalize is due |
-| `get_position` | read | `covenant`, `wallet` | Tokens, commitment, claimable allocation, refund, team-wallet check, downside |
-| `get_actions` | read | `covenant`, `wallet?` | Every action with available yes or no, who may sign, and why |
-| `get_downside` | read | `covenant`, `wallet?` or `tokens?` or `tokens_wei?` | Redeem at book now vs. sell into the pool, the floor at 6, 12 and 24 months, runway |
-| `get_issuer` | read | `covenant` | Team wallet, ERC-8004 agent id, owner check, reputation from covenant vaults only |
-| `get_market` | read | `covenant` | On-chain reserves, plus the CoinMarketCap pair quote on BNB Chain mainnet |
-| `get_events` | read | `covenant`, `kind?`, `limit?` | The ledger, newest first |
-| `simulate_transaction` | read | `to`, `data`, `value_wei?`, `gas?`, `from?` | eth_call with the Covenant revert reason decoded |
-| `commit` | write | `covenant`, `amount_bnb`, `from?` | `contribute()`, with the pro-rata outcome if the raise closed now |
-| `finalize` | write | `covenant`, `from?` | `finalize()` with gas 15,000,000 (Flap's cap; the launcher needs 12M left before the launch) |
-| `claim_tokens` | write | `covenant`, `from?` | `claimTokens()` |
-| `claim_refund` | write | `covenant`, `from?` | `claimRefund()` |
-| `redeem` | write | `covenant`, `wallet`, `tokens?` or `tokens_wei?`, `slippage_bps?` | Approval as a prerequisite, then `redeem(amount, minOut)`. Only in `EXIT_ROUND` or `WIND_DOWN` |
-| `poke` | write | `covenant`, `from?` | `CovenantOracle.poke(vault)` with a signed report, or plain where the push feed prices it |
-| `declare_abandoned` | write | `covenant`, `from?` | `declareAbandoned()`, with a note on whether it is due |
-| `release_team` | write | `covenant`, `from?` | `releaseTeam()`: unlocked team tranches to the team wallet |
-| `deposit_revenue` | write | `covenant`, `amount_bnb`, `tag?`, `from?` | `depositRevenue(tag)`: revenue that raises book value |
-| `claim_tap` | issuer | `covenant` | `claimTap()` from the team wallet |
-| `heartbeat` | issuer | `covenant` | `heartbeat()` from the team wallet |
-| `lower_tap` | issuer | `covenant`, `usd_per_30d` | `lowerTap(newUsd)`, a permanent pay cut |
-| `post_report` | issuer | `covenant`, `period`, `uri`, `report_text?` or `hash?` | `postReport(period, uri, hash)` |
-| `wind_down` | issuer | `covenant`, `confirm_irreversible: true` | `windDown()`, irreversible |
-
-A write returns `{unsignedTransaction {chainId, to, data, value, from, gas?, prerequisites[]}, simulation {ok, gasEstimate,
-error, note}, howToSend}`. Nothing is signed or sent. Send each prerequisite first, then the transaction, from the wallet
-in `from` when it is set. Prompts: `explain_covenant`, `should_i_redeem`, `before_you_commit`. Resources:
-`covenant://network`, `covenant://guide`, `covenant://covenants/{address}`.
-
-</details>
-
-<details>
-<summary><b>HTTP API</b> (<code>pnpm --dir server api</code>, default <code>http://127.0.0.1:8787</code>)</summary>
-
-<br>
-
-There is no hosted public API. Run your own. Schemas are in [server/src/schema.ts](server/src/schema.ts) and the full
-table is in [server/README.md](server/README.md#api-8787).
-
-| Route | Returns |
-|---|---|
-| `GET /health` | Chain, block, deployment, oracle and Atlas mode |
-| `GET /api/covenants` | Every covenant summary |
-| `GET /api/covenants/:vault` | The full covenant sheet (`?fresh=1` skips the 2 s cache) |
-| `GET /api/covenants/:vault/events` · `/history` · `/alerts` | Ledger events, observed prices, keeper alerts |
-| `GET /api/covenants/:vault/downside?holder=&tokens=` | The downside of a position |
-| `GET /api/covenants/:vault/tx/:action` | Unsigned tx: `commit`, `claim-refund`, `claim-tokens`, `redeem`, `declare-abandoned`, `claim-tap`, `heartbeat`, `lower-tap` |
-| `GET /api/poke-report?vault=` | A signed BNB/USD report and a ready `poke(vault)` tx |
-| `GET /api/simulator` · `/api/simulator/sample` | The launch simulator and its sample |
-| `GET /api/fourmeme/encode` · `/api/fourmeme/launches` | ForwardVault data for a Lite vault |
-| `GET /reports/:vault/:period` · `/agents/:owner/registration.json` | Issuer reports, ERC-8004 registration files |
-
-</details>
-
-## Built with
-
-<p align="center">
-  <a href="#built-with"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logos/flap-dark.svg"><img src="web/public/landing/logos/flap.svg" height="28" alt="Flap"></picture></a>&nbsp;&nbsp;&nbsp;
-  <a href="#built-with"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logos/pancakeswap-dark.svg"><img src="web/public/landing/logos/pancakeswap.svg" height="28" alt="PancakeSwap"></picture></a>&nbsp;&nbsp;&nbsp;
-  <a href="#built-with"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logos/atlas-dark.svg"><img src="web/public/landing/logos/atlas.svg" height="28" alt="Atlas"></picture></a>&nbsp;&nbsp;&nbsp;
-  <a href="#built-with"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logos/coinmarketcap-dark.svg"><img src="web/public/landing/logos/coinmarketcap.svg" height="28" alt="CoinMarketCap"></picture></a>&nbsp;&nbsp;&nbsp;
-  <a href="#built-with"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logos/erc-8004-dark.svg"><img src="web/public/landing/logos/erc-8004.svg" height="28" alt="ERC-8004"></picture></a>&nbsp;&nbsp;&nbsp;
-  <a href="#built-with"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logos/four-meme-dark.svg"><img src="web/public/landing/logos/four-meme.svg" height="28" alt="Four.meme"></picture></a>&nbsp;&nbsp;&nbsp;
-  <a href="#built-with"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logos/cournot-dark.svg"><img src="web/public/landing/logos/cournot.svg" height="28" alt="Cournot"></picture></a>&nbsp;&nbsp;&nbsp;
-  <a href="#built-with"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logos/bnb-chain-dark.svg"><img src="web/public/landing/logos/bnb-chain.svg" height="28" alt="BNB Chain"></picture></a>
-</p>
-
-| Integration | What Covenant uses it for | Status |
-|---|---|---|
-| **Flap Pool Launch** | Flap deploys the tax token, seeds the PancakeSwap pool at the sale price and asks our factory for the vault. Flap's tax processor forwards trading tax to the vault in ~$500 chunks, less a ~10% protocol fee | BNB testnet (launch, claim, redeem; first covenant `$CVT` from the previous demo factory). Tax reaching the vault: on a fork of chain 97 |
-| **PancakeSwap V2** | The price. `PairTwap` reads the pair's cumulative price, so a flash loan cannot move it | BNB testnet and fork |
-| **Atlas** | BNB/USD prices the dollar tap and the dollar unlock. Signed pull reports, or the testnet push feed | Live on BNB testnet (push feed) |
-| **CoinMarketCap** | DEX pair quotes, liquidity and candles for the covenant sheet, `get_market` and the simulator | Server-side: powers the launch simulator; the hosted site shows it only when a Covenant server is attached |
-| **ERC-8004** | Agent identity. The vault writes abandonment (-100), wind-down (0) and unlocks (+multiple) | Fork, against the live registries |
-| **Four.meme** | Covenant Lite: a tax vault template that OpenFour's `ForwardVault` clones per token | Fork |
-| **Cournot** | Would check each period report. A failed check pauses the tap | Planned. The vault hook exists, no relayer runs |
-| **BNB Chain** | Every contract | BNB testnet. Not on mainnet |
-| **flap.sh UI** | Covenant's Launcher UI and Vault UI packages, built with Flap's component template, so a covenant can be used on flap.sh's own pages ([`flap/`](flap/README.md)) | Packaged for Flap. Flap hosts them |
-
-Raises are in BNB today. USDT and USD1 raises are in progress: Flap mainnet already accepts both as launch quotes.
-
-<details>
-<summary><b>Integration addresses</b> (from <code>contracts/deployments/97.json</code> and <a href="docs/DEPLOY.md"><code>docs/DEPLOY.md</code></a>)</summary>
-
-<br>
-
-| Contract | BNB Chain (56) | BNB testnet (97) |
-|---|---|---|
-| Flap Portal | `0x000042108465206185A077Edc3F3fd2b49060000` | same |
-| Flap TokenDockRouter | `0x000048E888aBf09f690a952E1b386b2D031a0000` | same |
-| Flap Guardian | `0x9e27098dcD8844bcc6287a557E0b4D09C86B8a4b` | `0x00004d58290854c5E9880F4b5B1993c6Ad8b0000` |
-| ERC-8004 IdentityRegistry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
-| ERC-8004 ReputationRegistry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
-| Atlas pull signer | `0x59eD4701224fD9e2a85Ef2946c2ab828C1dDC600` | same |
-| Atlas BNB/USD push feed | none | `0x3957d289ee9C38272377786787ea34F9dd29788D` ([atlas-97.json](contracts/config/atlas-97.json)) |
-| OpenFour ForwardVault | `0xD3917AA849ec5122a4C0D48e054fa3B5514C47e4` | not confirmed |
-
-CoinMarketCap endpoints used by the server: `/v4/dex/pairs/quotes/latest`, `/v1/dex/token-liquidity/query`,
-`/v1/dex/liquidity-change/list`, `/v1/k-line/candles`, `/v1/dex/tokens/transactions`, `/v1/dex/new/list`.
-
-</details>
-
-## Deployments
-
-Covenant is deployed on **BNB testnet** (chain 97). Nothing is on BNB Chain mainnet. The record is
-[`contracts/deployments/97.json`](contracts/deployments/97.json). Every contract is a full match on Sourcify (the links return JSON; BscScan refuses most automated clients). These are
-the 27 Nov 2026 redeploy with the fixes for Flap's pre-audit re-review, F1 to F8 ([docs/DEPLOY.md](docs/DEPLOY.md#redeploy-with-flaps-re-review-fixes-f1-to-f8-27-nov-2026)).
-
-| Contract | Address | Source |
-|---|---|---|
-| CovenantOracle | [`0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775`](https://testnet.bscscan.com/address/0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x2Df1Ad97fe98033Cc4Eba6Ea98B5703B0c69F775) |
-| CovenantLauncherFactory | [`0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF`](https://testnet.bscscan.com/address/0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x528374FeF9da2C31C646E59AE19EB2aE18b7a0DF) |
-| CovenantVaultFactory | [`0xAbb9811f529B793c86848211522B789071671ebC`](https://testnet.bscscan.com/address/0xAbb9811f529B793c86848211522B789071671ebC) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0xAbb9811f529B793c86848211522B789071671ebC) |
-| CovenantLauncherFactory (demo timers) | [`0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE`](https://testnet.bscscan.com/address/0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x0F92C58c6aC5A3f6A5E3fF23a7698F58306Df2aE) |
-| CovenantVaultFactory (demo timers) | [`0x6d3a421708F8b45FbD92342d33a841de40E6cC8F`](https://testnet.bscscan.com/address/0x6d3a421708F8b45FbD92342d33a841de40E6cC8F) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x6d3a421708F8b45FbD92342d33a841de40E6cC8F) |
-| CovenantLens | [`0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4`](https://testnet.bscscan.com/address/0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x21DA47FC79DaF6479A1703aab1E5fc18B5bFa6b4) |
-| CovenantLiteVault template | [`0x411c4560f9D8F9b06a730D9652FCb9D71290D285`](https://testnet.bscscan.com/address/0x411c4560f9D8F9b06a730D9652FCb9D71290D285) | [Sourcify](https://sourcify.dev/server/v2/contract/97/0x411c4560f9D8F9b06a730D9652FCb9D71290D285) |
-
-**Flap's test launch (27 Nov 2026).** `$CVD` (Covenant Demo) through the demo launcher factory above: a 3.968 tBNB
-raise at exactly the factory's minimum (1.5x Flap's creation floor at a 50 / 45 / 5 split), finalized with a 15,000,000
-gas limit (5.56M used). Flap launched the tax token (1% buy, 1% sell, to the vault), seeded the pool with 3.571 BNB and
-450M CVD and burned 100% of the LP; the vault holds the 0.397 tBNB treasury and the Token Dock the 550M reserved
-tokens. Launcher [`0xFb40790832BBAF5ABe61Db0beEc575468c973045`](https://testnet.bscscan.com/address/0xFb40790832BBAF5ABe61Db0beEc575468c973045), token [`0xCD4CB77A6D970FDfddE04Ab9D9a89349995e7777`](https://testnet.bscscan.com/address/0xCD4CB77A6D970FDfddE04Ab9D9a89349995e7777)
-(equal to the launcher's `expectedToken()` before the launch), vault [`0xFdC8dA0C251ED1f24cef6d9220aDa60E311638bE`](https://testnet.bscscan.com/address/0xFdC8dA0C251ED1f24cef6d9220aDa60E311638bE),
-pool [`0x464AF9543120B9a83Da2196BC6C3d1FC67E7860b`](https://testnet.bscscan.com/address/0x464AF9543120B9a83Da2196BC6C3d1FC67E7860b); finalize [`0x38170242…`](https://testnet.bscscan.com/tx/0x38170242eb34ebf1b449a16403fc270bd32892e3cd3ff3f8a2b9b6c589a09d2d).
-Every transaction is in [docs/DEPLOY.md](docs/DEPLOY.md#flaps-test-launch-on-bnb-testnet-27-nov-2026).
-
-**The first testnet covenant.** `$CVT` was created through the previous demo launcher factory
-(`0x89D7E30109D62F72fBf717aafc2d59d21CA4DC48`, before the audit fixes) and taken through every stage on chain 97: create, commit, Flap launch, claim, keeper pokes and tax dispatch, issuer heartbeat and tap, abandonment,
-redeem.
-
-| | Address |
-|---|---|
-| Token (`CVT`) | [`0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777`](https://testnet.bscscan.com/address/0x40002FcB9983c46b299F13e2d64E2c9Cb3b07777) |
-| Launcher | [`0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E`](https://testnet.bscscan.com/address/0x0f3Fe8a8d3e2862E6218f42D6376D28ba3EaDf5E) |
-| Vault | [`0x524059B1424101D4CAFD33B9a1A8D332dD71193D`](https://testnet.bscscan.com/address/0x524059B1424101D4CAFD33B9a1A8D332dD71193D) |
-| Pool | [`0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201`](https://testnet.bscscan.com/address/0x8ef1997E6D38A51Ad49459C8147f0E18fa0a4201) |
-
-Every transaction of that run is listed in [docs/DEPLOY.md](docs/DEPLOY.md#end-to-end-run-on-bnb-testnet-26-nov-2026).
-Check any of them with an RPC that still serves old receipts (publicnode answers them with `null`):
-`cast receipt <tx> status --rpc-url https://bsc-testnet.bnbchain.org`. This launcher and vault are beacon proxies of the
-first deployment, whose contracts are verified on Sourcify ([DEPLOY.md](docs/DEPLOY.md#first-bnb-testnet-deployment-chain-97-26-nov-2026-before-the-audit-fixes)).
-Flap's testnet Portal needs a pool seed of at least 1.0714 BNB divided by the pool share, so
-[`TestnetCovenant.s.sol`](contracts/script/TestnetCovenant.s.sol) creates a 2.65 tBNB raise split 50 / 45 / 5.
-
-Run the platform against testnet. This signs real testnet transactions. Keys stay in a git-ignored file.
-
-```bash
-TESTNET_WALLETS=/path/to/wallets.env scripts/testnet-up.sh   # later runs: scripts/testnet-up.sh
-scripts/testnet-up.sh status | stop | stop-issuer
-```
-
-## Quickstart
-
-You need Node 22, pnpm, [Foundry](https://book.getfoundry.sh), `jq` and `curl`.
+## Try it
+
+- **In the browser:** open [the app](https://covenant.adibuilds.in/app) on BNB testnet, connect a wallet and get test BNB from [BNB Chain's faucet](https://www.bnbchain.org/en/testnet-faucet). [Quickstart](https://covenant.adibuilds.in/docs/quickstart).
+- **With an AI agent:** the MCP server reads BNB testnet with no key, and its write tools return unsigned, simulated transactions for your wallet to sign.
+- **The whole stack on your machine:** a local chain, every contract, covenants at every stage, the API, the keeper, the agents and the web app.
 
 ```bash
 git clone https://github.com/Adityaakr/Covenent.git && cd Covenent
+
+# connect an agent (Node 22, pnpm)
+pnpm --dir server install
+claude mcp add covenant -- pnpm --dir "$PWD/server" mcp
+
+# or run everything locally (also needs Foundry), then open http://localhost:8080
 git submodule update --init
 scripts/dev-all.sh
 ```
 
-Open **http://localhost:8080**. The script starts a local chain, deploys every contract, seeds a covenant at every stage
-by real transactions, and starts the API, keeper, issuer agents and web app. It forks BNB Chain (chain id 56) when a BNB
-RPC that serves older state answers. Otherwise it runs an offline mock stack (chain id 31337). Every screen reads the
-chain or the server. There is no stand-in data.
-
-<details>
-<summary><b>Ports, commands and optional keys</b></summary>
-
-<br>
-
-| Service | Port | Override |
-|---|---|---|
-| Web app | `8080` | `WEB_PORT`. 8081-8083 and 8085 are also Privy origins. `pnpm dev:3000` runs without Privy |
-| Server API | `8787` | `API_PORT`. Allow the web origin in `CORS_ORIGINS` |
-| anvil | `8545` | `DEV_PORT` |
-
-| Command | What it does |
-|---|---|
-| `scripts/dev-all.sh --fork` / `--mock` | Force the fork or the mock chain |
-| `scripts/dev-all.sh status` / `stop` | Show what runs and where its logs are; stop everything |
-| `scripts/dev-all.sh stop-issuer` | Kill the issuer agent. The keeper declares abandonment once the window passes |
-| `scripts/dev-all.sh --prod` | Serve a production build of the web app |
-| `scripts/dev-demo.sh <scene>` | Replay a demo scene. `advance <seconds>` moves the clock |
-| `scripts/dev-demo.sh fourmeme full\|active <name> <symbol>` | The Four.meme journey, fork only |
-
-Wallets: Privy on the allowed origins, or a browser wallet with one of anvil's public accounts. #0 deployer, #1 team or
-issuer agent, #2 to #4 buyers, #5 whale, #6 keeper, #7 trader. #9 is the local Atlas test signer.
-
-Optional keys go in `server/.env`, which is git-ignored.
-
-| Variable | Without it |
-|---|---|
-| `CMC_API_KEY` | The simulator samples launches from GeckoTerminal and says so |
-| `ANTHROPIC_API_KEY` | Issuer reports use a labelled template |
-| `ATLAS_API_KEY` | Pokes are signed by the local test signer. On testnet the push feed prices them |
-
-</details>
-
-## Testing
-
-```bash
-( cd contracts && forge test )                       # 155 passed, 3 skipped: unit, invariants, regressions, fork journeys
-( cd server && pnpm install --frozen-lockfile && pnpm test )   # 137 passed, 3 skipped: unit and chain (each file starts its own anvil)
-( cd web && pnpm install --frozen-lockfile && pnpm test && pnpm build )  # 106 passed, then a production build
-```
-
-The skipped tests need an RPC or a local deployment. Fork journeys run with `forge test --match-path "test/fork/*"` and need `BSC_RPC_URL` or `BSC_TESTNET_RPC_URL`.
-`server/test/chain/deployed.test.ts` runs against the real contracts after `scripts/dev-all.sh` and is skipped
-otherwise. After changing a contract, run `scripts/dev-abi.sh` to re-export the ABIs.
-
-## Security
-
-> [!WARNING]
-> **This is unaudited hackathon code.** It was built from 25 to 27 November 2026. No one has reviewed it independently.
-> It is deployed on BNB testnet only. Do not use it with real funds.
-
-- **No admin keys.** No owner, no pause, no fee switch. Flap's Guardian is the only upgrade path. Its calls to team
-  functions never count as a heartbeat.
-- **What Flap's Guardian can do (Flap's Pool Launch spec, disclosed).** Upgrade the vault and launcher logic through
-  their beacons, so the treasury and the refund BNB are only as safe as the Guardian. Call every team function:
-  `windDown()` on any covenant (it ends the tap early and opens fee-free redemption; it moves no funds, the vault
-  records it as a Guardian wind-down and the app says so), `claimTap()` (pays only the fixed team wallet),
-  `lowerTap()`, `postReport()`. It cannot count as a heartbeat, raise the tap, change the team wallet or any term,
-  unlock team tokens, or send treasury BNB or tokens anywhere but the team wallet's accrued tap and redeeming holders,
-  short of an upgrade.
-- **One Atlas signer, and whoever pokes.** The rate prices the dollar tap, which never exceeds its cap of the treasury
-  per 30 days. It cannot unlock team tokens on its own: a tranche also needs the multiple in BNB from the pool's own
-  TWAP, with no oracle. Whoever pokes decides whether a report rides along, so a poke without one never adds unlock
-  time and resets every counter whose multiple it finds missed at the last rate; a poke with a report waits only for
-  the previous poke with a report, so nobody can block it; unlock time must be continuous strict time (no interval over
-  6 hours); with no new rate the tap keeps the dollar budget at the last verified rate (never the cap alone); and the
-  dollar sale price is fixed at launch from the push feed, or ratchets only upward for a short window.
-- **Refused at creation, not at finalize.** The launcher factory screens the name and symbol with Flap's anti-scam
-  module (`isScamWord`; a module that does not answer refuses creation too), refuses tax terms the Portal refuses (the
-  higher rate under 1% or either over 10%, a tax shorter than the 1-day anti-farmer window), and needs the minimum
-  raise's pool seed to clear 1.5x Flap's live graduation floor for the chosen pool share (the demo factory: 1.5x
-  the creation floor, so its tokens launch but may not graduate; the margin covers Flap's BNB price or multiplier
-  moving before finalize). On BNB Chain and testnet the factories accept only
-  Flap's own Portal, Guardian, Token Dock router and name screen. The trading tax runs 30 days to 100 years (default
-  100); after it ends the tap is paid only from the treasury, so book value only falls unless the issuer deposits
-  revenue (`depositRevenue`). The vault's `description()` says so, with the date.
-- **The raise.** No per-wallet cap, by design: above the cap commitments are scaled back pro rata and the excess
-  refunds. Refunds and tokens are pull payments; the leftover rounding buffer (at most one wei per contributor) is
-  swept into the treasury once every refund is claimed.
-- **Finalize gas: set the gas limit explicitly, to 15M.** `finalize()` refuses to try the launch with less than 12M
-  gas left (`LAUNCH_GAS_FLOOR`, well above what a Pool Launch costs, so a starved launch is never mistaken for a
-  refused one: a call short of gas reverts and the raise stays open), and a wallet's gas estimate does not see that
-  check. Every caller sends an explicit gas limit of 15,000,000, the launcher's `FINALIZE_GAS_LIMIT` (the most Flap's
-  vault SDK and flap.sh send on BNB Chain; also in the launcher's `description()` as `finalizeGasLimit`). A 15M
-  transaction has about 14.9M left at the check. The app, the API and MCP (`gas` field), the keeper, the agents and
-  the scripts all send it. About 5.5M is used on BNB testnet and 7M on BNB Chain.
-- **Four.meme Lite vault.** `CovenantLiteVault` is outside Flap's audit scope: it never touches Flap's Portal or
-  Guardian and needs its own review. Its tap is bounded like Covenant's: at most 10% per period of 30 to 90 days.
-- **Reports and abandonment.** Reports are write-once per period and verdicts count per period. A team past its
-  heartbeat that winds down forfeits the tap, as abandonment would. A launch Flap refuses can be retried for a short
-  window before the raise refunds.
-- **Open findings, disclosed.** An outside review on 27 Nov 2026 found two Low issues that are still open, with fixes
-  planned before mainnet: `burnSaleDust` can revert for good once every sale token is claimed (no funds at risk), and
-  the Lite vault's form schema allows values its bounds refuse. The testnet Guardian address has no code. Details in
-  [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md#open-findings-27-nov-2026).
-- **Policy and known issues.** [SECURITY.md](SECURITY.md) (scope, reporting) and
-  [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md) (every item from Flap's review and the pre-audit, with its status). CI runs
-  the contract, server and web suites and checks the storage layout of the upgradeable contracts.
-- **The exit needs no oracle.** It compares the pool TWAP with book value, two BNB numbers the vault reads itself. A
-  wrong or missing Atlas rate cannot open or block a round.
-- **Manipulation limits.** Pokes are at least an hour apart. One poke adds at most six hours to any counter. The TWAP
-  records end-of-block prices only. Pull reports must be fresh (180 s) with increasing timestamps.
-- **Key theft.** A stolen team key reaches only the accrued tap. It can also wind the covenant down, which returns the
-  treasury to holders.
-- **What it does not protect.** The floor starts below the sale price and falls as the team spends. The treasury is
-  BNB, so its dollar value moves. Holders get exit, not voice.
-- **Flap's review (26 Nov 2026) and pre-audit re-review (F1 to F8).** Findings and fixes: name screen and floor at
-  creation (graduation floor with a 1.5x margin), Flap's tax rules at creation, the unlock counter and poke gap (no
-  hidden dips, no blocked reports), the tap's dollar budget at the last rate, Flap's addresses checked per chain,
-  finalize gas, the post-tax disclosure, Guardian wind-down disclosure, the dust sweep; see the Security notes above,
-  [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md) and [docs/DEPLOY.md](docs/DEPLOY.md).
-- **Before mainnet:** Flap's factory audit, an independent review of the vault, launcher and oracle, Atlas production
-  credentials, and legal review of redemption rights ([checklist](docs/DEPLOY.md#mainnet-checklist-from-the-design-document)).
-
-The threat model is in [docs/DESIGN.md](docs/DESIGN.md).
-
-## Repository layout
-
-<details>
-<summary><b>Show the tree</b></summary>
-
-<br>
-
-```text
-contracts/          Foundry
-  src/launcher/     CovenantLauncherFactory, CovenantLauncher, CovenantProfiles, CovenantTermsLib
-  src/vault/        CovenantVaultFactory, CovenantVault, CovenantTypes, CovenantVaultDisplay
-  src/oracle/       CovenantOracle, PairTwap
-  src/lens/         CovenantLens
-  src/openfour/     CovenantLiteVault
-  src/flap/, src/vendor/   third-party sources, vendored unchanged
-  src/mocks/        local-only stand-ins
-  script/           Deploy.s.sol, TestnetCovenant.s.sol, DevDeploy.s.sol, Demo.s.sol
-  test/             unit, invariant, fork
-  abi/              exported ABIs that the server and the web read
-  deployments/      <chainId>.json records
-server/             API, keeper, simulator, issuer and investor agents, MCP server
-flap/               Launcher UI and Vault UI packages for flap.sh (Flap's component template)
-web/                Next.js app: landing at /, product at /app
-scripts/            dev-all.sh, testnet-up.sh, dev-up, dev-down, dev-demo, dev-abi, dev-funds
-docs/               DESIGN.md, DEPLOY.md, landing/, assets/
-```
-
-</details>
-
 ## Documentation
 
-| Document | What it covers |
+| | |
 |---|---|
-| [JUDGES.md](JUDGES.md) | For judges and auditors: see it working, then each claim with the command that checks it |
-| [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md) | Every review finding and its status, including the open ones |
-| [docs/DESIGN.md](docs/DESIGN.md) | The product, the rules, the formulas, the oracle and the threat model (written before the code; its banner lists where the code differs) |
-| [docs/DEPLOY.md](docs/DEPLOY.md) | Deploying to testnet and mainnet, the testnet record, the end-to-end run |
-| [server/README.md](server/README.md) | Every API route, the keeper, the agents, the simulator |
-| [server/mcp/SKILL.md](server/mcp/SKILL.md) | The MCP tools and recipes for agents |
-| [flap/README.md](flap/README.md) | Covenant's UI packages for flap.sh and how to rebuild them |
-| [AGENTS.md](AGENTS.md) | Rules for coding agents working in this repository |
-| [web/public/llms.txt](web/public/llms.txt) | A summary for language models |
-| [LICENSE](LICENSE) · [NOTICE](NOTICE) | MIT; third-party code and design credits |
+| [Docs site](https://covenant.adibuilds.in/docs) | Introduction, how it works, quickstart, the rules, concepts, founders and investors, architecture, security, known limitations, FAQ |
+| [For agents](https://covenant.adibuilds.in/docs/agents) and [MCP reference](https://covenant.adibuilds.in/docs/mcp-reference) | Connecting Claude Code, Claude Desktop or Cursor; every tool, generated from the server |
+| [`/llms.txt`](https://covenant.adibuilds.in/llms.txt), [`/llms-full.txt`](https://covenant.adibuilds.in/llms-full.txt) | The docs for language models; every page is also markdown at its URL plus `.md` |
+| [Contracts and addresses](https://covenant.adibuilds.in/docs/contracts) | Every testnet address, from [`contracts/deployments/97.json`](contracts/deployments/97.json) |
+| [JUDGES.md](JUDGES.md) | Every claim with the command that checks it |
+| [docs/DESIGN.md](docs/DESIGN.md) | The deep design reference: rules, formulas, oracle design, threat model (written before the code; its banner lists where the code differs) |
+| [docs/DEPLOY.md](docs/DEPLOY.md), [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md), [SECURITY.md](SECURITY.md) | Deploy runbook and on-chain runs, every review finding, security policy |
+| [server/README.md](server/README.md), [flap/README.md](flap/README.md), [AGENTS.md](AGENTS.md) | The server and its API, Covenant's flap.sh UI packages, the guide for coding agents |
 
-## License
+The docs pages live in [`web/src/docs/content`](web/src/docs/content); the site, the `.md` twins and the llms files are all built from them.
 
-MIT, see [LICENSE](LICENSE). Copyright (c) 2026 Covenant contributors.
+## Status
 
-Landing page design adapted from the Ondrel Framer template, used under its license; vendored Flap and
-OpenZeppelin/solady code keep their own licenses. [NOTICE](NOTICE) lists every third-party part.
+- **On chain, current contracts:** `CVD`, launched by Flap's Portal through the demo factory pair (raise, finalize, token, pool, vault, sale-token claim, a strict poke on the Atlas push feed).
+- **On chain, first deployment:** `CVT` ran every stage: raise, Flap launch, the issuer's budget and heartbeats, the issuer stops, the keeper declares abandonment, holders redeem at book.
+- **On a fork only:** trading tax reaching a vault, ERC-8004 reputation writes, Four.meme Lite through OpenFour's ForwardVault.
+- **Planned:** Cournot report checks.
+
+## Repository
+
+```
+contracts/   Foundry, Solidity 0.8.26: launcher, vault, oracle, lens, Four.meme Lite vault; tests; deployments/
+server/      TypeScript, Node 22: keeper, API, MCP server, issuer and investor agents, launch simulator
+web/         Next.js 16: landing pages, docs (src/docs) and the app (/app)
+flap/        Covenant's Launcher UI and Vault UI packages for flap.sh
+scripts/     dev-all.sh (the whole local stack) and testnet helpers
+docs/        design document, deploy runbook, known issues
+```
+
+Tests: `forge test` in `contracts/`, `pnpm test` in `server/` and in `web/`. [AGENTS.md](AGENTS.md) has every command.
+
+## Built with
+
+[Flap](https://flap.sh) Pool Launch · [PancakeSwap](https://pancakeswap.finance) · Atlas BNB/USD feeds · [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) agent identity · [Four.meme](https://four.meme) via OpenFour · [CoinMarketCap](https://coinmarketcap.com) DEX data · [BNB Chain](https://www.bnbchain.org)
+
+## Security and license
+
+Report vulnerabilities privately, as [SECURITY.md](SECURITY.md) describes. MIT, see [LICENSE](LICENSE); vendored third-party code keeps its own license ([NOTICE](NOTICE)).
