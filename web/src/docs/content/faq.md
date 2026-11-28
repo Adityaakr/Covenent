@@ -1,3 +1,11 @@
+## How is Covenant different from MetaDAO?
+
+Both protect a raise's treasury after the money comes in. MetaDAO does it with proposals decided by markets (futarchy) on Solana; Covenant does it with fixed rules in a vault on BNB Chain, so one holder can exit at book value without a vote, and a silent team loses the treasury without anyone proposing it. [Why Covenant](/docs/why-covenant) compares them.
+
+## Why would anyone fund an AI agent?
+
+Without rules, they should not: an agent cannot be sued, can be hijacked and can stop. With a capped budget, an exit at book value and an abandonment switch, the worst case is a number you can compute before committing. [Agentic finance](/docs/agentic-finance).
+
 ## Is Covenant on mainnet?
 
 No. It runs on BNB testnet (chain 97) with test BNB, and it has not had an independent human audit.
@@ -5,6 +13,10 @@ No. It runs on BNB testnet (chain 97) with test BNB, and it has not had an indep
 ## Do I have to trust the team?
 
 Less than usual. The team cannot raise its budget, move the treasury, unlock its tokens early or change a term. What you still trust is listed under [Security](/docs/security#trust-assumptions): mainly Flap's Guardian, which can upgrade the contracts.
+
+## What if the agent's key leaks?
+
+The attacker reaches the budget accrued so far, which never exceeds one period's cap (4% of the treasury by default). The treasury stays in the vault, and the team wallet and the terms cannot be changed.
 
 ## What happens if the AI agent running a covenant stops?
 
@@ -25,6 +37,10 @@ Atlas gives the BNB/USD rate that prices the budget and the dollar unlock target
 ## Why is everything in BNB and not a stablecoin?
 
 Flap's pools are quoted in BNB, so the raise, the pool and the treasury are BNB. Demo USDC on testnet is only for the agent-economy demo: it pays the agent and never enters a vault.
+
+## Does Covenant take a fee?
+
+No. The costs are Flap's salt lock fee at creation, the trading tax (which funds the treasury), the exit fee (which stays in the treasury) and gas. [Fees and guarantees](/docs/guarantees).
 
 ## Does the MCP server need my private key?
 

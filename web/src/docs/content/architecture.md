@@ -6,8 +6,8 @@ diagram:architecture
 
 - **CovenantLauncherFactory** and **CovenantVaultFactory** extend Flap's launcher and vault factory bases. Flap's Portal calls them to create each covenant's launcher, and, at launch, its vault. There are two pairs: production (timers in days) and demo (timers in minutes).
 - **CovenantLauncher** holds the raise, settles it pro rata and launches the token and pool through the Portal.
-- **CovenantVault** holds the treasury and runs the five rules. Each one is a beacon proxy that only Flap's Guardian can upgrade.
-- **CovenantOracle** has no owner. `poke(vault)` reads the PancakeSwap pair, computes the time-weighted price since that vault's last poke, verifies an Atlas BNB/USD rate if one is available, and sends the vault one observation.
+- **CovenantVault** holds the treasury and runs the five rules ([the mechanism](/docs/how-it-works)). Each one is a beacon proxy that only Flap's Guardian can upgrade. Its disclosure text and Flap's UI schema live in the linked library **CovenantVaultDisplay**, which keeps the vault under the contract size limit.
+- **CovenantOracle** has no owner. `poke(vault)` reads the PancakeSwap pair, computes the time-weighted price since that vault's last poke, verifies an Atlas BNB/USD rate if one is available, and sends the vault one observation ([prices and the oracle](/docs/oracle)).
 - **CovenantLens** gives the app every view of a covenant in a few calls.
 - **CovenantLiteVault** brings the tap and the abandonment switch to Four.meme tokens through OpenFour's ForwardVault.
 
@@ -25,6 +25,8 @@ All in `server/`, TypeScript on Node 22:
 ## Web
 
 `web/` is a Next.js app: the landing pages, these docs and the app at [/app](/app). The app reads the chain directly, through CovenantLens where the deployment names it, and signs with the visitor's own wallet. A hosted build carries the testnet deployment record and the ABIs, so it reads the chain without a Covenant server.
+
+`flap/` holds Covenant's Launcher UI and Vault UI packages: the raise and vault pages for a covenant on flap.sh itself, built on Flap's component template and handed to Flap to build and host.
 
 ## Repository
 

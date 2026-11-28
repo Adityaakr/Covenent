@@ -6,7 +6,7 @@ import { SiteLayout } from "@/landing/components/SiteLayout";
 import { pageMetadata } from "@/landing/meta";
 import { DocsMarkdown } from "./DocsMarkdown";
 import { ThemeSwitch } from "./ThemeSwitch";
-import { DOC_GROUPS, DOC_PAGES, docHref, docMdHref, findDoc, neighbours, type DocPage } from "./pages";
+import { DOC_GROUPS, DOC_PAGES, docHref, docLabel, docMdHref, findDoc, neighbours, type DocPage } from "./pages";
 import { expand, headingId, outline, readBody, REPO_URL } from "./source";
 import "./docs.css";
 
@@ -26,7 +26,7 @@ function NavList({ current }: { current: string }) {
             {DOC_PAGES.filter((p) => p.group === g).map((p) => (
               <li key={p.slug}>
                 <Link href={docHref(p.slug)} aria-current={p.slug === current ? "page" : undefined}>
-                  {p.nav ?? p.title}
+                  {docLabel(p)}
                 </Link>
               </li>
             ))}
@@ -44,13 +44,13 @@ function Pager({ page }: { page: DocPage }) {
       {prev ? (
         <Link href={docHref(prev.slug)} className="docs-pager-link">
           <span>Previous</span>
-          <b>{prev.title}</b>
+          <b>{docLabel(prev)}</b>
         </Link>
       ) : <span />}
       {next ? (
         <Link href={docHref(next.slug)} className="docs-pager-link docs-pager-next">
           <span>Next</span>
-          <b>{next.title}</b>
+          <b>{docLabel(next)}</b>
         </Link>
       ) : <span />}
     </nav>
@@ -76,7 +76,7 @@ export function DocsPage({ slug }: { slug: string }) {
           <details className="docs-mobile-nav" key={slug}>
             <summary>
               <span>Docs</span>
-              <b>{page.title}</b>
+              <b>{docLabel(page)}</b>
             </summary>
             <NavList current={slug} />
             <ThemeSwitch />

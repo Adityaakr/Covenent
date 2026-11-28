@@ -1,6 +1,7 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { DIAGRAM_TEXT } from "./diagram-text";
 import { DOC_PAGES } from "./pages";
 import { addressGroups, expand, llmsFull, llmsTxt, MCP_TOOLS, outline, pageMarkdown, readBody, SITE_URL } from "./source";
 
@@ -71,6 +72,37 @@ describe("docs", () => {
       expect(pageMarkdown(p)).not.toMatch(/\]\(\/(?!\/)/);
     }
     for (const t of MCP_TOOLS) expect(index).toContain(t.name);
+  });
+
+  it("a newcomer reads the introduction, why, how, agentic finance and the quickstart before any reference", () => {
+    expect(DOC_PAGES.slice(0, 5).map((p) => p.slug)).toEqual(["introduction", "why-covenant", "how-it-works", "agentic-finance", "quickstart"]);
+    expect(DOC_PAGES[0]!.title).toBe("The operating stack for autonomous ventures");
+  });
+
+  it("every diagram is drawn on some page", () => {
+    const used = new Set(DOC_PAGES.flatMap((p) => [...readBody(p.slug).matchAll(/```covenant\ndiagram:(\w+)\n```/g)].map((m) => m[1]!)));
+    for (const name of Object.keys(DIAGRAM_TEXT)) expect(used.has(name), name).toBe(true);
+  });
+
+  it("the defaults on the rules page are the contracts' defaults (CovenantProfiles.defaultTerms)", () => {
+    const sol = readFileSync(path.join(REPO_ROOT, "contracts/src/launcher/CovenantProfiles.sol"), "utf8");
+    const body = sol.slice(sol.indexOf("function defaultTerms"), sol.indexOf("function demoTerms"));
+    const num = (field: string) => {
+      const m = body.match(new RegExp(`t\\.${field.replace(/[[\]]/g, "\\$&")} = ([0-9_]+)( ether| days)?;`));
+      if (!m) throw new Error(`no ${field} in defaultTerms`);
+      return Number(m[1]!.replace(/_/g, ""));
+    };
+    const pct = (bps: number) => `${bps / 100}%`;
+    const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
+    const rules = readBody("rules");
+    const row = (term: string) => rules.split("\n").find((l) => l.startsWith(`| ${term}`)) ?? "";
+    expect(row("Supply split")).toContain(`${pct(num("saleBps"))} sale, ${pct(num("poolBps"))} pool`);
+    expect(row("Raise")).toContain(`minimum ${num("minRaise")} BNB, cap ${num("cap")} BNB, ${num("saleDuration")}-day sale`);
+    expect(row("Trading tax")).toContain(`${pct(num("buyTaxBps"))} buy, ${pct(num("sellTaxBps"))} sell`);
+    expect(row("Tap")).toContain(`${usd(num("tapUsdPer30d"))} per 30 days, capped at ${pct(num("tapCapBps"))}`);
+    expect(row("Unlock")).toContain(`${pct(num("trancheBps[0]"))} at ${num("trancheMultiple[0]") / 100}x, ${pct(num("trancheBps[1]"))} at ${num("trancheMultiple[1]") / 100}x, ${pct(num("trancheBps[2]"))} at ${num("trancheMultiple[2]") / 100}x; ${num("cliff")}-day cliff; ${num("unlockWindow")}-day unlock window`);
+    expect(row("Exit")).toContain(`${num("exitStreak")}-day streak, ${num("roundLength")}-day round, ${num("cooldown")}-day cooldown, ${pct(num("exitFeeBps"))} fee`);
+    expect(row("Abandonment")).toContain(`${num("heartbeat")}-day heartbeat window`);
   });
 
   it("every address on the contracts page is an address of the deployment record", () => {

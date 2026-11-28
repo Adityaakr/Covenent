@@ -2,9 +2,11 @@
 
 - **The floor is below the sale price.** With the default terms, book value starts at 60% of the sale price and falls as the team draws its budget.
 - **The treasury is BNB.** Its value in dollars moves with BNB.
-- **Exit, not voice.** Holders cannot vote, and have no claim on anything off chain, such as a company, code or revenue that never reaches the vault.
+- **Exit, not voice.** Holders cannot vote, and have no claim on anything off chain, such as a company, code or revenue that never reaches the vault. Unlike a governance system such as MetaDAO's, nobody can approve new spending or change course either ([Why Covenant](/docs/why-covenant#what-covenant-does-differently)).
 - **Tax income ends.** After the tax period, the tap is paid from the treasury alone, so book value only falls unless the team deposits revenue.
-- **Someone has to poke.** The rules move only when the oracle is poked. Anyone can poke (the keeper, the app, an agent), but if nobody does, nothing happens.
+- **Someone has to poke.** The rules move only when the oracle is poked. Anyone can poke (the keeper, the app, an agent), but if nobody does, nothing happens, and each poke counts at most 6 hours of elapsed time.
+- **A stolen team key can end the project.** It reaches only the accrued budget, but it can also call `windDown()`. That returns the treasury to holders, so nothing more is taken, but the venture is over. A notice period on wind-down is a later fix.
+- **An agent is whoever holds its key.** Covenant does not prove that an agent is autonomous; it binds the wallet either way.
 
 ## Testnet only
 

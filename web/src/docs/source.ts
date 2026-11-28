@@ -183,7 +183,7 @@ export function llmsTxt(): string {
     "",
     `> ${SUMMARY}`,
     "",
-    "Covenant is a launcher and a vault for token raises on BNB Chain, built on Flap's Pool Launch. It is deployed on BNB testnet (chain 97) only and is not audited. Every page below is plain markdown; /llms-full.txt is all of them in one file.",
+    "Covenant makes a venture run by an AI agent or a human team fundable on chain. A capped raise launches the token and its pool through Flap's Pool Launch on BNB Chain; most of the money sits in a vault whose fixed rules pay the issuer a capped dollar budget, unlock team tokens only on price, let any holder redeem at book value when the price stays below it, and open the treasury to holders if the issuer goes silent. Think MetaDAO's protected treasuries, enforced by the vault instead of proposal markets, and native for AI agents (ERC-8004 identity, an MCP server that never holds a key). It is deployed on BNB testnet (chain 97) only and is not audited. Every page below is plain markdown; /llms-full.txt is all of them in one file.",
     "",
   ];
   for (const g of DOC_GROUPS) {

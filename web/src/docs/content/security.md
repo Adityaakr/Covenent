@@ -2,7 +2,7 @@
 
 Covenant was built in three days for BNB Hack Bangkok. It has had an AI pre-audit, a review by Flap's audit bot (its pre-audit findings F1 to F8) and an independent re-review of those fixes. It has not had an independent human audit. Do not use it with real funds.
 
-Every finding is in [docs/KNOWN-ISSUES.md](https://github.com/Adityaakr/Covenent/blob/main/docs/KNOWN-ISSUES.md) with its status: fixed (with the regression test named), disclosed by design, accepted with a reason, or open.
+What the contracts guarantee, and what nobody can do, is on [Fees and guarantees](/docs/guarantees). Every finding is in [docs/KNOWN-ISSUES.md](https://github.com/Adityaakr/Covenent/blob/main/docs/KNOWN-ISSUES.md) with its status: fixed (with the regression test named), disclosed by design, accepted with a reason, or open.
 
 ## What the reviews changed
 

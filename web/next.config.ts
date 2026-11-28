@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
       { source: "/contact", destination: "/", permanent: false },
       // the docs' first page lives at /docs
       { source: "/docs/introduction", destination: "/docs", permanent: true },
+      // "Concepts" became the Glossary when the mechanism got its own pages
+      { source: "/docs/concepts", destination: "/docs/glossary", permanent: true },
+      { source: "/docs/concepts.md", destination: "/docs/glossary.md", permanent: true },
     ];
   },
   // Every docs page has a markdown twin for agents: /docs/<slug>.md (and /docs.md), or the page URL with
