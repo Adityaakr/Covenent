@@ -39,7 +39,7 @@ Redemption is open only in an exit round and after wind-down. At any other time 
 
 A covenant a few months in: treasury 320 BNB, redeemable supply 750,000,000 tokens.
 
-| | |
+| Step | Amount |
 |---|---|
 | Book value | 320 / 750M = 0.000000427 BNB per token |
 | Pool price for the last 3 days | 0.00000035 BNB, about 18% under book |

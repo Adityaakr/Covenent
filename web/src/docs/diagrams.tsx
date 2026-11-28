@@ -98,7 +98,7 @@ function HandoffPanels({ narrow }: { narrow: boolean }) {
   const pw = narrow ? 338 : 330;
   const lx = 1, ly = 1;
   const rx = narrow ? 1 : 349, ry = narrow ? 230 : 1;
-  const lh = narrow ? 212 : 234, rh = narrow ? 226 : 234;
+  const lh = narrow ? 212 : 234, rh = narrow ? 236 : 234;
   const bw = narrow ? 112 : 112, gap = narrow ? 40 : 44;
   const tw = pw - 34 - bw - gap; // the box right of the arrow
   const pad = 17;
@@ -146,7 +146,7 @@ function Handoff() {
   return (
     <>
       <Svg w={680} h={236} label={label} className="dg-wide"><HandoffPanels narrow={false} /></Svg>
-      <Svg w={340} h={458} label={label} className="dg-narrow"><HandoffPanels narrow /></Svg>
+      <Svg w={340} h={468} label={label} className="dg-narrow"><HandoffPanels narrow /></Svg>
     </>
   );
 }

@@ -47,9 +47,9 @@ Nothing in the vault knows or cares whether the team wallet belongs to a person 
 diagram:signing
 ```
 
-The agent talks to the Covenant MCP server, which reads BNB testnet and never holds a key. Every write tool returns an unsigned transaction and a simulation; a wallet signs. In Claude Code, after [connecting the server](/docs/agents#connect), the agent's calls look like this:
+The agent talks to the Covenant MCP server, which reads BNB testnet and never holds a key. Every write tool returns an unsigned transaction and a simulation; a wallet signs. In Claude Code, after [connecting the server](/docs/agents#connect), the agent's calls look like this (`<launcher>` stands for a launcher address `list_covenants` returned):
 
-```json
+```jsonc
 // 1. Which chain and which contracts
 {"name": "get_network", "arguments": {}}
 
@@ -57,22 +57,27 @@ The agent talks to the Covenant MCP server, which reads BNB testnet and never ho
 {"name": "list_covenants", "arguments": {"include_raises": true}}
 
 // 3. Due diligence on one raise (any of its addresses works)
-{"name": "get_raise",   "arguments": {"covenant": "<launcher from list_covenants>"}}
-{"name": "get_terms",   "arguments": {"covenant": "<launcher>"}}
-{"name": "get_issuer",  "arguments": {"covenant": "<launcher>"}}
+{"name": "get_raise",  "arguments": {"covenant": "<launcher>"}}
+{"name": "get_terms",  "arguments": {"covenant": "<launcher>"}}
+{"name": "get_issuer", "arguments": {"covenant": "<launcher>"}}
 
-// 4. Build the commitment: an unsigned transaction plus a simulation run as the signer
-{"name": "commit", "arguments": {"covenant": "<launcher>", "amount_bnb": "0.05", "from": "<your wallet>"}}
+// 4. Build the commitment: an unsigned transaction, simulated as the signer
+{"name": "commit", "arguments": {
+  "covenant": "<launcher>", "amount_bnb": "0.05", "from": "<your wallet>"
+}}
 ```
 
 The `commit` answer has three parts:
 
 ```json
 {
-  "unsignedTransaction": { "chainId": 97, "to": "<the launcher>", "data": "0xd7bb99ba", "value": "50000000000000000",
-                           "functionName": "contribute", "prerequisites": [] },
+  "unsignedTransaction": {
+    "chainId": 97, "to": "<the launcher>", "data": "0xd7bb99ba",
+    "value": "50000000000000000", "functionName": "contribute",
+    "prerequisites": []
+  },
   "simulation": { "ok": true, "gasEstimate": "…", "error": null },
-  "howToSend": "This server holds no keys and sends nothing. Show the user what it does and get their confirmation, then sign and send with the wallet that should act."
+  "howToSend": "This server holds no keys and sends nothing. Show the user what it does …"
 }
 ```
 
