@@ -34,7 +34,11 @@ Capital, budgets and exits for businesses run by AI agents. Enforced by code, no
 
 ## What it is
 
-A team that raises money by launching a token asks buyers to trust it with the treasury. An AI agent running a business has even less to answer to. Covenant replaces that trust with code: a launcher and a vault for token raises on BNB Chain, built on [Flap](https://flap.sh)'s Pool Launch. Flap launches the token and its PancakeSwap pool, and most of the raise goes into a vault that runs five fixed rules. The same contracts bind a human team or an AI agent, and anyone can trigger the rules.
+AI agents and small teams can now raise money on chain in minutes, but today a raise is a trust-me handoff: the money lands in the issuer's wallet, with nothing to stop a rug, no budget and no exit for holders. An AI agent makes it worse: it cannot be sued, it can be hijacked, and it can simply stop.
+
+Covenant is the operating stack that makes an autonomous venture fundable: **capital in, a budget out under rules, and an exit for holders, enforced by code 24/7.** A capped raise launches the token and its PancakeSwap pool through [Flap](https://flap.sh)'s Pool Launch on BNB Chain, and most of the money goes into a vault that runs five fixed rules. The same contracts bind a human team or an AI agent, and anyone can trigger the rules.
+
+Think MetaDAO's protected treasuries, plus AI agents raising: the rules live in the vault instead of in proposal markets, so one holder can exit at book value alone and a silent issuer loses the treasury without a vote. Agents get an ERC-8004 identity and track record, and an MCP server that never holds a key ([why Covenant](https://covenant.adibuilds.in/docs/why-covenant), [agentic finance](https://covenant.adibuilds.in/docs/agentic-finance)).
 
 | Rule | What it does | Default |
 |---|---|---|
@@ -56,7 +60,7 @@ flowchart LR
   O[Oracle: pool TWAP + Atlas] -- poke --> V
 ```
 
-The [docs](https://covenant.adibuilds.in/docs) explain each step: [how it works](https://covenant.adibuilds.in/docs/how-it-works), [the five rules](https://covenant.adibuilds.in/docs/rules) and [concepts](https://covenant.adibuilds.in/docs/concepts).
+The [docs](https://covenant.adibuilds.in/docs) explain the whole mechanism with worked examples: [how it works](https://covenant.adibuilds.in/docs/how-it-works), then [the raise](https://covenant.adibuilds.in/docs/raise), [book value](https://covenant.adibuilds.in/docs/treasury), [the budget](https://covenant.adibuilds.in/docs/budget), [unlocks](https://covenant.adibuilds.in/docs/unlocks), [the exit](https://covenant.adibuilds.in/docs/exit), [heartbeats](https://covenant.adibuilds.in/docs/heartbeats), [the oracle](https://covenant.adibuilds.in/docs/oracle) and [fees and guarantees](https://covenant.adibuilds.in/docs/guarantees).
 
 <p align="center">
   <img src="docs/assets/app-testnet-covenant.png" width="900" alt="The Covenant app on BNB testnet, showing the covenant $CVT wound down with its treasury open to holders at book value">
@@ -86,7 +90,7 @@ scripts/dev-all.sh
 
 | | |
 |---|---|
-| [Docs site](https://covenant.adibuilds.in/docs) | Introduction, how it works, quickstart, the rules, concepts, founders and investors, architecture, security, known limitations, FAQ |
+| [Docs site](https://covenant.adibuilds.in/docs) | Introduction, why Covenant (and MetaDAO), how it works, agentic finance, quickstart; the mechanism page by page; founders and investors; rules and defaults, architecture, security, known limitations, glossary, FAQ |
 | [For agents](https://covenant.adibuilds.in/docs/agents) and [MCP reference](https://covenant.adibuilds.in/docs/mcp-reference) | Connecting Claude Code, Claude Desktop or Cursor; every tool, generated from the server |
 | [`/llms.txt`](https://covenant.adibuilds.in/llms.txt), [`/llms-full.txt`](https://covenant.adibuilds.in/llms-full.txt) | The docs for language models; every page is also markdown at its URL plus `.md` |
 | [Contracts and addresses](https://covenant.adibuilds.in/docs/contracts) | Every testnet address, from [`contracts/deployments/97.json`](contracts/deployments/97.json) |
